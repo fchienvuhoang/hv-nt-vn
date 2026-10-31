@@ -4,13 +4,14 @@ import type { ReactNode } from "react";
 import type { Fund } from "@/generated/prisma/client";
 import type { FundImportSummary } from "@/lib/fund-imports";
 import { Modal } from "@/components/modal";
+import { FundTransactions } from "./fund-transactions";
 import { FundForm } from "./fund-form";
 import { FundExcelImport } from "./fund-excel-import";
 import { TransferFormFields } from "./transfer-form-fields";
 import { getFundImportHistory } from "@/app/admin/actions";
 import { useToast } from "@/components/toasts";
 
-type DialogKind = "create-fund" | "edit-fund" | "import-fund" | "transfer";
+type DialogKind = "create-fund" | "edit-fund" | "import-fund" | "transfer" | "fund-transactions";
 type Selection = { kind: DialogKind; fundId?: string } | null;
 type TransferFunds = React.ComponentProps<typeof TransferFormFields>["funds"];
 const DialogContext = createContext<((kind: DialogKind, fundId?: string) => void) | null>(null);
@@ -28,6 +29,7 @@ export function DialogWorkspace({children,funds,accounts,transferFunds,initial,i
   const [history,setHistory]=useState(initialHistory),[historyLoading,setHistoryLoading]=useState(false),[historyError,setHistoryError]=useState("");
   const historyRequest=useRef(0);
   const toast=useToast();
+  const transactionFund=selection?.kind==="fund-transactions"?funds.find(f=>f.id===selection.fundId):funds[0];
   const editFund=selection?.kind==="edit-fund"?funds.find(f=>f.id===selection.fundId):funds[0];
   const importFund=selection?.kind==="import-fund"?funds.find(f=>f.id===selection.fundId):funds[0];
   function dismiss() {
@@ -69,6 +71,9 @@ export function DialogWorkspace({children,funds,accounts,transferFunds,initial,i
       {historyLoading&&<p role="status">Đang cập nhật lịch sử nhập Excel…</p>}
       {historyError&&<div className="notice danger" role="alert">{historyError}</div>}
       {importFund?<FundExcelImport key={importFund.id} active={selection?.kind==="import-fund"} fundId={importFund.id} legacy={{accountId:importFund.accountId,income:importFund.openingIncome.toString(),expense:importFund.openingExpense.toString(),transfer:importFund.openingTransferNet.toString()}} history={history}/>:<div className="notice danger">Không tìm thấy thiện pháp này.</div>}
+    </Modal></div>
+    <div data-admin-dialog="fund-transactions"><Modal wide open={selection?.kind==="fund-transactions"} onDismiss={dismiss} title={`Giao dịch · ${transactionFund?.code??"thiện pháp"}`} description={transactionFund?.name} footerNote="Lý do và ghi chú được hiển thị công khai; mọi thao tác đều lưu người thực hiện và thời gian.">
+      {transactionFund&&<FundTransactions key={`${transactionFund.id}-${revision}`} fundId={transactionFund.id} active={selection?.kind==="fund-transactions"} funds={funds} accounts={accounts}/>}
     </Modal></div>
     <div data-admin-dialog="transfer"><Modal open={selection?.kind==="transfer"} onDismiss={dismiss} title="Điều chuyển giữa các thiện pháp" description="Ghi rõ lý do, giữ trọn lịch sử phân bổ.">
       <TransferFormFields key={`transfer-${revision}`} requestId={requestId} accounts={accounts} funds={transferFunds}/>

@@ -68,7 +68,22 @@ model Fund {
   updatedById String?
   updatedByName String?
 }
+model TransactionNote {
+  id String @id @default(cuid())
+  requestId String @unique
+  transactionId String
+  transaction BankTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  text String
+  kind String @default("NOTE")
+  actor String
+  actorId String?
+  actorName String?
+  createdAt DateTime @default(now())
+  @@index([transactionId, createdAt])
+}
+
 model BankTransaction {
+  notes TransactionNote[]
   id             String      @id @default(cuid())
   accountId      String
   account        BankAccount @relation(fields: [accountId], references: [id])
@@ -169,6 +184,7 @@ model AuditLog {
   details    Json
   createdAt  DateTime @default(now())
   @@index([createdAt])
+  @@index([action, entityId])
   actorId String?
   actorName String?
 }

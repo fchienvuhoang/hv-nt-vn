@@ -16,6 +16,8 @@ const actionNames: Record<string, string> = {
   FUND_CREATED: "Tạo thiện pháp",
   FUND_UPDATED: "Sửa thiện pháp",
   TRANSACTION_ASSIGNED: "Phân loại tay",
+  TRANSACTIONS_REASSIGNED: "Gán nhiều giao dịch sang thiện pháp",
+  TRANSACTION_NOTE_ADDED: "Thêm ghi chú công khai",
   TAB_RECLASSIFICATION_STARTED: "Bắt đầu kiểm tra tab giao dịch",
   TAB_RECLASSIFICATION_CHECKED: "Đã kiểm tra phân loại tab",
   TAB_RECLASSIFICATION_FINISHED: "Hoàn tất phân loại tab",
@@ -255,13 +257,12 @@ export default async function Sync({ params = {} }: { params?: AdminParams }) {
           ) : (
             <div className="table-scroll table-card sync-log-scroll" tabIndex={0} role="region" aria-label="Bảng lịch sử thao tác">
               <table>
-                <thead><tr><th>Thời gian</th><th>Thao tác</th><th>Người thực hiện</th><th>Mã bản ghi</th><th>Chi tiết</th></tr></thead>
+                <thead><tr><th>Thời gian</th><th>Thao tác</th><th>Mã bản ghi</th><th>Chi tiết</th><th>Người thực hiện</th></tr></thead>
                 <tbody>
               {audits.map((a) => (
                 <tr key={a.id}>
                   <td className="nowrap">{dateTime(a.createdAt)}</td>
                   <td><strong>{actionNames[a.action] ?? a.action}</strong></td>
-                  <td><span className="sync-log-clip" title={`${a.actor} · ID: ${a.actorId ?? "Dữ liệu cũ"}`}>{a.actorName || a.actor}</span></td>
                   <td><span className="sync-log-clip" title={a.entityId}>{a.entityId}</span></td>
                   <td>
                   <Modal
@@ -276,6 +277,7 @@ export default async function Sync({ params = {} }: { params?: AdminParams }) {
                     <small>Mã bản ghi: {a.entityId}</small>
                   </Modal>
                   </td>
+                  <td><span className="sync-log-clip" title={`${a.actor} · ID: ${a.actorId ?? "Dữ liệu cũ"}`}>{a.actorName || a.actor}</span></td>
                 </tr>
               ))}
                 </tbody>

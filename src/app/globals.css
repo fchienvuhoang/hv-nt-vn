@@ -3904,3 +3904,58 @@ tfoot td {
 .table-card.table-scroll .positive { color: #346145; }
 .table-card.table-scroll .negative { color: #a3313b; }
 .table-card .sheet-sender, .table-card .sheet-assignment, .table-card .sheet-index { color: #795f4d; }
+
+.fund-transaction-workspace { display: grid; gap: 8px; }
+.fund-transaction-workspace .notice { margin: 0; padding: 7px 10px; font-size: 12px; }
+.fund-transaction-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fund-transaction-filters > input { flex: 1; min-width: 220px; }
+.fund-transaction-filters :is(input,select) { min-height: 32px; padding: 5px 8px; font-size: 12px; }
+.bulk-selection-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 16px; background: #fff1d5; border: 1px solid #dbbd81; padding: 8px 10px; border-radius: 6px; font-size: 12px; }
+.bulk-selection-summary > strong { color: #7b3040; font-size: 14px; }
+.bulk-selection-summary > small { flex-basis: 100%; }
+.bulk-selection-summary > button { margin-left: auto; }
+.bulk-assignment-controls { display: grid; grid-template-columns: minmax(180px,1fr) minmax(240px,2fr) auto; gap: 8px; align-items: end; }
+.bulk-assignment-controls label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; }
+.bulk-assignment-controls :is(select,textarea) { width: 100%; padding: 6px 8px; font-size: 12px; }
+.fund-transaction-count { margin: 0; font-size: 12px; }
+.fund-transaction-table { max-height: 48vh; overflow: auto; }
+.fund-transaction-table table { min-width: 800px; }
+.fund-transaction-table th { position: sticky; top: 0; z-index: 1; }
+.fund-transaction-table th:first-child { width: 34px; }
+.fund-transaction-table th:nth-child(2) { width: 150px; }
+.fund-transaction-table th:nth-child(4) { width: 145px; }
+.fund-transaction-table th:last-child { width: 105px; }
+.fund-transaction-table td { padding: 5px 8px; }
+.fund-transaction-table input[type=checkbox] { width: 17px; height: 17px; accent-color: #7b3040; min-height: 0; cursor: pointer; }
+.table-card.table-scroll tbody tr.bulk-selected { background: #fff0ce; }
+.transaction-admin-note, .transaction-public-note { margin-top: 5px; padding: 5px 8px; border-left: 3px solid #b88635; background: #fff8e9; color: #65442d; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.transaction-admin-note small, .transaction-public-note small { display: block; margin-top: 3px; }
+.inline-note-editor { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 5px; }
+.inline-note-editor label { flex-basis: 100%; }
+.inline-note-editor textarea { display: block; width: 100%; margin-top: 4px; }
+.fund-transaction-workspace .pagination { margin: 0; padding: 3px 0; }
+.sheet-row-actions > .button { margin-bottom: 3px; }
+@media(max-width:900px) { .bulk-assignment-controls { grid-template-columns: 1fr; } .bulk-assignment-controls > button { justify-self: start; } }
+/* Keep the multi-select workspace dense, with controls above a wide ledger. */
+.modal:has(.fund-transaction-workspace) { width: min(1300px,calc(100vw - 32px)); }
+.modal:has(.fund-transaction-workspace) .modal-header { padding: 12px 18px; }
+.modal:has(.fund-transaction-workspace) .modal-header h2 { font-size: 19px; margin-top: 3px; }
+.modal:has(.fund-transaction-workspace) .modal-header p { font-size: 12px; margin-top: 4px; line-height: 1.4; }
+.modal:has(.fund-transaction-workspace) .modal-body { padding: 12px 16px; }
+.modal:has(.fund-transaction-workspace) .modal-footer { padding: 8px 16px; }
+.fund-transaction-filters { display: grid; grid-template-columns: minmax(200px,2fr) minmax(100px,.6fr) minmax(120px,.7fr) auto; }
+.fund-transaction-filters > input { min-width: 0; }
+.fund-transaction-filters :is(input,select) { width: 100%; min-width: 0; }
+.bulk-selection-summary { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr) auto; gap: 4px 10px; }
+.bulk-selection-summary > strong { font-size: 13px; }
+.bulk-selection-summary > span { font-size: 11px; }
+.bulk-selection-summary > small { grid-column: 1/-1; font-size: 10px; }
+.bulk-selection-summary > button { grid-column: 3; grid-row: 1; margin-left: 0; }
+.fund-transaction-table th { padding: 6px 8px; }
+@media(max-width:900px) {
+  .fund-transaction-filters { grid-template-columns: 1fr 1fr; }
+  .fund-transaction-filters > input { grid-column: 1/-1; }
+  .bulk-selection-summary { grid-template-columns: 1fr auto; }
+  .bulk-selection-summary > span { grid-column: 1/-1; }
+  .bulk-selection-summary > button { grid-column: 2; }
+}

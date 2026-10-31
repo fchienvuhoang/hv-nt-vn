@@ -158,6 +158,7 @@ export default async function FundPage({
                           {r.narrative || "Không có nội dung chuyển khoản"}
                         </p>
                         <small>{r.name}</small>
+                        {r.notes.map(note=><div key={note.id} className="transaction-public-note"><strong>Ghi chú quản trị:</strong> {note.text}<small>{dateTime(note.at)}</small></div>)}
                       </td>
                       <td
                         className={`align-right money nowrap ${direction === "CREDIT" ? "positive" : ""}`}

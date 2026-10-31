@@ -50,7 +50,12 @@ try{
   const totals=await fundTotals();assert.equal(totals.find(f=>f.id===fund.id)?.balance,29800n);
   const accounts=await accountTotals();assert.equal(accounts.find(x=>x.id===a.id)?.expected,24800n);assert.equal(accounts.find(x=>x.id===b.id)?.expected,5000n);
   const source=(id:string,narrative:string,amount:number,time="10:00")=>({id,bankAccountId:"2028140453689352192",refId:`REF-${id}`,transactionAmount:amount,type:"CREDIT" as const,narrative,transactionTime:`${today}T${time}:00`});
+  const annotatedExcel=await db.bankTransaction.findFirstOrThrow({where:{origin:"EXCEL",entryStatus:"POSTED",narrative:"TPOLD donor 0"}});
+  await db.transactionNote.create({data:{requestId:randomUUID(),transactionId:annotatedExcel.id,text:"Keep note after automatic bank matching",actor:"test"}});
   await serializable(tx=>ingestBankPage(tx,a.id,[source("bank-strong","TPOLD donor 0",1000)],"test"));
+  const annotatedBank=await db.bankTransaction.findUniqueOrThrow({where:{accountId_sourceId:{accountId:a.id,sourceId:"bank-strong"}}});
+  assert.equal(await db.transactionNote.count({where:{transactionId:annotatedBank.id,text:"Keep note after automatic bank matching"}}),1);
+
   assert.equal((await accountTotals()).find(x=>x.id===a.id)?.expected,24800n,"Excel then bank must count once");
   assert.equal(await db.bankTransaction.count({where:{entryStatus:"MERGED"}}),1);
   await serializable(tx=>ingestBankPage(tx,a.id,[source("bank-uncertain","changed narrative",1000,"10:01")],"test"));

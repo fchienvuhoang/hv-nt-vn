@@ -153,3 +153,12 @@ Các mutation quản trị dùng toast thành công/lỗi. Lỗi validation thi�
 Danh tính lấy từ phiên Google SSO đã kiểm tra quyền ở server, không nhận ID/tên từ form. AuditLog ghi email, ID đăng nhập, tên tại thời điểm thao tác, hành động, mã bản ghi, chi tiết và createdAt. Fund giữ người tạo/cập nhật cùng createdAt/updatedAt; giao dịch giữ người nhập/cập nhật và timestamp, điều chuyển và batch Excel giữ danh tính tác giả. Đồng bộ tự động được đánh dấu system:cron. Trường danh tính cũ chưa từng lưu để NULL và hiển thị chưa có thông tin, không suy đoán tác giả lịch sử.
 
 Tab Giao dịch có Tất cả / Chưa phân loại với số lượng theo phạm vi bộ lọc (không giới hạn ở trang 100 dòng). Xem thêm mở modal tìm mã/tên thiện pháp và số giao dịch trên toàn lịch sử đáp ứng các bộ lọc ngoài ngày. Chọn thiện pháp tạo tab riêng, mở khoảng ngày từ giao dịch cũ nhất tới hôm nay; vẫn giữ tài khoản, thu/chi, tìm kiếm và đối chiếu. Lọc lại ngày vẫn giữ tab đang chọn; đổi tab đặt lại phân trang. Bộ đếm dùng groupBy chung, không truy vấn riêng từng thiện pháp.
+
+
+## Gán nhiều giao dịch và ghi chú công khai
+
+Tại danh sách thiện pháp, bấm **Xem giao dịch** để mở modal đã tải sẵn, lấy giao dịch qua Server Action có kiểm tra đăng nhập. Tìm/lọc, chọn tối đa 500 giao dịch qua nhiều trang, kiểm tra tổng thu/chi theo tài khoản, chọn thiện pháp nhận và nhập lý do chung. Các khoản được gán `MANUAL`, lưu lịch sử người thực hiện và tự thêm giải thích công khai ở từng giao dịch. Nếu một khoản đã bị sửa sau lúc chọn, toàn bộ lượt bị hủy để quản trị chọn lại; gửi lại cùng mã yêu cầu không nhập lặp. Tài khoản ngân hàng, tiền và nội dung gốc không đổi.
+
+Có thể thêm nhiều ghi chú công khai từ modal hoặc tab giao dịch. Ghi chú được lưu bổ sung, có người viết/thời gian và không ghi đè nội dung nguồn. Trang công khai che số điện thoại trong ghi chú, giữ 3 số cuối, và dùng chung cache có làm mới sau thao tác. Áp dụng migration `20261031090000_transaction_notes` trước khi chạy phiên bản này.
+
+Kiểm thử riêng trên cơ sở dữ liệu localhost dùng tên bắt đầu `hvntvn_test`: `npm run test:transaction-management`.

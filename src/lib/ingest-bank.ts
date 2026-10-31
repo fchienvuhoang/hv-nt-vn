@@ -126,6 +126,7 @@ export async function ingestBankPage(
   if (additions.length)
     await tx.bankTransaction.createMany({ data: additions });
   for (const link of links) {
+    await tx.transactionNote.updateMany({where:{transactionId:link.excelId},data:{transactionId:link.bankId}});
     await tx.bankTransaction.update({
       where: { id: link.excelId },
       data: {

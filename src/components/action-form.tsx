@@ -1,4 +1,5 @@
 "use client";
+import { useCloseModal } from "@/components/modal";
 import { useActionState } from "react";
 import { useActionToast } from "@/components/toasts";
 import type { ActionState } from "@/app/admin/actions";
@@ -9,6 +10,7 @@ export function ActionForm({
   className = "",
   confirm,
   lockAfterSuccess = false,
+  closeOnSuccess = false,
 }: {
   action: (state: ActionState, form: FormData) => Promise<ActionState>;
   children?: React.ReactNode;
@@ -16,9 +18,11 @@ export function ActionForm({
   className?: string;
   confirm?: string;
   lockAfterSuccess?: boolean;
+  closeOnSuccess?: boolean;
 }) {
   const [state, dispatch, pending] = useActionState(action, {});
-  useActionToast(state);
+  const close=useCloseModal();
+  useActionToast(state,closeOnSuccess?close:undefined);
   return (
     <form
       action={dispatch}

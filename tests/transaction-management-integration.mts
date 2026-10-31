@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+const url=new URL(process.env.DATABASE_URL??"postgresql://invalid/invalid");
+if(!["localhost","127.0.0.1"].includes(url.hostname)||!url.pathname.startsWith("/hvntvn_test"))throw new Error("Require isolated localhost hvntvn_test database");
+const {db}=await import("../src/lib/db");
+const {reassignTransactions,appendTransactionNote,fundTransactionList}=await import("../src/lib/transaction-management");
+const {reviewEntry}=await import("../src/lib/review-entry");
+const {accountTotals,fundTotals}=await import("../src/lib/ledger");
+if(await db.bankAccount.count())throw new Error("Require empty test database");
+const actor={id:"admin-test",name:"TEST admin",email:"admin@example.test"};
+try{
+ const a=await db.bankAccount.create({data:{number:"0572",owner:"TEST",label:"TEST"}}),b=await db.bankAccount.create({data:{number:"0856",owner:"TEST",label:"TEST"}});
+ const source=await db.fund.create({data:{accountId:a.id,accountIds:[b.id],code:"TP112",name:"TEST source",slug:"test-source",keywords:[]}});
+ const target=await db.fund.create({data:{accountId:a.id,accountIds:[b.id],code:"TP113",name:"TEST target",slug:"test-target",keywords:[],status:"PAUSED"}});
+ const make=(key:string,accountId:string,direction:"CREDIT"|"DEBIT",amount:bigint)=>db.bankTransaction.create({data:{accountId,sourceId:key,refId:key,direction,amount,narrative:"Nội dung gốc TP112",displayName:"TEST",occurredAt:new Date(),sourceHash:"TEST",source:{test:true},fundId:source.id,assignment:"MANUAL"}});
+ const rows=await Promise.all([make("income-a",a.id,"CREDIT",1000n),make("income-b",b.id,"CREDIT",2000n),make("expense-a",a.id,"DEBIT",500n)]);
+ const balances=async()=>JSON.stringify((await accountTotals()).map(a=>({id:a.id,income:a.income.toString(),expense:a.expense.toString(),expected:a.expected.toString()})).sort((a,b)=>a.id.localeCompare(b.id)));
+ const before=await balances();
+ const input={requestId:randomUUID(),sourceFundId:source.id,targetFundId:target.id,reason:"Điều chỉnh theo yêu cầu 0912345678",rows:rows.map(r=>({id:r.id,updatedAt:r.updatedAt.toISOString()}))};
+ const results=await Promise.all([reassignTransactions(input,actor),reassignTransactions(input,actor)]);assert.ok(results.every(r=>r.count===3));
+ assert.equal(await db.transactionNote.count(),3,"concurrent retries must not duplicate public explanations");
+ assert.equal(await db.auditLog.count({where:{action:"TRANSACTION_ASSIGNED"}}),3);
+ assert.equal(await balances(),before,"bulk assignment cannot change per-account money");
+ for(const original of rows){const current=await db.bankTransaction.findUniqueOrThrow({where:{id:original.id},include:{notes:true}});assert.equal(current.accountId,original.accountId);assert.equal(current.amount,original.amount);assert.equal(current.narrative,original.narrative);assert.equal(current.fundId,target.id);assert.equal(current.assignment,"MANUAL");assert.equal(current.updatedById,actor.id);assert.ok(current.notes[0].text.includes("TP112"));assert.ok(current.notes[0].text.includes("TP113"));assert.ok(current.notes[0].text.includes(input.reason));assert.equal(current.notes[0].actorId,actor.id)}
+ const totals=await fundTotals();assert.equal(totals.find(f=>f.id===source.id)?.balance,0n);assert.equal(totals.find(f=>f.id===target.id)?.balance,2500n);
+ const note={requestId:randomUUID(),transactionId:rows[0].id,text:"Quản trị viên kiểm tra lại 0987654321"};await appendTransactionNote(note,actor);await appendTransactionNote(note,actor);assert.equal(await db.transactionNote.count(),4);
+ await assert.rejects(appendTransactionNote({...note,text:"Changed request reuse"},actor));
+ const list=await fundTransactionList({fundId:target.id,q:"kiểm tra lại"});assert.equal(list.count,1);assert.equal(list.rows[0].notes.length,2);
+ const moved=await db.bankTransaction.findMany({where:{fundId:target.id}});
+ await assert.rejects(reassignTransactions({...input,requestId:randomUUID(),sourceFundId:target.id,targetFundId:source.id,rows:moved.map((r,i)=>({id:r.id,updatedAt:i===0?new Date(0).toISOString():r.updatedAt.toISOString()}))},actor));
+ assert.equal(await db.bankTransaction.count({where:{fundId:target.id}}),3,"stale selection must abort the whole operation");
+ await assert.rejects(reassignTransactions({...input,requestId:randomUUID(),rows:input.rows.slice(0,2)},actor),"wrong source must fail");
+ const third=await db.fund.create({data:{accountId:a.id,accountIds:[],code:"ONLYA",name:"TEST",slug:"only-a",keywords:[]}});
+ await assert.rejects(reassignTransactions({...input,requestId:randomUUID(),sourceFundId:target.id,targetFundId:third.id,rows:moved.map(r=>({id:r.id,updatedAt:r.updatedAt.toISOString()}))},actor));
+ assert.equal(await balances(),before,"adding a note cannot change money totals");
+ const review=await db.bankTransaction.update({where:{id:rows[0].id},data:{entryStatus:"REVIEW"}});await assert.rejects(appendTransactionNote({requestId:randomUUID(),transactionId:review.id,text:"Review not yet public"},actor));
+ assert.equal(await db.transactionNote.count(),4);
+ const excel=await db.bankTransaction.create({data:{accountId:a.id,sourceId:"excel-with-note",origin:"EXCEL",refId:"EXCEL",fundId:target.id,direction:"CREDIT",amount:999n,narrative:"TEST merge",displayName:"TEST",occurredAt:new Date(),sourceHash:"TEST",source:{test:true}}});
+ await appendTransactionNote({requestId:randomUUID(),transactionId:excel.id,text:"Giữ ghi chú sau khi đối soát"},actor);
+ const bank=await db.bankTransaction.create({data:{accountId:a.id,sourceId:"bank-with-note",origin:"BANK",entryStatus:"REVIEW",refId:"BANK",direction:"CREDIT",amount:999n,narrative:"TEST merge",displayName:"TEST",occurredAt:new Date(),sourceHash:"TEST",source:{test:true}}});
+ await reviewEntry({id:bank.id,decision:"MERGE",targetId:excel.id,reason:"Đối chiếu dòng Excel có ghi chú"},actor);
+ assert.equal(await db.transactionNote.count({where:{transactionId:bank.id,text:"Giữ ghi chú sau khi đối soát"}}),1,"notes must follow the canonical bank transaction after duplicate merge");
+ console.log("PASS: atomic mixed-account/mixed-direction reassignment, manual assignment, public explanations, actor audit, concurrent idempotency, immutable bank data, fund/account totals, note append/dedup/search, stale/source/account rejection");
+}finally{await db.auditLog.deleteMany();await db.bankTransaction.deleteMany();await db.fund.deleteMany();await db.bankAccount.deleteMany();await db.$disconnect()}

@@ -1,4 +1,7 @@
 "use server";
+import { db } from "@/lib/db";
+import { randomUUID } from "node:crypto";
+import { appendTransactionNote, reassignTransactions, fundTransactionList, type BulkReassignment } from "@/lib/transaction-management";
 import { z } from "zod";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdminActor } from "@/lib/auth";
@@ -6,7 +9,6 @@ import { actorStamp, createdStamp, updatedStamp, type Actor } from "@/lib/actor"
 import { serializable } from "@/lib/ledger";
 import { validateFundKeywords, FundKeywordError } from "@/lib/fund-keywords";
 import { startTabReclassification, advanceTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
-import { fundUsesAccount } from "@/lib/domain";
 import { PUBLIC_TAG } from "@/lib/public-data";
 import { synchronize } from "@/lib/sync";
 import { transferFunds, reverseFundTransfer } from "@/lib/transfers";
@@ -145,35 +147,8 @@ export async function assignTransaction(_state: ActionState, form: FormData) {
     const values = z
       .object({ transactionId: id, fundId: id, reason })
       .parse(Object.fromEntries(form));
-    await serializable(async (tx) => {
-      const [transaction, fund] = await Promise.all([
-        tx.bankTransaction.findUniqueOrThrow({
-          where: { id: values.transactionId },
-        }),
-        tx.fund.findUniqueOrThrow({ where: { id: values.fundId } }),
-      ]);
-      if (transaction.entryStatus !== "POSTED")
-        throw new Error(
-          "Cần xử lý giao dịch nghi trùng trước khi đổi phân loại",
-        );
-      if (!fundUsesAccount(fund, transaction.accountId))
-        throw new Error("Chỉ được gán vào thiện pháp cùng tài khoản sao kê");
-      await tx.bankTransaction.update({
-        where: { id: transaction.id },
-        data: {
-          ...updatedStamp(actor),
-          fundId: fund.id,
-          assignment: "MANUAL",
-          matchReason: values.reason,
-        },
-      });
-      await audit(tx, actor, "TRANSACTION_ASSIGNED", transaction.id, {
-        previousFundId: transaction.fundId,
-        previousAssignment: transaction.assignment,
-        fundId: fund.id,
-        reason: values.reason,
-      });
-    });
+    const transaction=await db.bankTransaction.findUniqueOrThrow({where:{id:values.transactionId}});
+    await reassignTransactions({requestId:randomUUID(),sourceFundId:transaction.fundId,targetFundId:values.fundId,reason:values.reason,rows:[{id:transaction.id,updatedAt:transaction.updatedAt.toISOString()}]},actor);
     return "Đã gán giao dịch bằng tay và lưu lịch sử.";
   });
 }
@@ -314,4 +289,25 @@ export async function getFundImportHistory(fundId: string): Promise<{history?:Fu
   await requireAdminActor();
   try { return {history:await listFundImports(id.parse(fundId))}; }
   catch(error) { return {error:importError(error)}; }
+}
+
+export async function getFundTransactions(input:Parameters<typeof fundTransactionList>[0]) {
+  await requireAdminActor();
+  try { return {data:await fundTransactionList(input)}; }
+  catch(error) { return {error:importError(error)}; }
+}
+export async function bulkAssignTransactions(input:BulkReassignment) {
+  return execute(async actor=>{
+    const result=await reassignTransactions(input,actor);
+    return `Đã gán ${result.count} giao dịch và ghi lý do công khai cho từng khoản.`;
+  });
+}
+export async function saveTransactionNote(_state:ActionState,form:FormData) {
+  return execute(async actor=>{
+    await appendTransactionNote({requestId:form.get("requestId")?.toString()??"",transactionId:form.get("transactionId")?.toString()??"",text:form.get("text")?.toString()??""},actor);
+    return "Đã lưu ghi chú công khai và lịch sử người thực hiện.";
+  });
+}
+export async function addTransactionNote(input:{requestId:string;transactionId:string;text:string}) {
+  return execute(async actor=>{await appendTransactionNote(input,actor);return "Đã thêm ghi chú công khai.";});
 }

@@ -119,12 +119,12 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                   <th className="fund-public-cell">Công khai</th>
                   <th>Tài khoản</th>
                   <th>Trạng thái</th>
-                  <th>Người tạo</th>
-                  <th>Người cập nhật</th>
                   <th className="align-right">Hùn phước</th>
                   <th className="align-right">Đã chi</th>
                   <th className="align-right">Số dư</th>
                   <th className="align-right">Thao tác</th>
+                  <th>Người tạo</th>
+                  <th>Người cập nhật</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,8 +152,6 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                     <td>
                       <Status status={f.status} />
                     </td>
-                    <td><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
-                    <td><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
                     <td className="money align-right nowrap">
                       {vnd(f.income)}
                     </td>
@@ -168,26 +166,21 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                         <AdminDialogButton kind="import-fund" fundId={f.id} className="button subtle small">
                           <FileUp size={14} />Nhập Excel
                         </AdminDialogButton>
-                        <Link
-                          href={`/admin?view=transactions&fund=${f.id}`}
-                          className="icon-button"
-                          aria-label={`Giao dịch ${f.code}`}
-                          title={`Giao dịch ${f.code}`}
-                        >
-                          <List size={16} />
-                        </Link>
+                        <AdminDialogButton kind="fund-transactions" fundId={f.id} className="button subtle small"><List size={15}/>Xem giao dịch</AdminDialogButton>
                         <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
                           <Settings2 size={14} />Cấu hình
                         </AdminDialogButton>
 
                       </div>
                     </td>
+                    <td><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
+                    <td><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={4}>
                     <strong>
                       Tổng {funds.length} thiện pháp đang hiển thị
                     </strong>
@@ -201,7 +194,7 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                   <td className="money align-right nowrap">
                     {vnd(scoped.reduce((n, f) => n + f.balance, 0n))}
                   </td>
-                  <td />
+                  <td colSpan={3} />
                 </tr>
               </tfoot>
             </table>

@@ -10,6 +10,9 @@ const html=async (query="")=>{const response=await fetch(`${origin}/t/${fund.slu
 const rowCount=(page:string)=>(page.match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1].match(/<tr[ >]/g)??[]).length;
 try{
  await db.bankTransaction.createMany({data:Array.from({length:205},(_,i)=>({accountId:account.id,sourceId:`${fund.id}-${i}`,refId:`${i}`,fundId:fund.id,amount:150000n,direction:"CREDIT" as const,narrative:`Nguyễn Mai hùn phước ${i===0?"BEYONDPAGE":"COMMON"} 0912345678`,displayName:"Nguyễn Mai",occurredAt:new Date(2026,9,31,0,0,i),sourceHash:"QA",source:{test:true}}))});
+ const annotated=await db.bankTransaction.findFirstOrThrow({where:{fundId:fund.id,refId:"0"}});
+ await db.transactionNote.create({data:{transactionId:annotated.id,requestId:`QA-${fund.id}`,text:"Quản trị viên đã điều chuyển NOTESEARCH 0987654321",actor:"qa-private@example.test",actorId:"PRIVATE-QA-ID",actorName:"QA admin"}});
+ const noteHtml=await html("?q=notesearch");assert.equal(rowCount(noteHtml),1);assert.ok(noteHtml.includes("Ghi chú quản trị:"));assert.ok(noteHtml.includes("*******321"));assert.ok(!noteHtml.includes("0987654321"));assert.ok(!noteHtml.includes("PRIVATE-QA-ID"));assert.ok(!noteHtml.includes("qa-private@example.test"));
  const first=await html();assert.equal(rowCount(first),100);assert.ok(first.includes("205<!-- --> giao dịch"));
  assert.equal(rowCount(await html("?page=2")),100);assert.equal(rowCount(await html("?page=3")),5);
  const found=await html("?q=beyondpage");assert.equal(rowCount(found),1);assert.ok(found.includes("BEYONDPAGE"),"search must reach a transaction beyond the first 100 rows");

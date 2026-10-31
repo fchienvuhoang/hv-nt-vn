@@ -46,22 +46,21 @@ export default async function Transfers() {
               <thead>
                 <tr>
                   <th>Tài khoản</th>
-                  <th>Người tạo</th>
-                  <th>Người đảo</th>
                   <th>Thiện pháp nguồn</th>
                   <th>Thiện pháp nhận</th>
                   <th>Lý do</th>
                   <th className="align-right">Số tiền</th>
                   <th>Trạng thái</th>
                   <th>Thao tác</th>
+                  <th>Người tạo</th>
+                  <th>Người đảo</th>
                 </tr>
               </thead>
               <tbody>
                 {transfers.map((t) => (
                   <tr key={t.id}>
                     <td className="nowrap">{t.account?.number ?? t.fromFund.account.number}</td>
-                    <td><RecordAuthor name={t.actorName} id={t.actorId} fallback={t.actor} at={t.createdAt} /></td>
-                    <td>{t.reversal ? <RecordAuthor name={t.reversal.actorName} id={t.reversal.actorId} fallback={t.reversal.actor} at={t.reversal.createdAt} /> : <span className="record-author-unknown">{t.reversalOf ? "Bút toán đảo" : "Chưa đảo"}</span>}</td>
+
                     <td>
                       <span className="code">{t.fromFund.code}</span>
                       <small>{t.fromFund.name}</small>
@@ -126,6 +125,8 @@ export default async function Transfers() {
                         </Modal>
                       )}
                     </td>
+                    <td><RecordAuthor name={t.actorName} id={t.actorId} fallback={t.actor} at={t.createdAt} /></td>
+                    <td>{t.reversal ? <RecordAuthor name={t.reversal.actorName} id={t.reversal.actorId} fallback={t.reversal.actor} at={t.reversal.createdAt} /> : <span className="record-author-unknown">{t.reversalOf ? "Bút toán đảo" : "Chưa đảo"}</span>}</td>
                   </tr>
                 ))}
               </tbody>

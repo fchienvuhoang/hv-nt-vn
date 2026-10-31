@@ -44,6 +44,7 @@ async function formFor(path: string, field: string) {
   const form = [...html.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)]
     .map((m) => m[0])
     .find((f) => f.includes(`name="${field}"`) &&
+      (field!=="transactionId"||f.includes('name="fundId"')) &&
       (modal!=="create-fund"||!f.includes('name="id"')) &&
       (modal!=="edit-fund"||(f.includes('name="id"')&&f.includes(`value="${url.searchParams.get("fundId")}"`))));
   assert.ok(form, `Missing form ${path} ${field}`);

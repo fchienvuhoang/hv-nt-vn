@@ -75,6 +75,7 @@ export async function reviewEntry(
           matchReason: input.reason,
         },
       });
+      await tx.transactionNote.updateMany({where:{transactionId:loser.id},data:{transactionId:survivor.id}});
       await tx.bankTransaction.updateMany({
         where: { mergedIntoId: loser.id },
         data: { mergedIntoId: survivor.id, ...updatedStamp(actor) },

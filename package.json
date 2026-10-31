@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "prisma generate && next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
@@ -17,7 +17,8 @@
     "test:excel-integration": "node --conditions=react-server --import tsx tests/excel-import-integration.mts",
     "test:scheduled-sync": "node --conditions=react-server --import tsx tests/scheduled-sync-integration.mts",
     "test:fund-keywords": "node --conditions=react-server --import tsx tests/fund-keywords-integration.mts",
-    "test:reclassify": "node --conditions=react-server --import tsx tests/reclassify-integration.mts"
+    "test:reclassify": "node --conditions=react-server --import tsx tests/reclassify-integration.mts",
+    "test:transaction-management": "node --conditions=react-server --import tsx tests/transaction-management-integration.mts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",

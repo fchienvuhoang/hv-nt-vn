@@ -81,12 +81,12 @@ const publicFundSummary = unstable_cache(
 const publicTransactionPage = unstable_cache(async (fundId: string, direction: "CREDIT" | "DEBIT", page: number) => {
   const rows = await db.bankTransaction.findMany({
     where:{fundId,direction,entryStatus:"POSTED"},
-    select:{id:true,amount:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}}},
+    select:{id:true,amount:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{id:true,text:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}]}},
     orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*PUBLIC_PAGE_SIZE,take:PUBLIC_PAGE_SIZE,
   });
   return rows.map(r=>({id:r.id,account:r.account.number,amount:r.amount.toString(),at:r.occurredAt.toISOString(),
-    narrative:r.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(r.narrative),name:maskPhones(r.displayName)}));
-},["public-transaction-page-v1"],options);
+    notes:r.notes.map(n=>({id:n.id,text:maskPhones(n.text),at:n.createdAt.toISOString()})),narrative:r.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(r.narrative),name:maskPhones(r.displayName)}));
+},["public-transaction-page-v2"],options);
 
 export async function publicFund(slug: string, page: number, direction: "CREDIT" | "DEBIT", search = "") {
   const fund=await publicFundSummary(slug,direction);

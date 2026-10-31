@@ -12,3 +12,10 @@ test("public search never matches masked phone digits or hidden narratives",()=>
  assert.equal(matchesPublicTransaction(row,"0912345"),false);
  assert.equal(matchesPublicTransaction({...row,narrative:"Nội dung được ẩn theo nguồn sao kê"},"TP112"),false);
 });
+
+test("public search includes already-masked administrator notes",()=>{
+ const annotated={...row,notes:[{text:maskPhones("Đã điều chuyển thiện pháp 0987654321")}]};
+ assert.equal(matchesPublicTransaction(annotated,"dieu chuyen"),true);
+ assert.equal(matchesPublicTransaction(annotated,"321"),true);
+ assert.equal(matchesPublicTransaction(annotated,"0987654321"),false);
+});

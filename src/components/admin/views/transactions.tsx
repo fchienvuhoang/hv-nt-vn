@@ -1,3 +1,4 @@
+import { TransactionNoteEditor } from "@/components/admin/transaction-note-editor";
 import { TabReclassification } from "@/components/admin/tab-reclassification";
 import { latestTabReclassification, reclassificationScope, type ReclassificationScope } from "@/lib/reclassify";
 import { TransactionTabs } from "@/components/admin/transaction-tabs";
@@ -77,7 +78,7 @@ export default async function Transactions({
       orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
-      include: { fund: true, account: true },
+      include: { fund: true, account: true, notes: { orderBy: [{createdAt:"asc"},{id:"asc"}] } },
     }),
     db.bankTransaction.groupBy({ by: ["fundId"], where: scope, _count: true }),
     db.bankTransaction.groupBy({ by: ["fundId"], where: { ...historyScope, fundId: { not: null } }, _count: true, _min: { occurredAt: true }, _max: { occurredAt: true } }),
@@ -197,6 +198,7 @@ export default async function Transactions({
                         {r.displayName && <span className="sheet-sender"><span>Người giao dịch:</span> <strong>{r.displayName}</strong></span>}
                         <span className="sheet-source">{r.origin === "EXCEL" ? "Nhập Excel" : "Sao kê"}</span>
                       </div>
+                      {r.notes.map(note=><div key={note.id} className="transaction-admin-note"><strong>Ghi chú quản trị:</strong> {note.text}<small>{note.actorName||note.actor} · {dateTime(note.createdAt)}</small></div>)}
                     </td>
                     <td
                       className={`align-right money nowrap ${r.direction === "CREDIT" ? "positive" : ""}`}
@@ -215,6 +217,7 @@ export default async function Transactions({
                       </span>
                     </td>
                     <td className="sheet-row-actions">
+                      {r.entryStatus==="POSTED"&&<TransactionNoteEditor transactionId={r.id} narrative={r.narrative}/>}
                       {r.entryStatus === "REVIEW" ? (
                         <EntryReview entry={r} funds={funds} />
                       ) : r.entryStatus === "MERGED" ? (

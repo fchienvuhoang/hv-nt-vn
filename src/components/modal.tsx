@@ -17,6 +17,7 @@ export function Modal({
   triggerClassName = "button subtle",
   footerNote = "Dữ liệu được lưu khi bạn xác nhận biểu mẫu.",
   onDismiss,
+  onOpen,
 }: {
   title: string;
   description?: string;
@@ -28,6 +29,7 @@ export function Modal({
   triggerClassName?: string;
   footerNote?: string;
   onDismiss?: () => void;
+  onOpen?: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId(),
@@ -45,7 +47,7 @@ export function Modal({
           type="button"
           className={triggerClassName}
           aria-haspopup="dialog"
-          onClick={() => dialog.current?.showModal()}
+          onClick={() => { onOpen?.(); dialog.current?.showModal(); }}
         >
           {trigger}
         </button>
