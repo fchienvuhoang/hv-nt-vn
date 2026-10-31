@@ -12,6 +12,7 @@ import {
   Settings2,
   Plus,
   FileUp,
+  MoreHorizontal,
   List,
 } from "lucide-react";
 import type { AdminBootstrap } from "@/lib/admin-read-model";
@@ -162,13 +163,16 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </td>
                     <td>
                       <div className="inline-actions table-actions">
-                        <AdminDialogButton kind="import-fund" fundId={f.id} className="button subtle small">
-                          <FileUp size={14} />Nhập Excel
-                        </AdminDialogButton>
                         <AdminDialogButton kind="fund-transactions" fundId={f.id} className="button subtle small"><List size={15}/>Xem giao dịch</AdminDialogButton>
                         <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
                           <Settings2 size={14} />Cấu hình
                         </AdminDialogButton>
+                        <details className="fund-secondary-actions">
+                          <summary title="Thao tác phụ" aria-label={`Thao tác phụ cho ${f.code}`}><MoreHorizontal size={17}/></summary>
+                          <AdminDialogButton kind="import-fund" fundId={f.id} className="button subtle small">
+                            <FileUp size={13}/>Nhập Excel
+                          </AdminDialogButton>
+                        </details>
 
                       </div>
                     </td>

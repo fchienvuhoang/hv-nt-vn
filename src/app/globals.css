@@ -3411,7 +3411,7 @@ tfoot td {
 .workspace-nav { gap: 3px; padding: 0; }
 .workspace-nav a { padding: 7px 14px; min-height: 32px; gap: 6px; }
 .nav-placeholder { height: 32px; }
-.admin-workspace:has(.transaction-sheet) { height: 100dvh; min-height: 0; overflow: hidden; }
+.admin-workspace:has(.transaction-sheet) { height: auto; min-height: 100dvh; overflow: visible; }
 .workspace-main:has(.transaction-sheet) {
   padding-top: 8px;
   padding-bottom: 0;
@@ -4114,3 +4114,53 @@ tfoot td {
 
 .source-account-link { display: inline-flex; align-items: center; gap: 4px; color: #7b3040; text-decoration: underline; text-underline-offset: 3px; }
 .source-account-link:hover { color: #b47b22; }
+
+.transaction-filter-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px 10px; flex-shrink: 0; font-size: 11px; color: #806653; }
+.transaction-filter-summary > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.transaction-filter-summary .button { min-height: 25px; padding: 3px 7px; font-size: 10px; }
+.transaction-filter-summary .selected { background: #fff0c3; border-color: #d3af65; color: #7b3040; }
+
+/* Compact paired columns for ten Vietnam calendar days. */
+.daily-column-legend { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; font-size:11px; margin-bottom:4px; }
+.daily-column-legend span { display:inline-flex; align-items:center; gap:4px; }
+.daily-column-legend i { width:9px; height:9px; border-radius:2px; }
+.daily-column-legend small { color:#806653; font-size:10px; }
+.daily-column-scroll { max-width:1100px; overflow-x:auto; background:white; border:1px solid #d8c5b2; border-radius:7px; padding:7px; }
+.daily-column-chart { display:grid; grid-template-columns:repeat(10,minmax(90px,1fr)); gap:5px; }
+.daily-column-day { min-width:0; text-align:center; }
+.daily-column-day.today { background:#fff7e6; border-radius:4px; }
+.daily-column-bars { height:65px; display:flex; justify-content:center; gap:4px; border-bottom:1px solid #cdbda9; background:repeating-linear-gradient(to top,transparent 0,transparent 20px,#eee8df 21px,transparent 22px); }
+.daily-column-slot { height:100%; width:18px; display:flex; align-items:flex-end; }
+.daily-column-slot > div { width:100%; border-radius:3px 3px 0 0; }
+.daily-column-day h2 { font-size:11px; margin:4px 0; line-height:1.2; }
+.daily-column-day h2 span { display:block; font-size:9px; color:#7b3040; }
+.daily-column-values { display:flex; flex-direction:column; gap:2px; font-size:10px; font-weight:600; font-variant-numeric:tabular-nums; }
+.daily-column-values small { font-size:9px; font-weight:400; }
+
+.fund-secondary-actions { display:flex; align-items:center; color:#927e6b; }
+.fund-secondary-actions > summary { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; cursor:pointer; list-style:none; border-radius:4px; }
+.fund-secondary-actions > summary::-webkit-details-marker { display:none; }
+.fund-secondary-actions > summary:hover, .fund-secondary-actions > summary:focus-visible { background:#f1eadd; color:#733343; }
+.fund-secondary-actions[open] { display:flex; }
+.fund-secondary-actions .button { font-size:10px; color:#806b59; }
+
+/* The transaction ledger grows with its rows; the document owns vertical scrolling. */
+.workspace-main:has(.transaction-sheet) { overflow: visible; }
+.transaction-sheet { flex: 1 0 auto; }
+.transaction-sheet .sheet-panel { flex: 1 0 auto; }
+.transaction-sheet .sheet-scroll { flex: none; height: auto; min-height: 0; max-height: none; overflow-x: auto; overflow-y: hidden; }
+
+.sheet-record-count { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 12px; flex-shrink:0; padding:7px 10px; margin-bottom:5px; border:1px solid #dfc58f; border-left:4px solid #c28a2c; border-radius:5px; background:#fff4d9; color:#65313e; font-size:12px; }
+.sheet-record-count strong { font-size:19px; line-height:1.1; font-weight:800; font-variant-numeric:tabular-nums; margin-right:4px; }
+.sheet-record-count small { font-size:11px; color:#795e45; font-weight:600; }
+
+.pagination > div { flex-wrap:wrap; }
+.pagination-page-item { display:inline-flex; align-items:center; gap:5px; }
+.pagination .pagination-number { min-width:30px; justify-content:center; font-variant-numeric:tabular-nums; }
+.pagination .pagination-number.selected { background:#7b3040; color:#fff4dc; border-color:#7b3040; font-weight:700; }
+.pagination-ellipsis { color:#92775f; padding:0 3px; }
+
+/* Cutover imports use a single time boundary; no reconciliation filter column. */
+.transaction-sheet .filter-bar { grid-template-columns:minmax(180px,1.8fr) 118px 118px minmax(130px,1.1fr) minmax(85px,.7fr) auto; }
+@media (max-width:1200px) { .transaction-sheet .filter-bar { grid-template-columns:minmax(180px,1.8fr) 1fr 1fr; } }
+@media (max-width:680px) { .transaction-sheet .filter-bar { grid-template-columns:1fr 1fr; } }

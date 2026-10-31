@@ -3,17 +3,15 @@ import { LoadingIndicator } from "@/components/loading-indicator";
 
 import { RecordAuthor } from "@/components/admin/record-author";
 import { ScheduledSyncHistory } from "@/components/admin/scheduled-sync-history";
-import { Cable, RefreshCw, Settings2 } from "lucide-react";
+import { Cable } from "lucide-react";
 import { useAdminResource } from "@/lib/admin-api";
 import type { AdminBootstrap,AdminSync } from "@/lib/admin-read-model";
 import { AdminLink as Link } from "@/components/admin/admin-link";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
 import { SyncRecency } from "@/components/admin/sync-recency";
 import { Empty } from "@/components/ui";
-import { ActionForm } from "@/components/action-form";
 import { Modal } from "@/components/modal";
-import { syncNow, configureSyncStart } from "@/lib/admin-api";
-import { dateTime, localDate } from "@/lib/domain";
+import { dateTime } from "@/lib/domain";
 const actionNames: Record<string, string> = {
   FUND_CREATED: "Tạo thiện pháp",
   FUND_UPDATED: "Sửa thiện pháp",
@@ -44,47 +42,13 @@ const actionNames: Record<string, string> = {
 export default function Sync({params={},bootstrap}:{params?:AdminParams;bootstrap?:AdminBootstrap}) {
   const auditTab=params.log==="audit",scheduleTab=!auditTab&&params.log!=="runs";
   const {data,loading,error}=useAdminResource<AdminSync>(`sync?${new URLSearchParams({log:params.log??""})}`,5000);
-  const runs=data?.runs??[],audits=data?.audits??[],states=bootstrap?.states??[],accounts=bootstrap?.accounts??[],recency=bootstrap?.recency??[];
+  const runs=data?.runs??[],audits=data?.audits??[],states=bootstrap?.states??[],recency=bootstrap?.recency??[];
   return (
     <div className="sync-workspace">
       <div className="sync-toolbar">
         <h1>Đồng bộ & lịch sử</h1>
         <SyncRecency initial={recency} initialNow={recency[0]?.checkedAt ?? 0} />
         <div className="sync-toolbar-actions">
-        <Modal
-          wide
-          title="Ngày bắt đầu sao kê"
-          description="Không cần chốt sổ. Có thể quét lại lịch sử; dữ liệu đã nhập được giữ và chống trùng."
-          trigger={
-            <>
-              <Settings2 size={16} />
-              Cấu hình sao kê
-            </>
-          }
-        >
-          {accounts.map((a) => (
-            <section className="sync-account-setting" key={a.id}>
-              <h3>
-                {a.number} · {a.label}
-              </h3>
-              <ActionForm action={configureSyncStart} label="Lưu ngày bắt đầu">
-                <input name="accountId" type="hidden" value={a.id} />
-                <label>
-                  Lấy giao dịch từ ngày
-                  <input
-                    name="from"
-                    type="date"
-                    defaultValue={
-                      a.syncFrom ? localDate(a.syncFrom) : localDate()
-                    }
-                    max={localDate()}
-                    required
-                  />
-                </label>
-              </ActionForm>
-            </section>
-          ))}
-        </Modal>
         <Modal
           title="Kết nối đồng bộ mỗi phút"
           trigger={
@@ -118,29 +82,10 @@ export default function Sync({params={},bootstrap}:{params?:AdminParams;bootstra
             lấy hết dữ liệu sẽ tiếp tục ở lần gọi sau.
           </div>
         </Modal>
-        <Modal
-          title="Đồng bộ sao kê ngay"
-          trigger={
-            <>
-              <RefreshCw size={16} />
-              Đồng bộ ngay
-            </>
-          }
-          triggerClassName="button primary"
-          description="Lấy giao dịch mới của hai tài khoản và tiếp tục lịch sử đang nhập."
-        >
-          <ActionForm action={syncNow} label="Bắt đầu đồng bộ" />
-          <p className="modal-help">
-            Giao dịch sẽ được lưu thật. Mặc định lấy từ hôm nay; đổi ngày tại
-            Cấu hình sao kê nếu cần lấy lịch sử. Dữ liệu Excel được đối chiếu để
-            tránh cộng hai lần.
-          </p>
-        </Modal>
         <Modal wide title="Tiến độ theo tài khoản" description="Mốc thành công chỉ cập nhật sau khi lấy đủ thu hoặc chi trong cửa sổ dữ liệu." trigger="Tiến độ" triggerClassName="button subtle small">
           {!states.length ? (
             <Empty title="Chưa khởi tạo đồng bộ">
-              Chọn Đồng bộ ngay để bắt đầu. Có thể đổi ngày lấy lịch sử tại Cấu
-              hình sao kê.
+              Hệ thống sẽ khởi tạo sau lượt gọi webhook tự động tiếp theo.
             </Empty>
           ) : (
             <div className="table-scroll table-card">

@@ -18,6 +18,7 @@ import {
   pageNumber,
 } from "@/components/ui";
 import { dateTime, localDate, vnd, fundUsesAccount } from "@/lib/domain";
+import {AdminLink as Link} from "@/components/admin/admin-link";
 import { ActionForm } from "@/components/action-form";
 import { assignTransaction } from "@/lib/admin-api";
 type TransactionParams={page?:string;pending?:string;account?:string;q?:string;type?:string;fund?:string;review?:string;from?:string;to?:string};
@@ -25,15 +26,14 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
   const range=transactionDates(params.from,params.to),page=pageNumber(params.page),pageSize=100,query=(params.q??"").slice(0,100);
   const direction=params.type==="CREDIT"||params.type==="DEBIT"?params.type:undefined;
   const apiParams=new URLSearchParams(Object.entries({...params,from:range.from,to:range.to}).filter(([,v])=>v!==undefined&&v!=="") as [string,string][]);
-  apiParams.delete("view");apiParams.delete("modal");apiParams.delete("fundId");apiParams.sort();
+  apiParams.delete("review");apiParams.delete("view");apiParams.delete("modal");apiParams.delete("fundId");apiParams.sort();
   const {data,loading,error}=useAdminResource<AdminTransactions>(`transactions?${apiParams}`);
   const rows=data?.rows??[],accounts=data?.accounts??bootstrap?.recency??[],funds=data?.funds??bootstrap?.funds??[];
   const historyCounts=new Map((data?.history??[]).map(group=>[group.fundId,group]));
   const today=localDate(),totalCount=data?.total??0,pendingCount=data?.pending??0,count=data?.count??0;
   const baseParams = new URLSearchParams({
     view: "transactions",
-    from: range.from, to: range.to,
-    ...(params.review ? { review: params.review } : {}),
+    ...(range.from?{from:range.from}:{}), ...(range.to?{to:range.to}:{}),
     ...(params.pending ? { pending: params.pending } : {}),
     ...(params.account ? { account: params.account } : {}),
     ...(query ? { q: query } : {}),
@@ -46,7 +46,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
     tab: params.pending === "1" ? "PENDING" : "FUND", ...(params.pending === "1" ? {} : { fundId: params.fund }),
     from: range.from, to: range.to, account: params.account ?? "", type: direction ?? "", q: query,
   } : null;
-  const canReclassify = tabScope && !range.error && params.review !== "1" && params.review !== "merged";
+  const canReclassify = tabScope && !range.error;
   const tabLabel = params.pending === "1" ? "Chưa phân loại" : funds.find(f=>f.id===params.fund)?.code ?? "Thiện pháp";
   return (
     <div className="transaction-sheet">
@@ -58,10 +58,11 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
       {error&&<div className="notice danger" role="alert">{error}</div>}
       {loading&&data&&<LoadingIndicator label="Đang tải dữ liệu giao dịch…" compact className="admin-data-loading"/>}
       {range.error && <div className="notice danger" role="alert">{range.error}</div>}
-      <TransactionTabs loading={!data} funds={funds.map(f=>{const h=historyCounts.get(f.id); const last=h?.to?localDate(new Date(h.to)):today; return {id:f.id,code:f.code,name:f.name,status:f.status,count:h?.count??0,from:h?.from?localDate(new Date(h.from)):range.from,to:last>today?last:today};})} total={totalCount} pending={pendingCount} selectedCount={count} selectedFund={params.fund} isPending={params.pending === "1"} base={tabParams.toString()} />
+      <TransactionTabs loading={!data} funds={funds.map(f=>{const h=historyCounts.get(f.id); const last=h?.to?localDate(new Date(h.to)):today; return {id:f.id,code:f.code,name:f.name,status:f.status,count:h?.count??0,from:h?.from?localDate(new Date(h.from)):range.from,to:last>today?last:today};})} total={totalCount} pending={pendingCount} selectedCount={data?.selectedTotal??0} selectedFund={params.fund} isPending={params.pending === "1"} base={tabParams.toString()} />
+      <div className="transaction-filter-summary"><span>Đang hiển thị <strong>{data?(`${count.toLocaleString("vi-VN")}/${data.selectedTotal.toLocaleString("vi-VN")}`):"…"}</strong> giao dịch · {range.allTime?"Toàn bộ thời gian":range.from===range.to?`Ngày ${range.from.split("-").reverse().join("/")}`:`${range.from.split("-").reverse().join("/")} → ${range.to.split("-").reverse().join("/")}`}</span><div><Link className={`button subtle small${range.allTime?" selected":""}`} href={(()=>{const p=new URLSearchParams(baseParams);p.delete("from");p.delete("to");return `/admin?${p}`})()}>Toàn bộ thời gian</Link><Link className="button subtle small" href={(()=>{const p=new URLSearchParams(baseParams);p.set("from",today);p.set("to",today);return `/admin?${p}`})()}>Hôm nay</Link><Link className="button subtle small" href={`/admin?${new URLSearchParams({view:"transactions",...(params.pending?{pending:"1"}:params.fund?{fund:params.fund}:{})})}`}>Xóa bộ lọc</Link></div></div>
       {tabScope && <div className="transaction-tab-actions" aria-label={`Thao tác tab ${tabLabel}`}>
         <span>Tab <strong>{tabLabel}</strong> · {count.toLocaleString("vi-VN")} giao dịch theo bộ lọc</span>
-        {canReclassify ? <TabReclassification key={JSON.stringify(tabScope)} scope={tabScope} initial={null} label={tabLabel} filterLabel={`${params.account ? "TK " + (accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Chỉ kiểm tra phân loại trong chế độ Đang ghi nhận.</small>}
+        {canReclassify ? <TabReclassification key={JSON.stringify(tabScope)} scope={tabScope} initial={null} label={tabLabel} count={count} filterLabel={`${params.account ? "TK " + (accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Chỉ kiểm tra phân loại trong chế độ Đang ghi nhận.</small>}
       </div>}
       <section className="sheet-panel" aria-label="Danh sách giao dịch">
         <form key={apiParams.toString()} className="filter-bar" action="/admin" method="get">
@@ -75,8 +76,8 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
               defaultValue={query}
             />
           </label>
-          <label>Từ ngày<input type="date" name="from" defaultValue={range.from} required /></label>
-          <label>Đến ngày<input type="date" name="to" defaultValue={range.to} required /></label>
+          <label>Từ ngày<input type="date" name="from" defaultValue={range.from} /></label>
+          <label>Đến ngày<input type="date" name="to" defaultValue={range.to} /></label>
           <label>
             Tài khoản
             <select name="account" defaultValue={params.account ?? ""}>
@@ -96,20 +97,17 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
               <option value="DEBIT">Chi</option>
             </select>
           </label>
-          <label>
-            Đối chiếu
-            <select name="review" defaultValue={params.review ?? ""}>
-              <option value="">Đang ghi nhận</option>
-              <option value="1">Nghi trùng — chưa cộng tổng</option>
-              <option value="merged">Đã gộp / đối chiếu</option>
-            </select>
-          </label>
           <button className="button primary">Lọc</button>
         </form>
+        <div className="sheet-record-count" role="status" aria-live="polite">
+          <span><strong>{data?count.toLocaleString("vi-VN"):"…"}</strong> giao dịch{(!range.allTime||params.account||query||direction)?" theo bộ lọc":""}</span>
+          {data&&<small>{rows.length?`Đang xem ${(page-1)*pageSize+1}–${(page-1)*pageSize+rows.length}`:"Không có dòng hiển thị"} · {rows.length} dòng trên trang này</small>}
+        </div>
+        <Pagination page={page} total={count} pageSize={pageSize} base={`/admin?${baseParams}`} />
         {loading&&!data?<LoadingIndicator label="Đang tải các giao dịch…"/>:!rows.length ? (
           <Empty title="Không có giao dịch phù hợp" />
         ) : (
-          <div className="table-scroll table-card sheet-scroll" tabIndex={0} role="region" aria-label="Bảng giao dịch, cuộn để xem thêm">
+          <div className="table-scroll table-card sheet-scroll" tabIndex={0} role="region" aria-label="Bảng giao dịch">
             <table className="sheet-table">
               <colgroup><col className="sheet-col-index" /><col className="sheet-col-time" /><col className="sheet-col-account" /><col className="sheet-col-ref" /><col className="sheet-col-narrative" /><col className="sheet-col-money" /><col className="sheet-col-fund" /><col className="sheet-col-action" /></colgroup>
               <thead>

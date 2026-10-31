@@ -7,7 +7,7 @@ import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toasts";
 import { startReclassification, advanceReclassification, getLatestReclassification } from "@/lib/admin-api";
 import type { ReclassificationScope, ReclassificationSummary } from "@/lib/reclassify";
-export function TabReclassification({scope,initial,label,filterLabel}:{scope:ReclassificationScope;initial:ReclassificationSummary|null;label:string;filterLabel:string}) {
+export function TabReclassification({scope,initial,label,filterLabel,count}:{scope:ReclassificationScope;initial:ReclassificationSummary|null;label:string;filterLabel:string;count?:number}) {
   const [run,setRun]=useState(initial),[busy,setBusy]=useState(false),[error,setError]=useState("");
   const [loadingRun,setLoadingRun]=useState(false);
   const readRequest=useRef(0);
@@ -53,9 +53,9 @@ export function TabReclassification({scope,initial,label,filterLabel}:{scope:Rec
     finally{if(alive.current)setBusy(false)}
   }
   const active=run&&["CHECKING","READY","APPLYING"].includes(run.status);
-  return <Modal wide title={`Kiểm tra phân loại · ${label}`} trigger="Kiểm tra phân loại tab" triggerClassName="button primary small" footerNote="Đóng modal sẽ dừng sau lô hiện tại. Tiến độ đã lưu có thể tiếp tục." onOpen={loadLatest} onDismiss={()=>{stop.current=true;readRequest.current++}}>
+  return <Modal wide title={`Kiểm tra phân loại · ${label}`} trigger={count!==undefined?`Kiểm tra phân loại ${count.toLocaleString("vi-VN")} giao dịch theo bộ lọc`:"Kiểm tra phân loại tab"} triggerClassName="button primary small" footerNote="Đóng modal sẽ dừng sau lô hiện tại. Tiến độ đã lưu có thể tiếp tục." onOpen={loadLatest} onDismiss={()=>{stop.current=true;readRequest.current++}}>
     {loadingRun&&<LoadingIndicator label="Đang tải tiến độ kiểm tra gần nhất…"/>}
-    <div className="notice">Chỉ kiểm tra tab <strong>{label}</strong> trong khoảng {scope.from} → {scope.to}, {filterLabel}. Bao gồm toàn bộ các trang, không chỉ 100 dòng đang hiển thị.</div>
+    <div className="notice">Chỉ kiểm tra tab <strong>{label}</strong> {scope.from||scope.to?`trong khoảng ${scope.from||scope.to} → ${scope.to||scope.from}`:"trong toàn bộ thời gian"}, {filterLabel}. Bao gồm toàn bộ các trang, không chỉ 100 dòng đang hiển thị.</div>
     <p className="reclassify-explanation">Giao dịch gán thủ công luôn được giữ nguyên. Các giao dịch tự động sẽ được đối chiếu với toàn bộ mã/từ khóa hiện tại: có thể chuyển sang thiện pháp phù hợp khác hoặc về Chưa phân loại nếu không còn khớp. <strong>Kiểm tra chưa làm thay đổi giao dịch; chỉ áp dụng sau khi bạn xác nhận.</strong></p>
     {run&&<>
       <div className="reclassify-summary">

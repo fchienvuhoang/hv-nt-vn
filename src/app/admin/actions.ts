@@ -10,7 +10,6 @@ import { serializable } from "@/lib/ledger";
 import { validateFundKeywords, FundKeywordError } from "@/lib/fund-keywords";
 import { startTabReclassification, advanceTabReclassification, latestTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
 import { PUBLIC_TAG } from "@/lib/public-data";
-import { synchronize } from "@/lib/sync";
 import {commitAllocationTransfer,type AllocationTransferInput} from "@/lib/allocation-transfers";
 import { transferFunds, reverseFundTransfer } from "@/lib/transfers";
 import {
@@ -20,7 +19,6 @@ import {
   type FundImportSummary,
 } from "@/lib/fund-imports";
 import { reviewEntry } from "@/lib/review-entry";
-import { saveSyncStart } from "@/lib/sync-settings";
 import type { Prisma } from "@/generated/prisma/client";
 export type ActionState = { error?: string; success?: string; fieldErrors?: Record<string, string[]> };
 const id = z.string().min(1).max(100);
@@ -224,17 +222,6 @@ export async function reverseTransfer(_state: ActionState, form: FormData) {
     return "Đã tạo bút toán đảo; lịch sử gốc được giữ nguyên.";
   });
 }
-export async function syncNow() {
-  return execute(async (actor) => {
-    try {
-      const result = await synchronize(actor);
-      return `Đã xử lý ${result.pages} trang: ${result.inserted} mới, ${result.updated} cập nhật.${result.pending ? " Còn dữ liệu, tiếp tục ở lượt sau." : " Đã hoàn tất."}`;
-    } finally {
-      refresh();
-    }
-  });
-}
-
 export type ExcelUploadState = {
   error?: string;
   batches?: FundImportSummary[];
@@ -305,16 +292,6 @@ export async function resolveDuplicate(_state: ActionState, form: FormData) {
     return "Đã kiểm tra và cập nhật tổng tiền. Lịch sử nguồn được giữ nguyên.";
   });
 }
-export async function configureSyncStart(_state: ActionState, form: FormData) {
-  return execute(async (actor) => {
-    const values = z
-      .object({ accountId: id, from: z.string() })
-      .parse(Object.fromEntries(form));
-    await saveSyncStart(values.accountId, values.from, actor);
-    return "Đã lưu ngày bắt đầu sao kê. Lượt sau sẽ quét lại theo ngày mới; giao dịch đã có được giữ và chống trùng.";
-  });
-}
-
 export async function getFundImportHistory(fundId: string): Promise<{history?:FundImportSummary[];error?:string}> {
   await requireAdminActor();
   try { return {history:await listFundImports(id.parse(fundId))}; }

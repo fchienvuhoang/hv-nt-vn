@@ -46,8 +46,6 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
       case "POST transfers/allocate":result=await actions.createAllocationTransfer(await request.json());break;
       case "POST transfers":result=await actions.createTransfer({},await form());break;
       case "POST transfers/reversal":result=await actions.reverseTransfer({},await form());break;
-      case "POST sync":result=await actions.syncNow();break;
-      case "PUT sync/start-date":result=await actions.configureSyncStart({},await form());break;
       case "POST imports":result=await actions.uploadFundExcel({},await form());break;
       case "POST imports/commit":result=await actions.commitFundExcel(await request.json());break;
       case "POST transactions/review":result=await actions.resolveDuplicate({},await form());break;

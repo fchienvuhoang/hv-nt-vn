@@ -218,3 +218,5 @@ Bảng lịch sử có người thực hiện, thời gian, mức thành tựu, 
 Đồng bộ không thay lại phân loại thủ công. Nếu nguồn sửa số tiền của một khoản đã tách, các phần đã chuyển giữ cố định và phần còn lại ở thiện pháp gốc được điều chỉnh; nếu nguồn nhỏ hơn phần đã chuyển hoặc đổi chiều thì dừng trang đó, yêu cầu xử lý/đảo các điều chuyển trước. Đối chiếu Excel tự động mang theo các phần và chi tiết lịch sử sang giao dịch ngân hàng tương ứng.
 
 Migration: `20261101010000_allocation_transfers`. Kiểm thử: `npm run test:allocation-transfers`, cùng bài REST `tests/allocation-transfers-http.mts` trên database QA riêng. Không dùng giao dịch thật để kiểm thử điều chuyển.
+
+Số đếm tab giao dịch (Tất cả, Chưa phân loại và từng thiện pháp) tính toàn bộ lịch sử, không phụ thuộc bộ lọc; không tính bản đã gộp. Mặc định xem toàn bộ thời gian. Bộ lọc ngày/tìm kiếm/tài khoản chỉ giới hạn danh sách và số kết quả bên dưới, được giữ khi đổi tab; có nút Hôm nay, Toàn bộ thời gian, Xóa bộ lọc. Phân loại lại vẫn chỉ xử lý tab và bộ lọc hiện tại, giữ nguyên khoản gán thủ công.

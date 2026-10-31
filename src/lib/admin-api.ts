@@ -75,8 +75,6 @@ export const saveFund=(_s:Actions.ActionState,f:FormData)=>write<Result<"saveFun
 export const assignTransaction=(_s:Actions.ActionState,f:FormData)=>write<Result<"assignTransaction">>("transactions/assignment","POST",f);
 export const createTransfer=(_s:Actions.ActionState,f:FormData)=>write<Result<"createTransfer">>("transfers","POST",f);
 export const reverseTransfer=(_s:Actions.ActionState,f:FormData)=>write<Result<"reverseTransfer">>("transfers/reversal","POST",f);
-export const configureSyncStart=(_s:Actions.ActionState,f:FormData)=>write<Result<"configureSyncStart">>("sync/start-date","PUT",f);
-export const syncNow=()=>write<Result<"syncNow">>("sync","POST",{});
 export const saveTransactionNote=(_s:Actions.ActionState,f:FormData)=>write<Result<"saveTransactionNote">>("transaction-notes","POST",f);
 export const resolveDuplicate=(_s:Actions.ActionState,f:FormData)=>write<Result<"resolveDuplicate">>("transactions/review","POST",f);
 export const uploadFundExcel=(_s:Actions.ExcelUploadState,f:FormData)=>write<Result<"uploadFundExcel">>("imports","POST",f,false);

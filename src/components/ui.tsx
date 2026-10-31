@@ -145,6 +145,17 @@ export function Pagination({
   itemLabel?: string;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(pages, Math.max(1, page));
+  const windowStart = Math.min(Math.max(2, current - 3), Math.max(2, pages - 8));
+  const visiblePages = pages <= 10
+    ? Array.from({ length: pages }, (_, i) => i + 1)
+    : [1, ...Array.from({ length: 8 }, (_, i) => windowStart + i), pages];
+  const pageHref = (number: number) => {
+    const [path, query = ""] = base.split("?");
+    const params = new URLSearchParams(query);
+    params.set("page", String(number));
+    return `${path}?${params}`;
+  };
   const PageLink=base.startsWith("/admin")?AdminLink:(base.startsWith("/minh-bach")||base.startsWith("/t?")||base==="/t"||base.startsWith("/t/"))?PublicLink:Link;
   return (
     <div className="pagination">
@@ -153,12 +164,16 @@ export function Pagination({
       </span>
       <div>
         {page > 1 && (
-          <PageLink className="button subtle" href={`${base}&page=${page - 1}`}>
+          <PageLink className="button subtle" href={pageHref(page - 1)}>
             ← Trước
           </PageLink>
         )}
+        {visiblePages.map((number, index) => <span className="pagination-page-item" key={number}>
+          {index > 0 && number - visiblePages[index - 1] > 1 && <span className="pagination-ellipsis" aria-hidden="true">…</span>}
+          <PageLink className={`button subtle pagination-number${number === current ? " selected" : ""}`} href={pageHref(number)} aria-label={`Trang ${number}`} aria-current={number === current ? "page" : undefined}>{number}</PageLink>
+        </span>)}
         {page < pages && (
-          <PageLink className="button subtle" href={`${base}&page=${page + 1}`}>
+          <PageLink className="button subtle" href={pageHref(page + 1)}>
             Sau →
           </PageLink>
         )}

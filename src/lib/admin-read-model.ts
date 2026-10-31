@@ -25,11 +25,13 @@ export async function loadAdminTransactions(params:AdminParams){
   const range=transactionDates(params.from,params.to),page=Math.min(100000,Math.max(1,Math.floor(Number(params.page)||1))),pageSize=100;
   const filter={from:range.from,to:range.to,account:params.account??"",q:(params.q??"").slice(0,100),type:params.type??"",review:params.review??""};
   const scope=transactionWhere(filter),where={AND:[scope,...(params.pending==="1"?[fundMembership(null)]:params.fund?[fundMembership(params.fund)]:[])]};
-  const [rawRows,navigation]=await Promise.all([db.bankTransaction.findMany({where,omit:{source:true,sourceHash:true},include:{allocations:{include:{fund:true}},fund:true,account:true,notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*pageSize,take:pageSize}),transactionNavigationData(JSON.stringify(filter))]);
+  const [rawRows,navigation]=await Promise.all([db.bankTransaction.findMany({where,omit:{source:true,sourceHash:true},include:{allocations:{include:{fund:true}},fund:true,account:true,notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*pageSize,take:pageSize}),transactionNavigationData()]);
   const rows=rawRows.map(row=>({...row,amount:params.fund?fundShare(row,params.fund):row.amount,fund:params.fund&&row.allocations.length?row.allocations.find(a=>a.fundId===params.fund)?.fund??null:row.fund}));
   const total=navigation.total,pending=navigation.groups.find(g=>g.fundId===null)?._count??0;
-  const count=params.pending==="1"?pending:params.fund?navigation.groups.find(g=>g.fundId===params.fund)?._count??0:total;
-  return {rows,...navigation,page,pageSize,count,total,pending,range:{from:range.from,to:range.to,error:range.error},filter};
+  const selectedTotal=params.pending==="1"?pending:params.fund?navigation.groups.find(g=>g.fundId===params.fund)?._count??0:total;
+  const filtered=!range.allTime||!!filter.account||!!filter.q||!!filter.type||!!filter.review;
+  const count=filtered?await unstable_cache(async()=>db.bankTransaction.count({where}),["transaction-filtered-count-v1",JSON.stringify(where)],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]})():selectedTotal;
+  return {rows,...navigation,page,pageSize,count,total,pending,selectedTotal,range:{from:range.from,to:range.to,error:range.error,allTime:range.allTime},filter};
 }
 export type AdminTransactions=Awaited<ReturnType<typeof loadAdminTransactions>>;
 export async function loadAdminTransfers(){return db.transfer.findMany({include:{fromFund:{include:{account:true}},account:true,toFund:true,reversal:true,_count:{select:{items:true}}},orderBy:{createdAt:"desc"},take:100})}

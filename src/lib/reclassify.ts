@@ -9,7 +9,7 @@ import { serializable, type LedgerClient } from "./ledger";
 import { transactionDates } from "./transaction-scope";
 const scopeSchema = z.object({
   tab: z.enum(["PENDING","FUND"]), fundId: z.string().min(1).max(100).optional(),
-  from: z.string().min(1), to: z.string().min(1), account: z.string().max(100).default(""),
+  from: z.string(), to: z.string(), account: z.string().max(100).default(""),
   type: z.enum(["CREDIT","DEBIT",""]).default(""), q: z.string().max(100).default(""),
 }).refine(s=>s.tab!=="FUND"||!!s.fundId,"Chọn tab thiện pháp trước khi phân loại");
 export type ReclassificationScope = z.input<typeof scopeSchema>;
