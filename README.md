@@ -15,7 +15,7 @@ npm run db:seed
 npm run dev
 ```
 
-Mở http://localhost:3000. Trang công khai `/`; quản trị `/admin`; đăng nhập `/login`.
+Mở http://localhost:3000 sẽ chuyển thẳng đến `/login`. Quản trị tại `/admin`; mỗi thiện pháp có link công khai riêng `/t/[slug]`, không cần đăng nhập. Không có trang chủ hoặc danh mục thiện pháp công khai.
 
 - `DATABASE_URL`: URL kết nối PostgreSQL có pool (`postgresql://...`) của Prisma Postgres hoặc PostgreSQL khác. Không dùng URL `prisma://` với adapter hiện tại.
 - `AUTH_SECRET`: chuỗi ngẫu nhiên tối thiểu 32 ký tự (`openssl rand -base64 32`).
@@ -93,7 +93,7 @@ CSV cùng mã cập nhật số tổng hợp, không cộng dồn; không xóa c
 
 ## Trang công khai và cache
 
-Dùng Next Data Cache (`unstable_cache`) cho danh sách, thống kê và từng trang/chiều giao dịch, TTL 1.200 giây. Không chỉ cache trong RAM nên có thể chia sẻ giữa các instance Vercel. Các mutation và endpoint đồng bộ làm hết hạn tag `public-ledger`; lượt xem tiếp theo đọc DB và tạo cache mới. Không hứa mọi lượt xem đều không truy vấn.
+Dùng Next Data Cache (`unstable_cache`) cho thống kê và từng trang/chiều giao dịch công khai, TTL 1.200 giây. Không chỉ cache trong RAM nên có thể chia sẻ giữa các instance Vercel. Các mutation và endpoint đồng bộ làm hết hạn tag `public-ledger`; lượt xem tiếp theo đọc DB và tạo cache mới. Không hứa mọi lượt xem đều không truy vấn.
 
 Chỉ DTO công khai đã lọc mới vào cache. Không đưa email quản trị, JSON nguồn hoặc thông tin tài khoản đối tác vào public DTO. Nội dung và tên được che mẫu số điện thoại Việt Nam và dạng quốc tế có tiền tố +/00: `0912345678` → `*******678`. Số đã bị nguồn che không thể khôi phục ba số cuối. Tôn trọng `hiddenNarrative` của nguồn. Nhận diện theo mẫu không đảm bảo phát hiện mọi số điện thoại quốc tế hoặc số được viết bằng chữ; cần bổ sung mẫu nếu thực tế có các dạng đó.
 
@@ -138,3 +138,11 @@ http://localhost:3000/api/auth/callback/google
 ### Google trả invalid_client / Client Secret không hợp lệ
 
 Nếu log ghi `invalid_client` và `The provided client secret is invalid`, lỗi xảy ra trước bước kiểm tra ADMIN_EMAILS. Mở đúng OAuth Web client trong Google Cloud, sao chép Client Secret tương ứng vào AUTH_GOOGLE_SECRET trong .env (hoặc Vercel Environment Variables). AUTH_GOOGLE_ID và AUTH_GOOGLE_SECRET phải thuộc cùng client. AUTH_SECRET là khóa phiên ngẫu nhiên riêng, không dùng thay cho Google Client Secret. Không gửi secret qua chat hoặc commit vào Git. Khởi động lại dev server / redeploy rồi bắt đầu một phiên đăng nhập mới.
+
+## Giao diện quản trị một màn hình
+
+Các mục Tổng quan, Giao dịch, Thiện pháp, Điều chuyển, Đối soát và Đồng bộ cùng nằm tại `/admin`, chọn mục qua `?view=...`. Thanh menu luôn hiển thị; mobile chia thành hai hàng để đủ sáu mục. Các đường dẫn cũ `/admin/funds`, `/admin/transactions`, ... tự chuyển sang mục tương ứng và giữ tham số lọc/phân trang.
+
+Tạo/cấu hình thiện pháp và tạo điều chuyển dùng modal theo URL, hỗ trợ mở lại bằng đường dẫn. Phân loại tay, cấu hình số đầu kỳ, nhập CSV, khóa sổ, đảo điều chuyển và chi tiết lịch sử dùng modal tại chỗ. Modal hỗ trợ Escape, giữ focus trong hộp thoại, cuộn nội dung và khóa cuộn nền. Sau điều chuyển thành công, nút gửi bị khóa cho tới khi mở một modal điều chuyển mới để tránh gửi lặp.
+
+Tông màu chung: đỏ măng cụt `#7b3040`, vàng nghệ `#c58a32`, cam đất `#b86336` và nền kem. Áp dụng cho cả quản trị, đăng nhập và trang công khai. Thay đổi này không sửa schema hay số liệu tài chính.

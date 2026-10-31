@@ -1,16 +1,40 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, ArrowLeftRight, Sprout, Shuffle, ClipboardCheck, RefreshCw, ExternalLink } from "lucide-react";
-const links = [
-  { href: "/admin", label: "Tổng quan", icon: LayoutDashboard },
-  { href: "/admin/transactions", label: "Giao dịch", icon: ArrowLeftRight },
-  { href: "/admin/funds", label: "Thiện pháp", icon: Sprout },
-  { href: "/admin/transfers", label: "Điều chuyển", icon: Shuffle },
-  { href: "/admin/reconciliation", label: "Đối soát đầu kỳ", icon: ClipboardCheck },
-  { href: "/admin/sync", label: "Đồng bộ & lịch sử", icon: RefreshCw },
-];
+import { useSearchParams } from "next/navigation";
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  Sprout,
+  Shuffle,
+  ClipboardCheck,
+  RefreshCw,
+} from "lucide-react";
+import { adminUrl, getAdminView } from "@/lib/admin-navigation";
+const items = [
+  { view: "overview", label: "Tổng quan", icon: LayoutDashboard },
+  { view: "transactions", label: "Giao dịch", icon: ArrowLeftRight },
+  { view: "funds", label: "Thiện pháp", icon: Sprout },
+  { view: "transfers", label: "Điều chuyển", icon: Shuffle },
+  { view: "reconciliation", label: "Đối soát đầu kỳ", icon: ClipboardCheck },
+  { view: "sync", label: "Đồng bộ & lịch sử", icon: RefreshCw },
+] as const;
 export function AdminNav() {
-  const path = usePathname();
-  return <nav className="admin-nav" aria-label="Quản trị"><div className="nav-caption">QUẢN LÝ THIỆN PHÁP</div>{links.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={path === href ? "selected" : ""}><Icon size={19}/>{label}{path === href && <span className="nav-dot"/>}</Link>)}<div className="nav-caption nav-caption-bottom">MINH BẠCH CÙNG CỘNG ĐỒNG</div><Link href="/" target="_blank"><ExternalLink size={18}/>Trang công khai</Link></nav>;
+  const params = useSearchParams();
+  const active = getAdminView(params.get("view") ?? undefined);
+  return (
+    <nav className="workspace-nav" aria-label="Chức năng quản trị">
+      {items.map(({ view, label, icon: Icon }) => (
+        <Link
+          key={view}
+          href={adminUrl(view)}
+          scroll={false}
+          aria-current={active === view ? "page" : undefined}
+          className={active === view ? "selected" : ""}
+        >
+          <Icon size={17} />
+          <span>{label}</span>
+        </Link>
+      ))}
+    </nav>
+  );
 }

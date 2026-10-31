@@ -1,28 +1,16 @@
-import { requireAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { accountTotals } from "@/lib/ledger";
-import { openingBalance, vnd, localDate, dateTime } from "@/lib/domain";
-import { Heading, Section } from "@/components/ui";
-import { ActionForm } from "@/components/action-form";
-import { saveOpeningAccount, saveOpeningFund, importOpeningCsv, finalizeOpening } from "../actions";
-export default async function Reconciliation() {
-  await requireAdmin();
-  const [accounts, funds] = await Promise.all([accountTotals(), db.fund.findMany({ orderBy: { code: "asc" } })]);
-  return <><Heading eyebrow="CHUYỂN ĐỔI TỪ GOOGLE SHEETS" title="Đối soát & chốt sổ đầu kỳ" description="Chọn ngày bắt đầu ghi nhận mới. Số dư ngân hàng và tổng lịch sử phải được chốt ngay trước ngày đó."/>
-    <div className="notice migration-guide"><strong>Thực hiện theo thứ tự: ① Nhập thiện pháp → ② Lưu số dư và ngày bắt đầu → ③ Kiểm tra chênh lệch → ④ Khóa sổ.</strong><p>CSV là số tổng hợp lịch sử, không phải danh sách giao dịch. Không nhập lại lịch sử trước mốc chốt vào luồng giao dịch mới.</p><a href="/templates/so-du-dau-ky.csv" className="text-link" download>Tải mẫu CSV đầu kỳ ↓</a></div>
-    {accounts.map(a => {
-      const accountFunds = funds.filter(f => f.accountId === a.id);
-      const sum = accountFunds.reduce((n,f) => n + openingBalance(f), 0n);
-      const difference = a.openingBankBalance - sum - a.openingUnallocated;
-      return <Section key={a.id} title={`${a.number} · ${a.label}`} note={`${a.owner}${a.finalizedAt ? ` · Đã khóa sổ ${dateTime(a.finalizedAt)}` : " · Bản nháp, chưa đồng bộ"}`} action={<span className={`badge ${a.finalizedAt ? "active" : "pending"}`}>{a.finalizedAt ? "Đã xác nhận" : "Cần thiết lập"}</span>}>
-        <div className="reconcile-stats"><div><small>Ngân hàng tại mốc chốt</small><strong>{vnd(a.openingBankBalance)}</strong></div><div><small>Số dư thiện pháp đầu kỳ</small><strong>{vnd(sum)}</strong></div><div><small>Tiền chưa phân bổ đầu kỳ</small><strong>{vnd(a.openingUnallocated)}</strong></div><div><small>Chênh lệch đầu kỳ</small><strong className={difference === 0n ? "positive" : "warning-text"}>{vnd(difference)}</strong></div></div>
-        {a.finalizedAt ? <><div className="notice success">Ghi nhận giao dịch mới từ {dateTime(a.cutoverAt!)}. Số liệu đầu kỳ đã được khóa.{a.openingDifference !== 0n && ` Chênh lệch giữ riêng: ${vnd(a.openingDifference)} — ${a.differenceReason}`}</div><div className="reconcile-stats"><div><small>Số dư ngân hàng tính từ sao kê</small><strong>{vnd(a.expected)}</strong></div><div><small>Số dư thiện pháp hiện tại</small><strong>{vnd(a.fundBalance)}</strong></div><div><small>Chưa phân bổ hiện tại</small><strong>{vnd(a.unallocated)}</strong></div><div><small>Sai lệch kiểm tra hệ thống</small><strong className={a.unexplained === 0n ? "positive" : "warning-text"}>{vnd(a.unexplained)}</strong></div></div><p className="muted">Số dư tính toán chưa phải xác nhận số dư trực tiếp từ ngân hàng. Đối chiếu định kỳ với nguồn sao kê có số dư.</p></> : <>
-          <div className="split-grid inner"><div><h3>① Nhập tổng lịch sử từ Sheets</h3><ActionForm action={importOpeningCsv} label="Nhập CSV vào bản nháp"><input type="hidden" name="accountId" value={a.id}/><label>File CSV tổng hợp theo mẫu<input name="file" type="file" accept=".csv,text/csv" required/></label><small>Cùng mã sẽ ghi đè số tổng hợp; không cộng dồn. Các thiện pháp khác được giữ nguyên.</small></ActionForm></div><div><h3>② Lưu thông tin tài khoản</h3><ActionForm action={saveOpeningAccount} label="Lưu bản nháp tài khoản"><input type="hidden" name="accountId" value={a.id}/><label>Ngày bắt đầu nhận giao dịch mới<input type="date" name="cutover" required max={localDate()} defaultValue={a.cutoverAt ? localDate(a.cutoverAt) : undefined}/><small>Số dư ngân hàng là số dư ngay trước 00:00 ngày này (giờ Việt Nam).</small></label><div className="form-row"><label>Số dư ngân hàng (VND)<input name="openingBankBalance" required inputMode="numeric" pattern="[0-9]{1,15}" defaultValue={a.openingBankBalance.toString()}/></label><label>Tiền chưa phân bổ (VND)<input name="openingUnallocated" required inputMode="numeric" pattern="-?[0-9]{1,15}" defaultValue={a.openingUnallocated.toString()}/></label></div><label>Giải thích chênh lệch nếu có<textarea name="differenceReason" rows={2} maxLength={1000} defaultValue={a.differenceReason}/></label></ActionForm></div></div>
-          <h3 className="subheading">③ Kiểm tra số liệu từng thiện pháp</h3>{!accountFunds.length && <p className="muted">Chưa có thiện pháp. Nhập CSV hoặc tạo tại trang Thiện pháp rồi quay lại.</p>}
-          <div className="opening-funds">{accountFunds.map(f => <details key={f.id}><summary><span className="code">{f.code}</span> {f.name}<strong>{vnd(openingBalance(f))}</strong></summary><ActionForm action={saveOpeningFund} label="Lưu số tổng hợp"><input type="hidden" name="fundId" value={f.id}/><div className="form-row"><label>Tổng hùn phước lịch sử<input name="openingIncome" required pattern="[0-9]{1,15}" defaultValue={f.openingIncome.toString()}/></label><label>Tổng chi lịch sử<input name="openingExpense" required pattern="[0-9]{1,15}" defaultValue={f.openingExpense.toString()}/></label><label>Điều chuyển ròng lịch sử<input name="openingTransferNet" required pattern="-?[0-9]{1,15}" defaultValue={f.openingTransferNet.toString()}/><small>Nhận trừ chuyển đi; có thể âm.</small></label></div></ActionForm></details>)}</div>
-          <div className="finalize-box"><h3>④ Xác nhận khóa sổ</h3><p>{difference === 0n ? "Số dư đầu kỳ đang khớp." : `Chênh lệch ${vnd(difference)} sẽ được giữ riêng, không chia vào các thiện pháp. Cần lưu lý do trước khi xác nhận.`}</p><ActionForm action={finalizeOpening} label="Xác nhận & khóa sổ đầu kỳ" confirm="Sau khi khóa sổ, không thể chỉnh sửa số liệu đầu kỳ trên giao diện. Bạn đã kiểm tra với ngân hàng và Sheets?"><input type="hidden" name="accountId" value={a.id}/><label className="checkbox-label"><input name="confirmed" type="checkbox" value="yes" required/>Tôi đã kiểm tra cùng thời điểm với ngân hàng và các Sheets, hiểu rằng số liệu đầu kỳ sẽ được khóa.</label></ActionForm></div>
-        </>}
-      </Section>;
-    })}
-  </>;
+import { redirect } from "next/navigation";
+import { adminUrl } from "@/lib/admin-navigation";
+export default async function LegacyPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const raw = await searchParams;
+  const params = Object.fromEntries(
+    Object.entries(raw).map(([key, value]) => [
+      key,
+      Array.isArray(value) ? value[0] : value,
+    ]),
+  );
+  redirect(adminUrl("reconciliation", params));
 }
