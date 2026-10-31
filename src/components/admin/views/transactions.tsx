@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import { TransactionSummaryPanel } from "@/components/admin/transaction-summary";
 import { useAdminResource } from "@/lib/admin-api";
 import type { AdminTransactions,AdminBootstrap } from "@/lib/admin-read-model";
@@ -54,7 +56,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
       </div>
       <TransactionSummaryPanel />
       {error&&<div className="notice danger" role="alert">{error}</div>}
-      {loading&&<div className="admin-data-loading" role="status">Đang tải dữ liệu giao dịch…</div>}
+      {loading&&data&&<LoadingIndicator label="Đang tải dữ liệu giao dịch…" compact className="admin-data-loading"/>}
       {range.error && <div className="notice danger" role="alert">{range.error}</div>}
       <TransactionTabs loading={!data} funds={funds.map(f=>{const h=historyCounts.get(f.id); const last=h?.to?localDate(new Date(h.to)):today; return {id:f.id,code:f.code,name:f.name,status:f.status,count:h?.count??0,from:h?.from?localDate(new Date(h.from)):range.from,to:last>today?last:today};})} total={totalCount} pending={pendingCount} selectedCount={count} selectedFund={params.fund} isPending={params.pending === "1"} base={tabParams.toString()} />
       {tabScope && <div className="transaction-tab-actions" aria-label={`Thao tác tab ${tabLabel}`}>
@@ -104,7 +106,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
           </label>
           <button className="button primary">Lọc</button>
         </form>
-        {loading&&!data?<p role="status">Đang tải các giao dịch…</p>:!rows.length ? (
+        {loading&&!data?<LoadingIndicator label="Đang tải các giao dịch…"/>:!rows.length ? (
           <Empty title="Không có giao dịch phù hợp" />
         ) : (
           <div className="table-scroll table-card sheet-scroll" tabIndex={0} role="region" aria-label="Bảng giao dịch, cuộn để xem thêm">

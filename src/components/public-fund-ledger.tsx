@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
+
 import { useEffect,useRef,useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PublicLink as Link } from "@/components/public-link";
@@ -57,7 +59,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
         </div>
         {fund.pendingImports > 0 && (
           <div className="notice">
-            Đang nhập lịch sử Excel; số liệu có thể chưa đầy đủ cho tới khi nhập
+            <LoadingSpinner size={20}/> Đang nhập lịch sử Excel; số liệu có thể chưa đầy đủ cho tới khi nhập
             xong.
           </div>
         )}
@@ -130,7 +132,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
               được nhập từ Excel.
             </div>
           )}
-          {loading?<p role="status" className="public-data-status">Đang tải dữ liệu giao dịch…</p>:error?<div className="notice danger" role="alert">{error}<button className="button subtle" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:!fund.rows.length ? (
+          {loading?<LoadingIndicator label="Đang tải dữ liệu giao dịch…" className="public-data-status"/>:error?<div className="notice danger" role="alert">{error}<button className="button subtle" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:!fund.rows.length ? (
             <Empty
               title={
                 search ? "Không tìm thấy giao dịch phù hợp" : direction === "CREDIT"

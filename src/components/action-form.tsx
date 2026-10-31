@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/loading-indicator";
 import { useCloseModal } from "@/components/modal";
 import { useActionState } from "react";
 import { useActionToast } from "@/components/toasts";
@@ -40,7 +41,7 @@ export function ActionForm({
         disabled={pending || (lockAfterSuccess && !!state.success)}
       >
         {pending
-          ? "Đang xử lý…"
+          ? <><LoadingSpinner size={20}/>Đang xử lý…</>
           : lockAfterSuccess && state.success
             ? "Đã ghi nhận"
             : label}

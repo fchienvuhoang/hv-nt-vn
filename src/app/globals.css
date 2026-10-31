@@ -4094,3 +4094,11 @@ tfoot td {
 .fund-visibility-button:hover { border-color: #a9693b; background: #fff4da; }
 .fund-visibility-button:disabled { cursor: wait; opacity: .55; }
 .fund-visibility-button:focus-visible { outline: 2px solid #7b3040; outline-offset: 2px; }
+
+@keyframes app-loading-rotate { to { transform: rotate(360deg); } }
+.app-loading-spinner { flex-shrink: 0; animation: app-loading-rotate .85s linear infinite; transform-origin: center; }
+.loading-indicator { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 140px; padding: 20px 12px; color: #8a3d4b; font-size: 13px; font-weight: 600; text-align: center; }
+.loading-indicator > .app-loading-spinner { color: #a06d24; }
+.loading-indicator.compact { display: inline-flex; flex-direction: row; gap: 8px; width: auto; min-height: 0; padding: 5px 0; font-size: 11px; }
+.loading-indicator.admin-data-loading { padding: 5px 9px; }
+@media (prefers-reduced-motion: reduce) { .app-loading-spinner { animation-duration: 2.5s; } }

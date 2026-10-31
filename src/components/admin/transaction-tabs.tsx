@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import { AdminLink as Link } from "./admin-link";
 import { useState } from "react";
 import { Search, ChevronDown } from "lucide-react";
@@ -11,7 +13,7 @@ function FundChoices({ funds, base, selected,loading }: { funds: FundTab[]; base
   const query = normalize(search).replace(/ /g, "");
   const matches = funds.filter(f=>normalize(`${f.code} ${f.name}`).replace(/ /g, "").includes(query));
   function fundHref(fund: FundTab) { const params = new URLSearchParams(base); params.set("fund",fund.id); params.set("from",fund.from); params.set("to",fund.to); return `/admin?${params}`; }
-  if(loading)return <p role="status">Đang tải danh sách thiện pháp…</p>;
+  if(loading)return <LoadingIndicator label="Đang tải danh sách thiện pháp…"/>;
   return <div className="transaction-fund-picker">
     <label className="fund-picker-search"><Search size={15} aria-hidden="true" /><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm mã hoặc tên thiện pháp…" aria-label="Tìm thiện pháp để xem giao dịch" /></label>
     <div className="fund-picker-hint">Chọn một thiện pháp để xem toàn bộ lịch sử đã gán, không giới hạn ngày đang xem. Bộ lọc tài khoản, thu/chi, tìm kiếm và đối chiếu vẫn được giữ.</div>

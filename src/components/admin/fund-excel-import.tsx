@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/loading-indicator";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/toasts";
 import { FileUp, Play, RotateCw } from "lucide-react";
@@ -130,7 +131,7 @@ export function FundExcelImport({
         </label>
         <button className="button subtle" disabled={pending || running}>
           {pending ? (
-            "Đang đọc file…"
+            <><LoadingSpinner size={20}/>Đang đọc file…</>
           ) : (
             <>
               <FileUp size={15} />
@@ -300,7 +301,7 @@ export function FundExcelImport({
                   }
                 >
                   {running ? (
-                    "Đang nhập…"
+                    <><LoadingSpinner size={20}/>Đang nhập…</>
                   ) : batch.cursor ? (
                     <>
                       <RotateCw size={15} />

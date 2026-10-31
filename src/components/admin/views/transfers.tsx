@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import { RecordAuthor } from "@/components/admin/record-author";
 import { AdminDialogButton } from "@/components/admin/dialog-workspace";
 import { Plus, Undo2 } from "lucide-react";
@@ -29,7 +31,7 @@ export default function Transfers() {
         note="100 bút toán gần nhất. Khoản đã ghi không bị xóa; hủy bằng bút toán đảo."
       >
         {error&&<div className="notice danger">{error}</div>}
-        {loading&&!data?<p role="status">Đang tải điều chuyển…</p>:!transfers.length ? (
+        {loading&&!data?<LoadingIndicator label="Đang tải điều chuyển…"/>:!transfers.length ? (
           <Empty title="Chưa có điều chuyển">
             Chọn Tạo điều chuyển để phân bổ tiền giữa các thiện pháp.
           </Empty>

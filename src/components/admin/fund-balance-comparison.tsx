@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import type { AdminBootstrap } from "@/lib/admin-read-model";
 import { dateTime,vnd } from "@/lib/domain";
 export function FundBalanceComparison({bootstrap}:{bootstrap?:AdminBootstrap}){
@@ -13,12 +15,12 @@ export function FundBalanceComparison({bootstrap}:{bootstrap?:AdminBootstrap}){
       <article className="fund-reconciliation-card source"><h2>Số dư theo Thiện Nguyện</h2><strong className="reconciliation-total">{total!==null?vnd(total):"Chưa đủ dữ liệu"}</strong><small>Tổng thu − tổng chi từ hai trang nguồn</small>
         <div className="reconciliation-accounts">{accounts.map(a=><div key={a.id}><div><b>TK {a.number}</b><strong>{source(a)!==null?vnd(source(a)!):"Chưa có dữ liệu"}</strong></div><small>Thu {a.sourceTotalCredit!==null?vnd(a.sourceTotalCredit):"—"} · Chi {a.sourceTotalDebit!==null?vnd(a.sourceTotalDebit):"—"}</small><small className={a.sourceError?"source-balance-warning":""}>{a.sourceFetchedAt?`Lấy lúc ${dateTime(a.sourceFetchedAt)}`:"Chờ webhook đồng bộ"}{a.sourceError?" · Lấy nguồn bị lỗi":""}</small></div>)}</div>
       </article>
-      <article className="fund-reconciliation-card allocated"><h2>Số dư trong các thiện pháp</h2><strong className="reconciliation-total">{bootstrap?vnd(allocated):"Đang tải…"}</strong><small>Hùn phước {vnd(income)} − đã chi {vnd(expense)}{adjustment!==0n?` · Điều chỉnh/điều chuyển lịch sử ${vnd(adjustment)}`:""}</small>
+      <article className="fund-reconciliation-card allocated"><h2>Số dư trong các thiện pháp</h2><strong className="reconciliation-total">{bootstrap?vnd(allocated):"…"}</strong><small>Hùn phước {vnd(income)} − đã chi {vnd(expense)}{adjustment!==0n?` · Điều chỉnh/điều chuyển lịch sử ${vnd(adjustment)}`:""}</small>
         <div className="reconciliation-accounts">{accounts.map(a=><div key={a.id}><div><b>TK {a.number}</b><strong>{vnd(a.fundBalance)}</strong></div><small>Đã phân bổ vào các thiện pháp</small><small className={source(a)!==null&&source(a)!==a.fundBalance?"source-balance-warning":""}>Chênh lệch nguồn − phân bổ: <b>{gap(source(a)!==null?source(a)!-a.fundBalance:null)}</b></small></div>)}</div>
       </article>
     </div>
     <div className={`reconciliation-difference${difference===0n?" matched":difference===null?"":" unmatched"}`} role="status"><span>Chênh lệch tổng <small>(nguồn − phân bổ thiện pháp)</small></span><strong>{gap(difference)}</strong></div>
     <small className="reconciliation-note">Tính tất cả thiện pháp, gồm hoàn thành/tạm dừng, không phụ thuộc bộ lọc. Giao dịch chưa phân loại chưa nằm trong số dư thiện pháp; chênh lệch có thể do chưa nhập đủ lịch sử hoặc chưa phân loại.</small>
-    {!bootstrap&&<small role="status">Đang tải đối chiếu…</small>}
+    {!bootstrap&&<LoadingIndicator label="Đang tải đối chiếu…" compact/>}
   </section>;
 }

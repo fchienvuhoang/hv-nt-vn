@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import {useEffect,useState} from "react";
 import {useSearchParams} from "next/navigation";
 import {Search,ArrowUpRight,Sprout} from "lucide-react";
@@ -23,7 +25,7 @@ export function PublicDirectory({initial}:{initial:PublicDirectoryDTO}){
    <label htmlFor="directory-search">Tìm thiện pháp hoặc nội dung giao dịch</label><div><Search size={18}/><input id="directory-search" name="q" type="search" defaultValue={q} maxLength={100} placeholder="Mã thiện pháp, nội dung, tên thí chủ, số tiền hoặc 3 số cuối điện thoại…"/><button className="button primary" type="submit">Tìm kiếm</button>{q&&<Link href="/minh-bach" className="button subtle">Xóa</Link>}</div>
    <small>Chỉ tra cứu các thiện pháp đang hoạt động được ban quản trị cho phép hiển thị. Số điện thoại được che, chỉ giữ 3 số cuối.</small>
   </form>
-  {error?<div role="alert" className="notice danger">{error} <button className="button subtle small" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:loading?<p role="status">Đang tìm thiện pháp và giao dịch…</p>:<>
+  {error?<div role="alert" className="notice danger">{error} <button className="button subtle small" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:loading?<LoadingIndicator label="Đang tìm thiện pháp và giao dịch…"/>:<>
    <div className="directory-result-label"><strong>{data.count} thiện pháp{q?` khớp “${q}”`:" đang hoạt động"}</strong>{q&&<span>{data.transactionCount.toLocaleString("vi-VN")} giao dịch phù hợp</span>}</div>
    {!data.funds.length?<Empty title="Không tìm thấy kết quả">Thử nội dung khác hoặc ba số cuối điện thoại. Giao dịch chưa phân loại chưa xuất hiện tại thiện pháp.</Empty>:<div className="public-fund-grid">{data.funds.map(f=>{
     const detail=`/t/${f.slug}`,resultLink=q&&f.previews.length?`${detail}?${new URLSearchParams({type:f.previews[0].direction,q})}`:detail;

@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import { RecordAuthor } from "@/components/admin/record-author";
 import { ScheduledSyncHistory } from "@/components/admin/scheduled-sync-history";
 import { Cable, RefreshCw, Settings2 } from "lucide-react";
@@ -189,7 +191,7 @@ export default function Sync({params={},bootstrap}:{params?:AdminParams;bootstra
       </nav>
       <section className="sync-log-panel" aria-label={scheduleTab ? (params.log === "full" ? "Quét toàn ngày" : "Webhook mỗi phút") : auditTab ? "Lịch sử thao tác" : "Đồng bộ thủ công"}>
       {error&&<div className="notice danger" role="alert">{error}</div>}
-      {loading&&!data?<p role="status">Đang tải nhật ký…</p>:scheduleTab ? <ScheduledSyncHistory full={params.log === "full"} data={data} /> : !auditTab ? (
+      {loading&&!data?<LoadingIndicator label="Đang tải nhật ký…"/>:scheduleTab ? <ScheduledSyncHistory full={params.log === "full"} data={data} /> : !auditTab ? (
         <>
           {!runs.length ? (
             <Empty />

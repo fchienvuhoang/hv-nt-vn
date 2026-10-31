@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/loading-indicator";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import type { ActionState } from "@/app/admin/actions";
 import { useActionToast } from "@/components/toasts";
@@ -122,7 +123,7 @@ export function FundForm({
       </div>
       {fund && <div className="fund-authorship"><span title={`ID người tạo: ${fund.createdById ?? "Chưa có thông tin"}`}>Tạo: <strong>{fund.createdByName || "Chưa có thông tin người tạo"}</strong> · {dateTime(fund.createdAt)}</span><span title={`ID người cập nhật: ${fund.updatedById ?? "Chưa có thông tin"}`}>Cập nhật: <strong>{fund.updatedByName || "Chưa có thông tin người sửa"}</strong> · {dateTime(fund.updatedAt)}</span></div>}
       </fieldset>
-      <button className="button primary" type="submit" disabled={locked}>{pending ? "Đang lưu…" : fund ? "Lưu cấu hình thiện pháp" : "Tạo thiện pháp"}</button>
+      <button className="button primary" type="submit" disabled={locked}>{pending ? <><LoadingSpinner size={20}/>Đang lưu…</> : fund ? "Lưu cấu hình thiện pháp" : "Tạo thiện pháp"}</button>
     </form>
   );
 }

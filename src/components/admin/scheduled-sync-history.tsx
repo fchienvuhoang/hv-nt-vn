@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import type { AdminSync } from "@/lib/admin-read-model";
 import { dateTime } from "@/lib/domain";
 import { FULL_DAY_TIMES, PREVIOUS_DAY_TIMES } from "@/lib/sync-schedule";
@@ -6,7 +8,7 @@ import { Modal } from "@/components/modal";
 const names: Record<string,string> = { RECEIVED:"Đã nhận", RUNNING:"Đang chạy", QUEUED:"Chờ chạy", SKIPPED:"Bỏ qua — đang có lượt chạy", PARTIAL:"Còn dữ liệu", SUCCESS:"Hoàn tất", FAILED:"Thất bại", SUPERSEDED:"Đã đổi cấu hình" };
 const preciseTime = (at: Date) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" }).format(at);
 export function ScheduledSyncHistory({full,data}:{full:boolean;data?:AdminSync}) {
-  if(!data?.stats)return <p role="status">Đang tải thống kê đồng bộ…</p>;
+  if(!data?.stats)return <LoadingIndicator label="Đang tải thống kê đồng bộ…"/>;
   const {requests,sweeps,stats:{requestsToday,requestsAll,quickToday,grouped,lastCall,sweepsToday,sweepsDone,sweepsAll,lastSweep}}=data;
   return <>
     <div className="sync-call-stats">

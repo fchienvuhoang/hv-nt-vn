@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import { useState } from "react";
 import { useAdminResource } from "@/lib/admin-api";
 import type { ReviewCandidates } from "@/lib/admin-read-model";
@@ -28,7 +30,7 @@ export function EntryReview({
       trigger="Kiểm tra nghi trùng"
       triggerClassName="button subtle small"
     >
-      {loading&&<p role="status">Đang tải giao dịch đối chiếu…</p>}
+      {loading&&<LoadingIndicator label="Đang tải giao dịch đối chiếu…"/>}
       {error&&<div className="notice danger">{error}</div>}
       <div className="modal-context">
         <strong>

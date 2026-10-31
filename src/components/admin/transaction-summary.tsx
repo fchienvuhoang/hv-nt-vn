@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import { useAdminResource } from "@/lib/admin-api";
 import type { TransactionSummary } from "@/lib/transaction-summary";
 import { vnd } from "@/lib/domain";
@@ -16,7 +18,7 @@ export function TransactionSummaryPanel(){
         <div className="daily-chart-row"><div><span>Chi <b>{d.expenseCount.toLocaleString("vi-VN")}</b> khoản</span><strong className="negative">{vnd(d.expense)}</strong></div><div className="daily-chart-track" aria-hidden="true"><span className="daily-chart-expense" style={{width:width(d.expense)}} /></div></div>
       </article>)}
     </div>
-    {!data&&!error&&<small role="status">Đang tải thống kê…</small>}
+    {!data&&!error&&<LoadingIndicator label="Đang tải thống kê…" compact/>}
     <small className="transaction-stats-note">Cùng thang đo số tiền · Chỉ tính giao dịch đã ghi nhận; ngày chưa đồng bộ có thể chưa đầy đủ. Không tính nghi trùng và điều chuyển nội bộ.</small>
     {error&&<small role="alert" className="source-balance-warning">Chưa tải được thống kê: {error}</small>}
   </section>;

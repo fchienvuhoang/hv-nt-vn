@@ -1,4 +1,6 @@
 "use client";
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 import { FundBalanceComparison } from "@/components/admin/fund-balance-comparison";
 import { FundVisibilityButton } from "@/components/admin/fund-visibility-button";
 import { FundPinButton } from "@/components/admin/fund-pin-button";
@@ -91,7 +93,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
           </label>
           <button className="button subtle">Lọc danh sách</button>
         </form>
-        {!bootstrap?<p role="status">Đang tải danh sách thiện pháp…</p>:!funds.length ? (
+        {!bootstrap?<LoadingIndicator label="Đang tải danh sách thiện pháp…"/>:!funds.length ? (
           <Empty
             title={
               all.length

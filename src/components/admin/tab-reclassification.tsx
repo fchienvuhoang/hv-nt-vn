@@ -1,4 +1,6 @@
 "use client";
+import { LoadingSpinner, LoadingIndicator } from "@/components/loading-indicator";
+
 import { useEffect, useRef, useState } from "react";
 import { dateTime, vnd } from "@/lib/domain";
 import { Modal } from "@/components/modal";
@@ -52,7 +54,7 @@ export function TabReclassification({scope,initial,label,filterLabel}:{scope:Rec
   }
   const active=run&&["CHECKING","READY","APPLYING"].includes(run.status);
   return <Modal wide title={`Kiểm tra phân loại · ${label}`} trigger="Kiểm tra phân loại tab" triggerClassName="button primary small" footerNote="Đóng modal sẽ dừng sau lô hiện tại. Tiến độ đã lưu có thể tiếp tục." onOpen={loadLatest} onDismiss={()=>{stop.current=true;readRequest.current++}}>
-    {loadingRun&&<p role="status">Đang tải tiến độ kiểm tra gần nhất…</p>}
+    {loadingRun&&<LoadingIndicator label="Đang tải tiến độ kiểm tra gần nhất…"/>}
     <div className="notice">Chỉ kiểm tra tab <strong>{label}</strong> trong khoảng {scope.from} → {scope.to}, {filterLabel}. Bao gồm toàn bộ các trang, không chỉ 100 dòng đang hiển thị.</div>
     <p className="reclassify-explanation">Giao dịch gán thủ công luôn được giữ nguyên. Các giao dịch tự động sẽ được đối chiếu với toàn bộ mã/từ khóa hiện tại: có thể chuyển sang thiện pháp phù hợp khác hoặc về Chưa phân loại nếu không còn khớp. <strong>Kiểm tra chưa làm thay đổi giao dịch; chỉ áp dụng sau khi bạn xác nhận.</strong></p>
     {run&&<>
@@ -77,9 +79,9 @@ export function TabReclassification({scope,initial,label,filterLabel}:{scope:Rec
     </>}
     {error&&<div className="notice danger" role="alert">{error}</div>}
     <div className="reclassify-buttons">
-      {!active&&<button type="button" className="button primary" disabled={busy||loadingRun} onClick={()=>perform("NEW")}>{busy?"Đang khởi tạo…":run?"Kiểm tra lại tab":"Bắt đầu kiểm tra toàn bộ tab"}</button>}
-      {run?.status==="CHECKING"&&<button type="button" className="button primary" disabled={busy||loadingRun} onClick={()=>perform("CHECK")}>{busy?"Đang kiểm tra…":"Tiếp tục kiểm tra"}</button>}
-      {run&&["READY","APPLYING"].includes(run.status)&&<button type="button" className="button primary" disabled={busy||loadingRun} onClick={()=>perform("APPLY")}>{busy?"Đang áp dụng…":run.status==="READY"?`Xác nhận áp dụng ${run.changes} thay đổi`:`Tiếp tục áp dụng (${run.applied}/${run.changes})`}</button>}
+      {!active&&<button type="button" className="button primary" disabled={busy||loadingRun} onClick={()=>perform("NEW")}>{busy?<><LoadingSpinner size={20}/>Đang khởi tạo…</>:run?"Kiểm tra lại tab":"Bắt đầu kiểm tra toàn bộ tab"}</button>}
+      {run?.status==="CHECKING"&&<button type="button" className="button primary" disabled={busy||loadingRun} onClick={()=>perform("CHECK")}>{busy?<><LoadingSpinner size={20}/>Đang kiểm tra…</>:"Tiếp tục kiểm tra"}</button>}
+      {run&&["READY","APPLYING"].includes(run.status)&&<button type="button" className="button primary" disabled={busy||loadingRun} onClick={()=>perform("APPLY")}>{busy?<><LoadingSpinner size={20}/>Đang áp dụng…</>:run.status==="READY"?`Xác nhận áp dụng ${run.changes} thay đổi`:`Tiếp tục áp dụng (${run.applied}/${run.changes})`}</button>}
       {run?.status==="READY"&&!busy&&<button type="button" className="button subtle" onClick={()=>perform("NEW")}>Bỏ kết quả và kiểm tra mới</button>}
       {busy&&<button type="button" className="button subtle" onClick={()=>{stop.current=true}}>Dừng sau lô hiện tại</button>}
     </div>
