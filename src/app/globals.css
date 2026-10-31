@@ -3150,3 +3150,92 @@ body:has(dialog[open]) {
     transition: none !important;
   }
 }
+
+/* Academy identity: original supplied logo, preserved without cropping or recoloring. */
+.academy-logo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 5px;
+}
+.brand small {
+  font-size: 8px;
+  letter-spacing: 0.25px;
+  line-height: 1.7;
+  margin-top: 5px;
+  color: #a07b58;
+}
+.workspace-header-inner .brand small {
+  font-size: 8px;
+  letter-spacing: 0.25px;
+}
+.public-footer > .brand small {
+  font-size: 8px;
+  letter-spacing: 0.15px;
+}
+.public-footer .academy-logo {
+  width: 44px;
+  height: 44px;
+}
+.login-page .brand-featured {
+  flex-direction: column;
+  text-align: center;
+  gap: 13px;
+  font-size: 23px;
+  letter-spacing: -0.6px;
+  margin-bottom: 28px;
+}
+.brand-featured .academy-logo {
+  width: 112px;
+  height: 112px;
+  border-radius: 8px;
+}
+.login-page .brand-featured small {
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  margin-top: 6px;
+}
+.login-card {
+  padding-top: 32px;
+}
+@media (max-width: 680px) {
+  .workspace-header-inner .academy-logo {
+    width: 40px;
+    height: 40px;
+  }
+  .workspace-header-inner .brand small {
+    font-size: 7px;
+    letter-spacing: 0;
+  }
+  .public-header .academy-logo {
+    width: 44px;
+    height: 44px;
+  }
+  .public-header .brand {
+    gap: 9px;
+  }
+  .public-header .brand small {
+    font-size: 7px;
+  }
+  .login-page {
+    padding-top: 26px;
+  }
+  .login-page .brand-featured {
+    margin-top: 0;
+    margin-bottom: 25px;
+    gap: 11px;
+  }
+  .login-page .brand-featured .academy-logo {
+    width: 100px;
+    height: 100px;
+  }
+  .login-page .brand-featured small {
+    font-size: 10px;
+  }
+  .login-card {
+    margin-top: 0;
+    padding-top: 28px;
+  }
+}

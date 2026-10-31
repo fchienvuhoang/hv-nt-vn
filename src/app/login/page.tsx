@@ -1,7 +1,6 @@
 import { signIn } from "@/auth";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { Brand } from "@/components/ui";
-import { ShieldCheck } from "lucide-react";
 export default async function Login({
   searchParams,
 }: {
@@ -16,11 +15,8 @@ export default async function Login({
     !!process.env.ADMIN_EMAILS;
   return (
     <main className="login-page">
-      <Brand />
+      <Brand featured />
       <div className="login-card">
-        <span className="large-icon">
-          <ShieldCheck size={32} />
-        </span>
         <div className="eyebrow">KHÔNG GIAN QUẢN TRỊ</div>
         <h1>Chào bạn trở lại.</h1>
         <p>Cùng giữ gìn sự minh bạch trong từng khoản hùn phước.</p>

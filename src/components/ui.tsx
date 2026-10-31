@@ -1,14 +1,27 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight, Sprout, Check, Pause, Circle } from "lucide-react";
 import { vnd } from "@/lib/domain";
-export function Brand({ href = "/login" }: { href?: string }) {
+export function Brand({
+  href = "/login",
+  featured = false,
+}: {
+  href?: string;
+  featured?: boolean;
+}) {
   return (
-    <Link href={href} className="brand">
-      <span className="brand-icon">
-        <Sprout size={25} />
-      </span>
+    <Link href={href} className={`brand${featured ? " brand-featured" : ""}`}>
+      <Image
+        src="/branding/hoc-vien-nguyen-thuy-viet-nam.png"
+        alt="Logo Học Viện Nguyên Thủy Việt Nam"
+        width={featured ? 112 : 52}
+        height={featured ? 112 : 52}
+        sizes={featured ? "112px" : "52px"}
+        className="academy-logo"
+        priority={featured}
+      />
       <span>
-        Hùn phước<small>MINH BẠCH THIỆN PHÁP</small>
+        Hùn phước<small>Học Viện Nguyên Thủy Việt Nam</small>
       </span>
     </Link>
   );
