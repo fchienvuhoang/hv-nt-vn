@@ -1,3 +1,4 @@
+import { loadTransactionSummary } from "@/lib/transaction-summary";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth, allowedAdmin } from "@/auth";
@@ -17,6 +18,7 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
     if(request.method==="GET"){
       switch(resource){
         case "bootstrap":case "funds":return json(await loadAdminBootstrap());
+        case "transaction-summary":return json(await loadTransactionSummary());
         case "transactions":return json(await loadAdminTransactions(query));
         case "transfers":return json(await loadAdminTransfers());
         case "sync":return json(await loadAdminSync(query.log??""));
@@ -30,6 +32,7 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
     let result:unknown;
     const form=()=>request.formData();
     switch(`${request.method} ${resource}`){
+      case "PATCH funds/pin":result=await actions.pinFund({},await form());break;
       case "POST funds":case "PUT funds":result=await actions.saveFund({},await form());break;
       case "POST transactions/assignment":result=await actions.assignTransaction({},await form());break;
       case "POST transactions/assignments":result=await actions.bulkAssignTransactions(await request.json());break;

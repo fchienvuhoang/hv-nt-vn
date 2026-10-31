@@ -94,6 +94,19 @@ async function audit(
 ) {
   await tx.auditLog.create({ data: { ...actorStamp(actor), action, entityId, details } });
 }
+export async function pinFund(_state: ActionState, form: FormData) {
+  return execute(async actor=>{
+    const data=z.object({fundId:id,pinned:z.enum(["1","0"])}).parse(Object.fromEntries(form));
+    await serializable(async tx=>{
+      const fund=await tx.fund.findUniqueOrThrow({where:{id:data.fundId}});
+      if(Boolean(fund.pinnedAt)===(data.pinned==="1"))return;
+      const pinnedAt=data.pinned==="1"?new Date():null;
+      await tx.fund.update({where:{id:fund.id},data:{pinnedAt,...updatedStamp(actor)}});
+      await audit(tx,actor,data.pinned==="1"?"Ghim thiện pháp":"Bỏ ghim thiện pháp",fund.id,{code:fund.code,name:fund.name,before:fund.pinnedAt?.toISOString()??null,after:pinnedAt?.toISOString()??null});
+    });
+    return data.pinned==="1"?"Đã ghim thiện pháp lên đầu danh sách.":"Đã bỏ ghim thiện pháp.";
+  });
+}
 export async function saveFund(_state: ActionState, form: FormData) {
   return execute(async (actor) => {
     const data = fundSchema.parse(Object.fromEntries(form));

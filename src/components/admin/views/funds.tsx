@@ -1,4 +1,6 @@
 "use client";
+import { FundBalanceComparison } from "@/components/admin/fund-balance-comparison";
+import { FundPinButton } from "@/components/admin/fund-pin-button";
 import { AdminDialogButton } from "@/components/admin/dialog-workspace";
 import { RecordAuthor } from "@/components/admin/record-author";
 import { AdminLink as Link } from "@/components/admin/admin-link";
@@ -14,7 +16,7 @@ import { Status, Empty } from "@/components/ui";
 import { vnd, fundUsesAccount } from "@/lib/domain";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
 export default function Funds({ params = {},bootstrap }: { params?: AdminParams;bootstrap?:AdminBootstrap }) {
-  const all=bootstrap?.funds??[],balances=bootstrap?.balances??[];
+  const all=[...(bootstrap?.funds??[])].sort((a,b)=>(b.pinnedAt?.getTime()??0)-(a.pinnedAt?.getTime()??0)),balances=bootstrap?.balances??[];
   const query = (params.q ?? "").trim().toLocaleLowerCase("vi");
   const status = ["ACTIVE", "COMPLETED", "PAUSED", "ALL"].includes(params.status ?? "")
     ? params.status! : "ACTIVE";
@@ -46,19 +48,12 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
     <div className="fund-workspace">
       <div className="fund-topline">
         <h1>Thiện pháp</h1>
-        <div className="fund-account-inline" aria-label="Tổng tiền theo tài khoản">
-          {balances.map((a) => (
-            <span key={a.id} title={`${a.label}. Số dư dự kiến, không phải xác nhận trực tiếp từ ngân hàng.`}>
-              TK {a.number}: Hùn <strong>{vnd(a.income)}</strong>
-              <span className="fund-inline-balance"> · Dư <strong>{vnd(a.expected)}</strong></span>
-              {a.reviewCount > 0 && <Link href={`/admin?view=transactions&review=1&account=${a.id}`} className="fund-inline-review"> · {a.reviewCount} nghi trùng</Link>}
-            </span>
-          ))}
-        </div>
+        <a href="/t" target="_blank" rel="noopener noreferrer" className="button subtle small"><ExternalLink size={14}/>Trang tổng hợp công khai</a>
         <AdminDialogButton kind="create-fund" className="button primary small">
           <Plus size={14} />Tạo thiện pháp
         </AdminDialogButton>
       </div>
+      <FundBalanceComparison bootstrap={bootstrap} />
       <section className="fund-list-panel" aria-label="Danh sách thiện pháp">
         <nav className="fund-status-tabs" aria-label="Trạng thái thiện pháp">
           {tabs.map((tab) => (
@@ -128,9 +123,10 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
               </thead>
               <tbody>
                 {scoped.map((f) => (
-                  <tr key={f.id}>
+                  <tr key={f.id} className={f.pinnedAt?"fund-pinned-row":undefined}>
                     <td>
                       <div className="fund-identity">
+                        <FundPinButton fundId={f.id} code={f.code} pinned={!!f.pinnedAt}/>
                         <span className="code">{f.code}</span>
                         <h3 className="table-fund-name" title={`Từ khóa: ${f.keywords.join(" · ") || f.code}`}>{f.name}</h3>
                       </div>

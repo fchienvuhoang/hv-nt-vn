@@ -1,4 +1,5 @@
 import "server-only";
+import { refreshSourceBalances } from "./source-balance-sync";
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { serializable } from "./ledger";
@@ -26,6 +27,7 @@ export async function scheduledSync(now = new Date()) {
     }
     const accounts = await db.bankAccount.findMany({ orderBy: { number: "asc" }, include: { syncStates: { select: { completedTo: true, direction: true } } } });
     if (!accounts.length) throw new Error("Chưa có tài khoản sao kê");
+    const balances = await refreshSourceBalances(accounts);
     const today = localDate(now);
     for (const account of accounts) {
       if (!account.syncFrom) {
@@ -105,7 +107,7 @@ export async function scheduledSync(now = new Date()) {
     }
     const pending = await db.syncJob.count({ where: { status: { in: ["QUEUED", "RUNNING", "PARTIAL", "FAILED"] } } }) > 0;
     await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: pending ? "PARTIAL" : "SUCCESS", quickPages, fullPages, inserted, updated, finishedAt: new Date() } });
-    return { invocationId: invocation.id, quickPages, fullPages, inserted, updated, pending };
+    return { invocationId: invocation.id, quickPages, fullPages, inserted, updated, pending, balances };
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0,500) : "Đồng bộ thất bại";
     await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: "FAILED", quickPages, fullPages, inserted, updated, error: message, finishedAt: new Date() } });

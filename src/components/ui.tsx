@@ -11,7 +11,7 @@ export function Brand({
   href?: string;
   featured?: boolean;
 }) {
-  const BrandLink=href.startsWith("/admin")?AdminLink:href.startsWith("/t/")?PublicLink:Link;
+  const BrandLink=href.startsWith("/admin")?AdminLink:(href==="/t"||href.startsWith("/t/"))?PublicLink:Link;
   return (
     <BrandLink href={href} className={`brand${featured ? " brand-featured" : ""}`}>
       <Image
@@ -136,18 +136,20 @@ export function Pagination({
   total,
   base,
   pageSize = 30,
+  itemLabel = "giao dịch",
 }: {
   page: number;
   total: number;
   base: string;
   pageSize?: number;
+  itemLabel?: string;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const PageLink=base.startsWith("/admin")?AdminLink:base.startsWith("/t/")?PublicLink:Link;
+  const PageLink=base.startsWith("/admin")?AdminLink:(base.startsWith("/t?")||base==="/t"||base.startsWith("/t/"))?PublicLink:Link;
   return (
     <div className="pagination">
       <span>
-        {total.toLocaleString("vi-VN")} giao dịch · Trang {page}/{pages}
+        {total.toLocaleString("vi-VN")} {itemLabel} · Trang {page}/{pages}
       </span>
       <div>
         {page > 1 && (

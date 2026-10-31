@@ -169,3 +169,25 @@ Kiểm thử riêng trên cơ sở dữ liệu localhost dùng tên bắt đầu
 Khung quản trị và mã các modal được tải sẵn. Menu chính, tab trạng thái thiện pháp, nhóm giao dịch, nhật ký, bộ lọc và phân trang đổi URL bằng History API; dữ liệu được lấy từ `/api/admin/...`, không tải lại RSC hay giao diện. Các thao tác lưu trả JSON và làm mới cache dữ liệu liên quan. API kiểm tra phiên, email quản trị và nguồn gửi yêu cầu ghi; dữ liệu quản trị không cache ở trình duyệt trung gian. Số tiền và thời gian được truyền bằng codec bảo toàn BigInt/Date.
 
 Trang công khai giữ SSR cho lần truy cập đầu; chuyển thu/chi, tìm kiếm và phân trang gọi `/api/public/funds/[slug]`. Dữ liệu công khai dùng cache server hiện có, chỉ trả nội dung đã che số điện thoại và không trả danh tính quản trị viên.
+
+## Thống kê giao dịch và số dư nguồn
+
+Tab Giao dịch lấy `/api/admin/transaction-summary` (REST có phân quyền, cache server 20 giây). Ba ô ngày đặt cạnh nhau, thanh thu/chi dùng chung thang đo số tiền. Thống kê hôm nay và hai ngày trước theo giờ Việt Nam, độc lập bộ lọc danh sách, chỉ cộng giao dịch `POSTED`; không cộng nghi trùng, bản gộp hoặc điều chuyển nội bộ.
+
+Tab Thiện pháp dùng dữ liệu bootstrap đã có để đối chiếu hai khu vực: số dư nguồn (tổng thu trừ tổng chi) và tổng số dư đã phân bổ vào toàn bộ thiện pháp, có phân tách từng tài khoản. Chênh lệch = nguồn − phân bổ; không cộng tiền chưa phân loại vào số dư thiện pháp. Tổng phân bổ giữ các điều chuyển/điều chỉnh lịch sử của sổ hiện có, tính cả thiện pháp hoàn thành/tạm dừng và không đổi theo bộ lọc danh sách. Cache bootstrap được làm mới khi webhook cập nhật bản tổng hợp nguồn.
+
+Webhook mỗi phút giữ lease chung, gọi song song API `bank-account-transaction/{accountNo}/transactionsV2?pageSize=1&pageNumber=1` mà trang sao kê Thiện Nguyện sử dụng (timeout 4 giây), xác thực username/số tài khoản/userId rồi lưu tổng thu, tổng chi và thời điểm lấy thành công. Số dư hiển thị bằng tổng thu trừ tổng chi nguồn, tách biệt sổ phân bổ thiện pháp. Không dùng tổng tiền trong HTML `__NEXT_DATA__` vì đó là bản tổng hợp hồ sơ khác với trang sao kê. API không trả thời điểm cập nhật số dư; giờ hiển thị chỉ là lúc lấy thành công. Không lưu danh sách giao dịch kèm theo phản hồi tổng hợp. Nguồn lỗi giữ nguyên số liệu cũ và báo lỗi; thiếu bản tổng hợp của một tài khoản thì không hiển thị tổng hai tài khoản như một số dư đầy đủ. Phản hồi webhook có `balances` ghi kết quả từng tài khoản. Lượt bị skip do đang chạy không gọi nguồn lần nữa.
+
+Áp dụng migration `20261031100000_source_balances` trước khi chạy phiên bản này. Kiểm thử: `npm run test:transaction-summary` và `npm run test:scheduled-sync` với database localhost `hvntvn_test...` riêng, không dùng dữ liệu thật.
+
+## Link tổng hợp công khai
+
+Gửi `/t` để thí chủ xem danh sách thiện pháp `ACTIVE`, tổng hùn phước/chi/số dư và mở trang chi tiết. Nút mở link này có trong tab Thiện pháp; trang chi tiết có đường quay về danh sách. Trang chủ `/` vẫn dẫn tới đăng nhập.
+
+Tìm kiếm trên `/t` gọi REST `/api/public/funds?q=...&page=...`, giữ URL và Back/Forward bằng History API. Tìm theo mã/tên thiện pháp hoặc nội dung/người chuyển/số tiền/ghi chú công khai ở cả hai chiều thu chi. Mỗi thiện pháp trả tối đa ba khoản xem trước và số kết quả đầy đủ; nút chi tiết giữ từ khóa và chiều giao dịch. Khoản chưa phân loại, nghi trùng, bản gộp và thiện pháp tạm dừng/hoàn thành không nằm trong kết quả tổng hợp.
+
+Cache server dùng chung tag `public-ledger`, TTL 20 phút, được vô hiệu hóa sau thay đổi. Danh sách và các khối giao dịch được cache theo trang cố định, không theo từ khóa của khách. Chỉ tìm trên DTO đã che số điện thoại; không gửi source thô hoặc danh tính quản trị viên. Kiểm thử `npm run test:public-directory` cần database test localhost trống và QA server dùng cùng database.
+
+## Ghim thiện pháp trong quản trị
+
+Nút ghim cạnh mã thiện pháp lưu `Fund.pinnedAt`; các mục được ghim xếp đầu danh sách quản trị, mục ghim gần nhất đứng trước. Bỏ ghim trả về thứ tự mặc định. Bộ lọc/trạng thái vẫn được giữ; ghim không thay đổi trang công khai hoặc số liệu tài chính. REST `PATCH /api/admin/funds/pin` có kiểm tra quyền/nguồn yêu cầu, lưu người sửa và nhật ký thao tác. Áp dụng migration `20261031110000_fund_pins`.

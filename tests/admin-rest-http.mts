@@ -31,12 +31,21 @@ try{
   assert.equal((await fetch(`${origin}/admin?view=${view}`,{redirect:"manual"})).status,307);
   const html=await(await fetch(`${origin}/admin?view=${view}`,{headers:{cookie}})).text();assert.ok(!html.includes("Chưa thể tải dữ liệu"));
  }
- for(const path of ["bootstrap","funds","transactions","transfers","sync","imports?fundId=missing","fund-transactions?fundId=missing","reclassification?scope={}","review-candidates?id=missing"])assert.equal((await api(path,"GET",undefined,{auth:false})).response.status,401);
+ for(const path of ["bootstrap","transaction-summary","funds","transactions","transfers","sync","imports?fundId=missing","fund-transactions?fundId=missing","reclassification?scope={}","review-candidates?id=missing"])assert.equal((await api(path,"GET",undefined,{auth:false})).response.status,401);
  for(const path of ["funds","transactions/assignment","transactions/assignments","transaction-notes","transfers","transfers/reversal","sync","imports","imports/commit","transactions/review","reclassification"])assert.equal((await api(path,"POST",{}, {auth:false})).response.status,401);
  const bootstrap=await api<{funds:{id:string;code:string;income:bigint;createdAt:Date}[];accounts:{id:string}[]}>("bootstrap");assert.equal(bootstrap.response.status,200);assert.equal(typeof bootstrap.data.funds[0].income,"bigint");assert.ok(bootstrap.data.funds[0].createdAt instanceof Date);
+ const stats=await api<{days:{income:bigint;expense:bigint}[];totalBalance:bigint|null}>("transaction-summary");assert.equal(stats.response.status,200);assert.equal(stats.data.days.length,3);assert.equal(typeof stats.data.days[0].income,"bigint");assert.equal(stats.data.totalBalance,null);
  const fund=await db.fund.findUniqueOrThrow({where:{slug:"0572-tptest"}}),other=await db.fund.findUniqueOrThrow({where:{slug:"0572-tpother"}});
  const created=await api<{success?:string}>("funds","POST",form({code:"TPREST",name:"TEST REST shared fund",status:"ACTIVE",description:"",keywords:"REST SHARED KEY",accountId:"FORGED",actorId:"FORGED",actorName:"FORGED"}));assert.ok(created.data.success);
  const shared=await db.fund.findUniqueOrThrow({where:{code:"TPREST"}});assert.equal(shared.createdById,"qa");assert.equal(shared.createdByName,"QA admin");assert.deepEqual([shared.accountId,...shared.accountIds].sort(),bootstrap.data.accounts.map(a=>a.id).sort());
+ const pin=form({fundId:shared.id,pinned:"1"});
+ assert.equal((await api("funds/pin","PATCH",pin,{auth:false})).response.status,401);
+ assert.equal((await api("funds/pin","PATCH",pin,{origin:"https://evil.example"})).response.status,403);
+ assert.ok((await api<{success?:string}>("funds/pin","PATCH",pin)).data.success);
+ const pinned=await db.fund.findUniqueOrThrow({where:{id:shared.id}});assert.ok(pinned.pinnedAt);assert.equal(pinned.updatedById,"qa");
+ assert.ok((await api<{success?:string}>("funds/pin","PATCH",pin)).data.success);assert.equal(await db.auditLog.count({where:{entityId:shared.id,action:"Ghim thiện pháp"}}),1);
+ const pinnedBootstrap=await api<{funds:{id:string;pinnedAt:Date|null}[]}>("bootstrap");assert.ok(pinnedBootstrap.data.funds.find(f=>f.id===shared.id)?.pinnedAt instanceof Date);
+ assert.ok((await api<{success?:string}>("funds/pin","PATCH",form({fundId:shared.id,pinned:"0"}))).data.success);assert.equal((await db.fund.findUniqueOrThrow({where:{id:shared.id}})).pinnedAt,null);
  const collision=await api<{fieldErrors?:{keywords?:string[]}}>("funds","POST",form({code:"TPRESTDUP",name:"TEST duplicate",status:"ACTIVE",description:"",keywords:"restsharedkey"}));assert.ok(collision.data.fieldErrors?.keywords?.length);
  const fields={id:fund.id,code:fund.code,name:"TEST REST updated",status:fund.status,description:"Liên hệ 0912345678",keywords:fund.keywords.join("\n")};
  assert.equal((await api("funds","PUT",form(fields),{origin:"https://evil.example"})).response.status,403);assert.equal((await db.fund.findUniqueOrThrow({where:{id:fund.id}})).name,fund.name);

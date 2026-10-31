@@ -1,0 +1,1 @@
+ALTER TABLE "Fund" ADD COLUMN "pinnedAt" TIMESTAMP(3);

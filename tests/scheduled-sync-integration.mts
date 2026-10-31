@@ -18,7 +18,12 @@ try{
  const calls:{size:number;day:string;page:number}[]=[];
  let failure=false;
  globalThis.fetch=async input=>{
-  const u=new URL(String(input));const size=Number(u.searchParams.get("pageSize")),page=Number(u.searchParams.get("page")),d=u.searchParams.get("fromDate")!;
+  const u=new URL(String(input));
+  if(u.pathname.endsWith("/transactionsV2")){
+   const number=u.pathname.split("/").at(-2)!,username=number==="0572"?"hvnguyenthuyvnhotritambao":"hvnguyenthuyvnphungsucongdong",userId=number==="0572"?"2020856147493257216":"2011680198621147136";
+   return Response.json({status:200,data:{accountNumber:number,username,userId,totalCredit:1000,totalDebit:200}});
+  }
+  const size=Number(u.searchParams.get("pageSize")),page=Number(u.searchParams.get("page")),d=u.searchParams.get("fromDate")!;
   calls.push({size,day:d,page});if(failure)throw new Error("test upstream outage");
   const a=u.searchParams.get("accountNo"),direction=u.searchParams.get("type");
   if(a!=="0572"||direction!=="CREDIT")return Response.json({status:200,data:{total:0,page,items:[]}});
@@ -32,6 +37,7 @@ try{
  assert.equal(await db.syncInvocation.count({where:{status:"SKIPPED"}}),1);assert.equal(calls.length,0);
  await db.syncLease.deleteMany();
  for(let i=0;i<12;i++)await scheduledSync(now);
+ assert.equal(await db.bankAccount.count({where:{sourceTotalCredit:1000n,sourceTotalDebit:200n,sourceError:""}}),2);
  assert.ok(calls.some(c=>c.size===20));assert.ok(calls.some(c=>c.size===100));
  assert.equal(await db.syncJob.count({where:{kind:{in:["FULL_DAY","PREVIOUS_DAY"]}}}),2,"repeat calls cannot duplicate scheduled slots");
  assert.equal(await db.syncJob.count({where:{kind:{in:["FULL_DAY","PREVIOUS_DAY"]},status:"SUCCESS"}}),2);

@@ -18,6 +18,8 @@
     "test:scheduled-sync": "node --conditions=react-server --import tsx tests/scheduled-sync-integration.mts",
     "test:fund-keywords": "node --conditions=react-server --import tsx tests/fund-keywords-integration.mts",
     "test:reclassify": "node --conditions=react-server --import tsx tests/reclassify-integration.mts",
+    "test:public-directory": "node --conditions=react-server --import tsx tests/public-directory-http.mts",
+    "test:transaction-summary": "node --conditions=react-server --import tsx tests/transaction-summary-integration.mts",
     "test:admin-rest": "node --conditions=react-server --import tsx tests/admin-rest-http.mts",
     "test:transaction-management": "node --conditions=react-server --import tsx tests/transaction-management-integration.mts"
   },

@@ -1,4 +1,5 @@
 "use client";
+import { TransactionSummaryPanel } from "@/components/admin/transaction-summary";
 import { useAdminResource } from "@/lib/admin-api";
 import type { AdminTransactions,AdminBootstrap } from "@/lib/admin-read-model";
 import { TransactionNoteEditor } from "@/components/admin/transaction-note-editor";
@@ -51,6 +52,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
         <h1>Giao dịch <span>{data?count.toLocaleString("vi-VN"):"…"}</span></h1>
         <SyncRecency initial={accounts} initialNow={accounts[0]?.checkedAt ?? 0} />
       </div>
+      <TransactionSummaryPanel />
       {error&&<div className="notice danger" role="alert">{error}</div>}
       {loading&&<div className="admin-data-loading" role="status">Đang tải dữ liệu giao dịch…</div>}
       {range.error && <div className="notice danger" role="alert">{range.error}</div>}

@@ -34,6 +34,12 @@ model BankAccount {
   finalizedAt        DateTime?
   trialStartedAt     DateTime?
   syncFrom           DateTime?
+  sourceTotalCredit  BigInt?
+  sourceTotalDebit   BigInt?
+  sourceFetchedAt    DateTime?
+  sourceUpdatedAt    DateTime?
+  sourceAttemptAt    DateTime?
+  sourceError        String @default("")
   funds              Fund[]
   transactions       BankTransaction[]
   syncStates         SyncState[]
@@ -52,6 +58,7 @@ model Fund {
   description        String     @default("")
   keywords           String[]
   status             FundStatus @default(ACTIVE)
+  pinnedAt           DateTime?
   openingIncome      BigInt     @default(0)
   openingExpense     BigInt     @default(0)
   openingTransferNet BigInt     @default(0)

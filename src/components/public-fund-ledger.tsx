@@ -35,7 +35,8 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
   return (
     <div className="public-site">
       <header className="public-header">
-        <Brand href={base} />
+        <Brand href="/t" />
+        <Link href="/t" className="button subtle small">Tất cả thiện pháp đang hoạt động</Link>
       </header>
       <main className="public-detail public-compact">
         <div className="fund-intro">
@@ -141,9 +142,10 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
             </Empty>
           ) : (
             <div className="table-scroll table-card">
-              <table>
+              <table className="public-ledger-table">
                 <thead>
                   <tr>
+                    <th className="public-row-number">#</th>
                     <th>Thời gian</th>
                     <th>
                       Nội dung{" "}
@@ -153,8 +155,9 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
                   </tr>
                 </thead>
                 <tbody>
-                  {fund.rows.map((r) => (
+                  {fund.rows.map((r,index) => (
                     <tr key={r.id}>
+                      <td className="public-row-number">{(fund.page-1)*PUBLIC_PAGE_SIZE+index+1}</td>
                       <td className="nowrap">{dateTime(r.at)}<small>TK {r.account}</small></td>
                       <td>
                         <p className="narrative">
@@ -164,7 +167,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
                         {r.notes.map(note=><div key={note.id} className="transaction-public-note"><strong>Ghi chú quản trị:</strong> {note.text}<small>{dateTime(note.at)}</small></div>)}
                       </td>
                       <td
-                        className={`align-right money nowrap ${direction === "CREDIT" ? "positive" : ""}`}
+                        className={`align-right money nowrap ${direction === "CREDIT" ? "positive" : "negative"}`}
                       >
                         {vnd(r.amount)}
                       </td>
@@ -229,7 +232,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
         </div>
       </main>
       <footer className="public-footer">
-        <Brand href={base} />
+        <Brand href="/t" />
         <span>Tri ân mọi thiện duyên được trao gửi.</span>
       </footer>
     </div>

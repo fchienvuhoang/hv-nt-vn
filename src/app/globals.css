@@ -3507,7 +3507,7 @@ tfoot td {
 }
 
 /* Funds: prioritize the list, with compact account totals and status navigation. */
-.admin-workspace:has(.fund-workspace) { height: 100dvh; min-height: 0; overflow: hidden; }
+.admin-workspace:has(.fund-workspace) { height: auto; min-height: 100dvh; overflow: visible; }
 .workspace-main:has(.fund-workspace) { display: flex; flex-direction: column; min-height: 0; padding-top: 8px; padding-bottom: 0; }
 .admin-workspace:has(.fund-workspace) > .workspace-footer { display: none; }
 .fund-workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -3529,7 +3529,7 @@ tfoot td {
 .fund-workspace .filter-bar label:not(:first-of-type) { min-width: 155px; }
 .fund-workspace .filter-bar input, .fund-workspace .filter-bar select { min-height: 28px; height: 28px; padding: 3px 7px; font-size: 11px; width: 100%; border-radius: 4px; }
 .fund-workspace .filter-bar .button { height: 28px; min-height: 28px; padding: 3px 10px; font-size: 11px; align-self: end; }
-.fund-list-scroll { overflow: auto; flex: 1; min-height: 0; border: 1px solid #dfd3c6; background: white; scrollbar-width: thin; }
+.fund-list-scroll { overflow-x: auto; flex: none; height: auto; max-height: none; border: 1px solid #dfd3c6; background: white; scrollbar-width: thin; }
 .fund-list-scroll table { border-collapse: separate; border-spacing: 0; min-width: 1020px; font-size: 12px; }
 .fund-list-scroll th { padding: 7px 9px; font-size: 10px; top: 0; background: #f3ebdf; border-bottom: 1px solid #dfd3c6; border-radius: 0; }
 .fund-list-scroll td { padding: 5px 9px; height: 40px; border-bottom: 1px solid #eee5da; }
@@ -3543,7 +3543,7 @@ tfoot td {
 .fund-list-scroll .table-actions { flex-wrap: nowrap; gap: 5px; }
 .fund-list-scroll .table-actions .button { min-height: 25px; padding: 3px 7px; font-size: 10px; }
 .fund-list-scroll .table-actions .icon-button { width: 25px; height: 25px; min-height: 25px; }
-.fund-list-scroll tfoot td { position: sticky; bottom: 0; background: #f7efe3; border-top: 1px solid #dfd3c6; font-size: 11px; z-index: 1; height: 32px; }
+.fund-list-scroll tfoot td { position: static; background: #f7efe3; border-top: 1px solid #dfd3c6; font-size: 11px; height: 32px; }
 @media (max-width: 900px) {
   .fund-topline { flex-wrap: wrap; gap: 4px 10px; }
   .fund-account-inline { order: 3; flex-basis: 100%; gap: 3px 14px; }
@@ -3967,3 +3967,110 @@ tfoot td {
 .transaction-background-refresh { position: absolute; right: 0; top: 0; z-index: 4; border-radius: 4px; padding: 3px 7px; background: #fff4df; color: #7b3040; font-size: 11px; font-weight: 600; pointer-events: none; }
 .admin-client-workspace { display: flex; flex-direction: column; flex: 1; min-height: 0; position: relative; }
 .admin-data-loading { position: absolute; top: 0; right: 0; z-index: 3; padding: 3px 7px; background: #fff3dd; color: #7b3040; font-size: 11px; font-weight: 600; border-radius: 4px; pointer-events: none; }
+
+
+/* Daily comparisons share one amount scale across all three days. */
+.transaction-daily-summary { flex-shrink: 0; }
+.daily-summary-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 5px; font-size: 12px; }
+.daily-summary-heading small, .transaction-stats-note, .reconciliation-note { font-size: 10px; color: #806653; }
+.transaction-daily-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; width: 100%; max-width: 900px; }
+.transaction-day-card { background: #fff; border: 1px solid #d8c5b2; border-radius: 7px; padding: 7px 10px; min-width: 0; }
+.transaction-day-card.today { border-color: #bd8b3b; background: #fffdf7; }
+.transaction-day-card h2 { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; margin: 0 0 6px; }
+.transaction-day-card h2 span { font-size: 10px; color: #7b3040; background: #f9e8bc; padding: 1px 5px; border-radius: 3px; }
+.daily-chart-row + .daily-chart-row { margin-top: 6px; }
+.daily-chart-row > div:first-child { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; font-size: 11px; }
+.daily-chart-row strong { font-variant-numeric: tabular-nums; }
+.daily-chart-track { height: 5px; border-radius: 3px; background: #f1ece5; margin-top: 3px; overflow: hidden; }
+.daily-chart-track > span { display: block; height: 100%; border-radius: inherit; }
+.daily-chart-income { background: #548568; }
+.daily-chart-expense { background: #b4515c; }
+.transaction-stats-note, .reconciliation-note { display: block; margin-top: 4px; line-height: 1.4; }
+.source-balance-warning { color: #a3313b; }
+.fund-reconciliation { flex-shrink: 0; }
+.fund-reconciliation-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.fund-reconciliation-card { background: #fff; border: 1px solid #d8c5b2; border-radius: 7px; padding: 8px 11px; min-width: 0; }
+.fund-reconciliation-card h2 { font-size: 12px; margin: 0 0 4px; }
+.reconciliation-total { display: block; font-size: 19px; line-height: 1.3; color: #7b3040; font-variant-numeric: tabular-nums; }
+.fund-reconciliation-card > small { display: block; font-size: 10px; color: #806653; line-height: 1.5; }
+.reconciliation-accounts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; border-top: 1px solid #ecdfd1; padding-top: 6px; margin-top: 5px; }
+.reconciliation-accounts > div { min-width: 0; }
+.reconciliation-accounts > div > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 6px; font-size: 11px; }
+.reconciliation-accounts strong { font-size: 12px; font-variant-numeric: tabular-nums; }
+.reconciliation-accounts small { display: block; font-size: 10px; margin-top: 2px; line-height: 1.4; }
+.reconciliation-difference { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 10px; padding: 6px 10px; margin-top: 6px; background: #f2e9db; border: 1px solid #dfcbb5; border-radius: 5px; font-size: 12px; }
+.reconciliation-difference small { font-size: 10px; }
+.reconciliation-difference.matched { background: #edf5ed; color: #346145; border-color: #c2d6c3; }
+.reconciliation-difference.unmatched > strong { color: #a3313b; }
+@media (max-width: 680px) {
+ .transaction-daily-cards { gap: 5px; }
+ .transaction-day-card { padding: 6px; }
+ .transaction-day-card h2 { font-size: 11px; flex-wrap: wrap; }
+ .fund-reconciliation-grid { grid-template-columns: 1fr; }
+}
+
+/* Public statement: clear hierarchy, soft zebra rows and a compact amount column. */
+.public-compact .public-ledger-table { min-width: 660px; table-layout: fixed; }
+.public-compact .table-card .public-ledger-table th { background: #763344; color: #fff2d9; border-color: #8e5260; font-weight: 600; padding: 8px 10px; }
+.public-compact .public-ledger-table th:first-child { width: 42px; }
+.public-compact .public-ledger-table th:nth-child(2) { width: 145px; }
+.public-compact .public-ledger-table th:last-child { width: 155px; }
+.public-compact .table-card .public-ledger-table td { padding: 5px 10px; line-height: 1.45; border-right-color: #eee7df; }
+.public-compact .public-ledger-table .public-row-number { text-align: center; color: #9a7d68; font-size: 10px; font-variant-numeric: tabular-nums; }
+.public-compact .public-ledger-table th.public-row-number { color: #f3d291; }
+.public-compact .public-ledger-table .narrative { font-size: 13px; line-height: 1.5; color: #3e302a; }
+.public-compact .public-ledger-table td.money { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.public-compact .public-ledger-table td.money.positive { color: #346a4d; }
+.public-compact .public-ledger-table td.money.negative { color: #a3313b; }
+.public-ledger-table .transaction-public-note { border-left: 2px solid #d5a441; border-radius: 0 4px 4px 0; padding: 4px 7px; margin-top: 5px; background: #fff8e9; font-size: 11px; }
+.public-directory-header-note { color: #94744e; font-size: 12px; }
+.directory-intro { margin-bottom: 14px; }
+.directory-intro h1 { margin: 5px 0; font-size: 26px; color: #65303b; }
+.directory-intro p { font-size: 13px; color: #806653; margin: 0; }
+.directory-search { background: white; border: 1px solid #d9c4ad; padding: 12px 14px; border-radius: 9px; box-shadow: 0 3px 12px #6b3f2808; margin-bottom: 13px; }
+.directory-search > label { display: block; font-size: 12px; font-weight: 600; color: #633c35; margin-bottom: 6px; }
+.directory-search > div { display: flex; align-items: center; gap: 8px; }
+.directory-search > div > svg { color: #ad7b39; flex-shrink: 0; }
+.directory-search input { flex: 1; min-width: 0; width: 100%; height: 36px; font-size: 13px; }
+.directory-search .button { min-height: 36px; padding: 6px 12px; white-space: nowrap; }
+.directory-search > small { display: block; font-size: 10px; color: #94785f; margin-top: 6px; }
+.directory-result-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 12px; margin-bottom: 9px; font-size: 13px; }
+.directory-result-label > span { color: #94785f; font-size: 12px; }
+.public-fund-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.public-fund-card { display: flex; flex-direction: column; min-width: 0; background: #fff; border: 1px solid #ddcbb7; border-radius: 9px; padding: 13px; box-shadow: 0 2px 8px #6a44300a; }
+.public-fund-card-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px; }
+.public-fund-card-top .code { font-size: 11px; }
+.public-active-label { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: #627443; }
+.public-fund-card h2 { font-size: 15px; line-height: 1.5; margin: 9px 0 12px; color: #563630; overflow-wrap: anywhere; }
+.public-fund-card h2 a:hover { color: #8b3148; text-decoration: underline; }
+.directory-fund-totals { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; padding: 9px 0; margin: 0 0 10px; border-top: 1px solid #eee4d7; border-bottom: 1px solid #eee4d7; }
+.directory-fund-totals dt { font-size: 10px; color: #94785f; }
+.directory-fund-totals dd { font-size: 12px; font-weight: 700; margin: 4px 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.directory-fund-totals > div:last-child dd { color: #7b3040; }
+.directory-detail-link { align-self: flex-start; margin-top: auto; min-height: 30px; font-size: 11px; padding: 5px 10px; }
+.directory-matches { margin-bottom: 12px; font-size: 11px; }
+.directory-matches > strong { display: block; color: #7b3040; margin-bottom: 5px; }
+.directory-match { display: block; padding: 7px 8px; margin-bottom: 5px; background: #fbf7f0; border: 1px solid #eee1ce; border-radius: 5px; }
+.directory-match:hover { background: #fff1d9; border-color: #d7b87e; }
+.directory-match > span { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 6px; color: #8b735e; font-size: 10px; }
+.directory-match p { margin: 4px 0 2px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.directory-match small { display: block; font-size: 10px; overflow-wrap: anywhere; }
+.directory-note { color: #956423; margin-top: 3px; }
+@media (max-width: 1000px) { .public-fund-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 600px) {
+ .public-fund-grid { grid-template-columns: 1fr; gap: 9px; }
+ .directory-intro h1 { font-size: 22px; }
+ .directory-search { padding: 10px; }
+ .directory-search > div { flex-wrap: wrap; gap: 6px; }
+ .directory-search input { flex-basis: calc(100% - 26px); }
+ .public-directory-header-note { display: none; }
+ .public-site:has(.public-compact) .public-header { gap: 6px; flex-wrap: wrap; }
+}
+
+.fund-pin-form { display: inline-flex; flex: 0 0 auto; margin: 0; align-self: center; }
+.fund-pin-button { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: #a28c77; cursor: pointer; }
+.fund-pin-button:hover { background: #fff1d5; border-color: #d8bd87; color: #7b3040; }
+.fund-pin-button.pinned { background: #ffedbd; border-color: #dfbe72; color: #7b3040; }
+.fund-pin-button:disabled { opacity: .55; cursor: wait; }
+.fund-pin-button:focus-visible { outline: 2px solid #7b3040; outline-offset: 2px; }
+.fund-list-scroll.table-card tbody tr.fund-pinned-row { background: #fffbef; }
