@@ -8,10 +8,12 @@ import type { FundImportSummary } from "@/lib/fund-imports";
 import { dateTime, vnd } from "@/lib/domain";
 export function FundExcelImport({
   fundId,
+  active = true,
   legacy,
   history,
 }: {
   fundId: string;
+  active?: boolean;
   legacy: {
     accountId: string;
     income: string;
@@ -39,12 +41,14 @@ export function FundExcelImport({
   const [replace, setReplace] = useState(false),
     [mismatchAccepted, setMismatchAccepted] = useState(false);
   const alive = useRef(true);
+  const generation = useRef(0);
   useEffect(() => {
-    alive.current = true;
+    generation.current++;
+    alive.current = active;
     return () => {
       alive.current = false;
     };
-  }, []);
+  }, [active]);
   const batches = state.batches ?? history;
   const batch =
     progress && progress.id === (selected || batches[0]?.id)
@@ -61,16 +65,17 @@ export function FundExcelImport({
       (batch.sourceExpense !== null && batch.sourceExpense !== batch.expense));
   async function start() {
     if (!batch) return;
+    const currentGeneration=generation.current;
     setRunning(true);
     setError("");
     try {
-      while (alive.current) {
+      while (alive.current && generation.current===currentGeneration) {
         const result = await commitFundExcel({
           batchId: batch.id,
           replaceLegacy: replace,
           acceptMismatch: mismatchAccepted,
         });
-        if (!alive.current) break;
+        if (!alive.current || generation.current!==currentGeneration) break;
         if (result.error) {
           toast(result.error, "error");
           setError(result.error);

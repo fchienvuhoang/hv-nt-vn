@@ -38,9 +38,14 @@ async function formFor(path: string, field: string) {
   const response = await get(path);
   assert.equal(response.status, 200);
   const html = await response.text();
+  const url=new URL(path,origin),modal=url.searchParams.get("modal");
+  if(modal)assert.ok(html.includes(`data-admin-dialog="${modal}"`),`Missing preloaded dialog ${modal}`);
+  // React can stream form bodies into their already-rendered dialog shells.
   const form = [...html.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)]
     .map((m) => m[0])
-    .find((f) => f.includes(`name="${field}"`));
+    .find((f) => f.includes(`name="${field}"`) &&
+      (modal!=="create-fund"||!f.includes('name="id"')) &&
+      (modal!=="edit-fund"||(f.includes('name="id"')&&f.includes(`value="${url.searchParams.get("fundId")}"`))));
   assert.ok(form, `Missing form ${path} ${field}`);
   const data = new FormData();
   for (const input of form.matchAll(/<input\b[^>]*>/g)) {
@@ -73,6 +78,10 @@ try {
     assert.ok(!(await r.text()).includes("Chưa thể tải dữ liệu"));
     assert.equal((await get(path, false)).status, 307);
   }
+  const preloadHtml=await (await get("/admin?view=funds")).text();
+  for(const kind of ["create-fund","edit-fund","import-fund","transfer"])assert.ok(preloadHtml.includes(`data-admin-dialog="${kind}"`),`${kind} shell must exist before opening`);
+  assert.ok(preloadHtml.includes('name="file"'),"Excel component must be rendered before clicking");
+  assert.ok(!/href="[^"<>]*[?&](?:amp;)?modal=/.test(preloadHtml),"modal triggers must not navigate");
   const legacy = await get("/admin/funds?edit=legacy-test");
   const expectedLegacyTarget = "/admin?modal=edit-fund&fundId=legacy-test";
   if (legacy.status === 307) assert.equal(legacy.headers.get("location"), expectedLegacyTarget);
@@ -90,8 +99,9 @@ try {
   // Account scope is server-controlled: forged form fields cannot restrict a fund.
   const create = await formFor("/admin?modal=create-fund", "code");
   const createHtml = await (await get("/admin?modal=create-fund")).text();
-  assert.ok(!createHtml.includes('name="accountIds"'));
-  assert.ok(!createHtml.includes('name="accountId"'));
+  const createFormHtml=[...createHtml.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)].map(m=>m[0]).find(form=>form.includes('name="code"')&&!form.includes('name="id"'))!;
+  assert.ok(!createFormHtml.includes('name="accountIds"'));
+  assert.ok(!createFormHtml.includes('name="accountId"'));
   create.set("actorId", "FORGED-ID"); create.set("actorName", "FORGED-NAME");
   create.set("accountId", "FORGED-ACCOUNT"); create.set("accountIds", "FORGED-ACCOUNT");
   create.set("code", "TPSHARED"); create.set("name", "TEST SHARED FUND"); create.set("status", "ACTIVE"); create.set("description", ""); create.set("keywords", "TEST SHARED KEY");

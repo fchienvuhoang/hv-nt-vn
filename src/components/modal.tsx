@@ -1,6 +1,5 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useId, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
 const ModalCloseContext = createContext<(() => void) | undefined>(undefined);
@@ -13,7 +12,7 @@ export function Modal({
   children,
   trigger,
   defaultOpen = false,
-  closeHref,
+  open,
   wide = false,
   triggerClassName = "button subtle",
   footerNote = "Dữ liệu được lưu khi bạn xác nhận biểu mẫu.",
@@ -24,7 +23,7 @@ export function Modal({
   children: React.ReactNode;
   trigger?: React.ReactNode;
   defaultOpen?: boolean;
-  closeHref?: string;
+  open?: boolean;
   wide?: boolean;
   triggerClassName?: string;
   footerNote?: string;
@@ -33,10 +32,11 @@ export function Modal({
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId(),
     descriptionId = useId();
-  const router = useRouter();
   useEffect(() => {
-    if (defaultOpen && !dialog.current?.open) dialog.current?.showModal();
-  }, [defaultOpen]);
+    const shouldOpen = open ?? defaultOpen;
+    if (shouldOpen && !dialog.current?.open) dialog.current?.showModal();
+    else if (open === false && dialog.current?.open) dialog.current.close();
+  }, [defaultOpen, open]);
   const close = useCallback(() => dialog.current?.close(), []);
   return (
     <>
@@ -57,7 +57,6 @@ export function Modal({
         aria-describedby={description ? descriptionId : undefined}
         onClose={() => {
           onDismiss?.();
-          if (closeHref) router.replace(closeHref, { scroll: false });
         }}
         onClick={(event) => {
           if (event.target !== event.currentTarget) return;

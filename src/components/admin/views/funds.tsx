@@ -1,3 +1,4 @@
+import { AdminDialogButton } from "@/components/admin/dialog-workspace";
 import { RecordAuthor } from "@/components/admin/record-author";
 import Link from "next/link";
 import {
@@ -55,9 +56,9 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
             </span>
           ))}
         </div>
-        <Link scroll={false} href={adminUrl("funds", { ...params, modal: "create-fund" })} className="button primary small">
+        <AdminDialogButton kind="create-fund" className="button primary small">
           <Plus size={14} />Tạo thiện pháp
-        </Link>
+        </AdminDialogButton>
       </div>
       <section className="fund-list-panel" aria-label="Danh sách thiện pháp">
         <nav className="fund-status-tabs" aria-label="Trạng thái thiện pháp">
@@ -164,18 +165,9 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                     </td>
                     <td>
                       <div className="inline-actions table-actions">
-                        <Link
-                          scroll={false}
-                          className="button subtle small"
-                          href={adminUrl("funds", {
-                            ...params,
-                            modal: "import-fund",
-                            fundId: f.id,
-                          })}
-                        >
-                          <FileUp size={14} />
-                          Nhập Excel
-                        </Link>
+                        <AdminDialogButton kind="import-fund" fundId={f.id} className="button subtle small">
+                          <FileUp size={14} />Nhập Excel
+                        </AdminDialogButton>
                         <Link
                           href={`/admin?view=transactions&fund=${f.id}`}
                           className="icon-button"
@@ -184,18 +176,9 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                         >
                           <List size={16} />
                         </Link>
-                        <Link
-                          scroll={false}
-                          className="button subtle small"
-                          href={adminUrl("funds", {
-                            ...params,
-                            modal: "edit-fund",
-                            fundId: f.id,
-                          })}
-                        >
-                          <Settings2 size={14} />
-                          Cấu hình
-                        </Link>
+                        <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
+                          <Settings2 size={14} />Cấu hình
+                        </AdminDialogButton>
 
                       </div>
                     </td>

@@ -11,6 +11,7 @@ import { PUBLIC_TAG } from "@/lib/public-data";
 import { synchronize } from "@/lib/sync";
 import { transferFunds, reverseFundTransfer } from "@/lib/transfers";
 import {
+  listFundImports,
   stageFundImport,
   processFundImport,
   type FundImportSummary,
@@ -307,4 +308,10 @@ export async function configureSyncStart(_state: ActionState, form: FormData) {
     await saveSyncStart(values.accountId, values.from, actor);
     return "Đã lưu ngày bắt đầu sao kê. Lượt sau sẽ quét lại theo ngày mới; giao dịch đã có được giữ và chống trùng.";
   });
+}
+
+export async function getFundImportHistory(fundId: string): Promise<{history?:FundImportSummary[];error?:string}> {
+  await requireAdminActor();
+  try { return {history:await listFundImports(id.parse(fundId))}; }
+  catch(error) { return {error:importError(error)}; }
 }

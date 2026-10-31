@@ -36,14 +36,13 @@ export default async function AdminPage({
       content = <Funds params={params} />;
   }
   return (
-    <>
+    <AdminDialogs view={view} params={params}>
       <Suspense
         key={`${view}-${params.page ?? "1"}-${params.account ?? ""}-${params.q ?? ""}`}
         fallback={<Loading />}
       >
         {content}
       </Suspense>
-      <AdminDialogs view={view} params={params} />
-    </>
+    </AdminDialogs>
   );
 }

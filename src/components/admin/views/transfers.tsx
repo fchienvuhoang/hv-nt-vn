@@ -1,5 +1,5 @@
 import { RecordAuthor } from "@/components/admin/record-author";
-import Link from "next/link";
+import { AdminDialogButton } from "@/components/admin/dialog-workspace";
 import { Plus, Undo2 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -27,14 +27,10 @@ export default async function Transfers() {
         title="Điều chuyển"
         description="Phân bổ giữa các thiện pháp cùng tài khoản. Tổng hùn phước và tổng chi không thay đổi."
       >
-        <Link
-          scroll={false}
-          href="/admin?view=transfers&modal=transfer"
-          className="button primary"
-        >
+        <AdminDialogButton kind="transfer" className="button primary">
           <Plus size={16} />
           Tạo điều chuyển
-        </Link>
+        </AdminDialogButton>
       </Heading>
       <Section
         title="Lịch sử điều chuyển"
