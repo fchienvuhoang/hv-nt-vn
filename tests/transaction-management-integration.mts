@@ -40,5 +40,12 @@ try{
  const bank=await db.bankTransaction.create({data:{accountId:a.id,sourceId:"bank-with-note",origin:"BANK",entryStatus:"REVIEW",refId:"BANK",direction:"CREDIT",amount:999n,narrative:"TEST merge",displayName:"TEST",occurredAt:new Date(),sourceHash:"TEST",source:{test:true}}});
  await reviewEntry({id:bank.id,decision:"MERGE",targetId:excel.id,reason:"Đối chiếu dòng Excel có ghi chú"},actor);
  assert.equal(await db.transactionNote.count({where:{transactionId:bank.id,text:"Giữ ghi chú sau khi đối soát"}}),1,"notes must follow the canonical bank transaction after duplicate merge");
+ const pending=await make("bulk-pending",b.id,"CREDIT",321n);await db.bankTransaction.update({where:{id:pending.id},data:{fundId:null,assignment:"UNASSIGNED"}});
+ const mixed=await db.bankTransaction.findMany({where:{id:{in:[pending.id,rows[1].id]}}});
+ const mixedBefore=await balances();
+ const mixedRequest={requestId:randomUUID(),targetFundId:source.id,reason:"Gán tay hàng loạt từ tab tất cả",rows:mixed.map(r=>({id:r.id,updatedAt:r.updatedAt.toISOString()}))};
+ assert.equal((await reassignTransactions(mixedRequest,actor)).count,2);assert.equal((await reassignTransactions(mixedRequest,actor)).count,2);
+ assert.equal(await balances(),mixedBefore);
+ for(const row of mixed){const saved=await db.bankTransaction.findUniqueOrThrow({where:{id:row.id},include:{notes:true}});assert.equal(saved.fundId,source.id);assert.equal(saved.assignment,"MANUAL");assert.equal(saved.amount,row.amount);assert.ok(saved.notes.some(n=>n.text.includes(mixedRequest.reason)&&n.text.includes(row.fundId?"TP113":"Chưa phân loại")))}
  console.log("PASS: atomic mixed-account/mixed-direction reassignment, manual assignment, public explanations, actor audit, concurrent idempotency, immutable bank data, fund/account totals, note append/dedup/search, stale/source/account rejection");
 }finally{await db.auditLog.deleteMany();await db.bankTransaction.deleteMany();await db.fund.deleteMany();await db.bankAccount.deleteMany();await db.$disconnect()}

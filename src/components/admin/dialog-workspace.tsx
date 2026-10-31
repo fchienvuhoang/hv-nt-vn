@@ -5,6 +5,7 @@ import type { Fund } from "@/generated/prisma/client";
 import type { FundImportSummary } from "@/lib/fund-imports";
 import { Modal } from "@/components/modal";
 import { FundTransactions } from "./fund-transactions";
+import { FundHistoryPanel } from "./fund-history";
 import { FundForm } from "./fund-form";
 import { FundExcelImport } from "./fund-excel-import";
 import { TransferFormFields } from "./transfer-form-fields";
@@ -27,6 +28,7 @@ export function DialogWorkspace({children,funds,accounts,transferFunds,initial,i
 }) {
   const [selection,setSelection]=useState(initial),[revision,setRevision]=useState(0),[requestId,setRequestId]=useState(initialRequestId);
   const [history,setHistory]=useState(initialHistory),[historyLoading,setHistoryLoading]=useState(false),[historyError,setHistoryError]=useState("");
+  const [editTab,setEditTab]=useState<"config"|"history">("config");
   const historyRequest=useRef(0);
   const toast=useToast();
   const transactionFund=selection?.kind==="fund-transactions"?funds.find(f=>f.id===selection.fundId):funds[0];
@@ -43,7 +45,7 @@ export function DialogWorkspace({children,funds,accounts,transferFunds,initial,i
     }
   }
   function show(kind:DialogKind,fundId?:string) {
-    setSelection({kind,fundId});setRevision(n=>n+1);
+    setEditTab("config");setSelection({kind,fundId});setRevision(n=>n+1);
     if(kind==="transfer")setRequestId(crypto.randomUUID());
     if(kind==="import-fund"&&fundId){
       const request=++historyRequest.current;
@@ -65,7 +67,12 @@ export function DialogWorkspace({children,funds,accounts,transferFunds,initial,i
       <FundForm key={`create-${revision}`} accounts={accounts} />
     </Modal></div>
     <div data-admin-dialog="edit-fund"><Modal open={selection?.kind==="edit-fund"} onDismiss={dismiss} title={`Cấu hình ${editFund?.code??"thiện pháp"}`} description="Thông tin, từ khóa phân loại và trạng thái hoạt động.">
-      {editFund?<FundForm key={`edit-${editFund.id}-${revision}`} accounts={accounts} fund={editFund}/>:<div className="notice danger">Không tìm thấy thiện pháp này.</div>}
+      <div className="fund-config-tabs" role="tablist" aria-label="Cấu hình và lịch sử">
+        <button type="button" role="tab" aria-selected={editTab==="config"} onClick={()=>setEditTab("config")}>Cấu hình</button>
+        <button type="button" role="tab" aria-selected={editTab==="history"} onClick={()=>setEditTab("history")}>Lịch sử chỉnh sửa</button>
+      </div>
+      <div hidden={editTab!=="config"}>{editFund?<FundForm key={`edit-${editFund.id}-${revision}`} accounts={accounts} fund={editFund}/>:<div className="notice danger">Không tìm thấy thiện pháp này.</div>}</div>
+      <div hidden={editTab!=="history"}>{editFund&&<FundHistoryPanel key={`history-${editFund.id}-${revision}`} fundId={editFund.id} active={selection?.kind==="edit-fund"&&editTab==="history"}/>}</div>
     </Modal></div>
     <div data-admin-dialog="import-fund"><Modal wide open={selection?.kind==="import-fund"} onDismiss={dismiss} title={`Nhập Excel · ${importFund?.code??"thiện pháp"}`} description={importFund?.name}>
       {historyLoading&&<p role="status">Đang cập nhật lịch sử nhập Excel…</p>}

@@ -151,6 +151,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
             keywords: before.keywords,
             status: before.status,
             description: before.description,
+            publicListed: before.publicListed,
           },
           after: fields,
         });

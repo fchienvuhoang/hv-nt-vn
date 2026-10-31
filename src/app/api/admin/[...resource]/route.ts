@@ -1,3 +1,4 @@
+import {loadFundHistory} from "@/lib/fund-history";
 import {loadAdminRevision} from "@/lib/admin-revision";
 import { loadTransactionSummary } from "@/lib/transaction-summary";
 import {previewAllocationTransfer,AllocationTransferError} from "@/lib/allocation-transfers";
@@ -19,6 +20,7 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
   try{
     if(request.method==="GET"){
       switch(resource){
+        case "fund-history":return json(await loadFundHistory(z.string().min(1).max(100).parse(query.fundId),z.coerce.number().int().min(1).max(100000).default(1).parse(query.page)));
         case "revision":return json(await loadAdminRevision());
         case "bootstrap":case "funds":return json(await loadAdminBootstrap());
         case "transaction-summary":return json(await loadTransactionSummary());

@@ -1,5 +1,8 @@
 "use client";
-import { LoadingIndicator } from "@/components/loading-indicator";
+import { useRef, useState } from "react";
+import { useToast } from "@/components/toasts";
+import { bulkAssignTransactions } from "@/lib/admin-api";
+import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
 
 import { TransactionSummaryPanel } from "@/components/admin/transaction-summary";
 import { useAdminResource } from "@/lib/admin-api";
@@ -28,6 +31,23 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
   const apiParams=new URLSearchParams(Object.entries({...params,from:range.from,to:range.to}).filter(([,v])=>v!==undefined&&v!=="") as [string,string][]);
   apiParams.delete("review");apiParams.delete("view");apiParams.delete("modal");apiParams.delete("fundId");apiParams.sort();
   const {data,loading,error}=useAdminResource<AdminTransactions>(`transactions?${apiParams}`);
+  type SelectedRow=AdminTransactions["rows"][number];
+  const selectionScope=apiParams.toString();
+  const [selection,setSelection]=useState<{scope:string;rows:Map<string,SelectedRow>}>({scope:"",rows:new Map()});
+  const selected=selection.scope===selectionScope?selection.rows:new Map<string,SelectedRow>();
+  const [target,setTarget]=useState(""),[reason,setReason]=useState(""),[busy,setBusy]=useState(false);
+  const operation=useRef<{signature:string;id:string}|null>(null),toast=useToast();
+  const eligible=(row:SelectedRow)=>row.entryStatus==="POSTED"&&(!row.allocations.length||!!params.fund);
+  function toggleSelection(row:SelectedRow){setSelection(previous=>{const next=new Map(previous.scope===selectionScope?previous.rows:[]);if(next.has(row.id))next.delete(row.id);else next.set(row.id,row);return {scope:selectionScope,rows:next}})}
+  async function assignSelected(){
+    if(!selected.size||!target||reason.trim().length<5){toast("Chọn thiện pháp và nhập lý do ít nhất 5 ký tự.","error");return}
+    const payload={...(params.pending==="1"?{sourceFundId:null}:params.fund?{sourceFundId:params.fund}:{}),targetFundId:target,reason:reason.trim(),rows:[...selected.values()].map(r=>({id:r.id,updatedAt:r.updatedAt.toISOString()}))};
+    const signature=JSON.stringify(payload);if(operation.current?.signature!==signature)operation.current={signature,id:crypto.randomUUID()};
+    setBusy(true);
+    try{const result=await bulkAssignTransactions({...payload,requestId:operation.current.id});if(result.error)throw new Error(result.error);toast(result.success??`Đã gán thủ công ${selected.size} giao dịch`);setSelection({scope:selectionScope,rows:new Map()});setReason("");operation.current=null}
+    catch(error){toast(error instanceof Error?error.message:"Không thể gán giao dịch","error")}
+    finally{setBusy(false)}
+  }
   const rows=data?.rows??[],accounts=data?.accounts??bootstrap?.recency??[],funds=data?.funds??bootstrap?.funds??[];
   const historyCounts=new Map((data?.history??[]).map(group=>[group.fundId,group]));
   const today=localDate(),totalCount=data?.total??0,pendingCount=data?.pending??0,count=data?.count??0;
@@ -103,15 +123,23 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
           <span><strong>{data?count.toLocaleString("vi-VN"):"…"}</strong> giao dịch{(!range.allTime||params.account||query||direction)?" theo bộ lọc":""}</span>
           {data&&<small>{rows.length?`Đang xem ${(page-1)*pageSize+1}–${(page-1)*pageSize+rows.length}`:"Không có dòng hiển thị"} · {rows.length} dòng trên trang này</small>}
         </div>
+        <fieldset className="sheet-bulk-actions" disabled={busy}>
+          <div className="sheet-bulk-totals" aria-live="polite"><strong>Đã chọn {selected.size} giao dịch</strong><span>Thu: <b>{vnd([...selected.values()].filter(r=>r.direction==="CREDIT").reduce((sum,r)=>sum+r.amount,0n))}</b> · Chi: <b>{vnd([...selected.values()].filter(r=>r.direction==="DEBIT").reduce((sum,r)=>sum+r.amount,0n))}</b></span></div>
+          <label>Gán thủ công vào thiện pháp<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{funds.map(f=><option key={f.id} value={f.id}>{f.code} · {f.name}</option>)}</select></label>
+          <label>Lý do chung / ghi chú công khai<input value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000} placeholder="Ví dụ: nội dung thiếu mã thiện pháp"/></label>
+          <button type="button" className="button primary small" disabled={!selected.size||!target||reason.trim().length<5||loading} onClick={assignSelected}>{busy?<><LoadingSpinner size={16}/>Đang gán…</>:`Gán ${selected.size} giao dịch`}</button>
+          <button type="button" className="button subtle small" disabled={!selected.size} onClick={()=>setSelection({scope:selectionScope,rows:new Map()})}>Bỏ chọn</button>
+        </fieldset>
         <Pagination page={page} total={count} pageSize={pageSize} base={`/admin?${baseParams}`} />
         {loading&&!data?<LoadingIndicator label="Đang tải các giao dịch…"/>:!rows.length ? (
           <Empty title="Không có giao dịch phù hợp" />
         ) : (
           <div className="table-scroll table-card sheet-scroll" tabIndex={0} role="region" aria-label="Bảng giao dịch">
             <table className="sheet-table">
-              <colgroup><col className="sheet-col-index" /><col className="sheet-col-time" /><col className="sheet-col-account" /><col className="sheet-col-ref" /><col className="sheet-col-narrative" /><col className="sheet-col-money" /><col className="sheet-col-fund" /><col className="sheet-col-action" /></colgroup>
+              <colgroup><col className="sheet-col-select"/><col className="sheet-col-index" /><col className="sheet-col-time" /><col className="sheet-col-account" /><col className="sheet-col-ref" /><col className="sheet-col-narrative" /><col className="sheet-col-money" /><col className="sheet-col-fund" /><col className="sheet-col-action" /></colgroup>
               <thead>
                 <tr>
+                  <th scope="col"><input type="checkbox" aria-label="Chọn tất cả giao dịch có thể gán trên trang này" disabled={busy||loading||!rows.some(eligible)} checked={rows.some(eligible)&&rows.filter(eligible).every(r=>selected.has(r.id))} onChange={e=>setSelection({scope:selectionScope,rows:e.target.checked?new Map(rows.filter(eligible).map(r=>[r.id,r])):new Map()})}/></th>
                   <th scope="col">#</th>
                   <th scope="col">Thời gian</th>
                   <th scope="col">TK</th>
@@ -125,6 +153,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
               <tbody>
                 {rows.map((r, index) => (
                   <tr key={r.id} className={r.entryStatus === "REVIEW" ? "sheet-review" : undefined}>
+                    <td className={selected.has(r.id)?"sheet-selected-check":""}><input type="checkbox" aria-label={`Chọn giao dịch ${r.refId||r.id}`} checked={selected.has(r.id)} disabled={busy||loading||!eligible(r)} title={!eligible(r)?"Giao dịch tách: chọn tab thiện pháp để gán phần phân bổ":"Chọn để gán thủ công"} onChange={()=>toggleSelection(r)}/></td>
                     <td className="sheet-index">{(page - 1) * pageSize + index + 1}</td>
                     <td className="nowrap">
                       {dateTime(r.occurredAt)}
