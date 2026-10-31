@@ -9,6 +9,9 @@ export async function syncAccountStatus() {
       syncStates: { select: { direction: true, lastSuccessAt: true, windowFrom: true } },
     },
   });
+  return formatSyncAccountStatus(accounts);
+}
+export function formatSyncAccountStatus(accounts:{id:string;number:string;label:string;syncStates:{direction:string;lastSuccessAt:Date|null;windowFrom:string|null}[]}[]){
   const checkedAt = Date.now();
   return accounts.map((account) => {
     const complete = account.syncStates.length === 2 && account.syncStates.every((s) => s.lastSuccessAt);
@@ -20,4 +23,4 @@ export async function syncAccountStatus() {
     };
   });
 }
-export type SyncAccountStatus = Awaited<ReturnType<typeof syncAccountStatus>>;
+export type SyncAccountStatus = ReturnType<typeof formatSyncAccountStatus>;

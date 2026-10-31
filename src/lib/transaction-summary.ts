@@ -1,4 +1,5 @@
 import "server-only";
+import {ADMIN_LEDGER_TAG} from "./cache-tags";
 import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { localDate,startOfVietnamDay } from "./domain";
@@ -16,5 +17,5 @@ export async function transactionSummary(now=new Date()){
   return {generatedAt:now,days:dates.map((date,i)=>{const credit=groups[i].find(g=>g.direction==="CREDIT"),debit=groups[i].find(g=>g.direction==="DEBIT");return {date,incomeCount:credit?._count._all??0,income:credit?._sum.amount??0n,expenseCount:debit?._count._all??0,expense:debit?._sum.amount??0n}}),accounts:balances,totalBalance:balances.length>0&&balances.every(a=>a.balance!==null)?balances.reduce((sum,a)=>sum+a.balance!,0n):null};
 }
 export type TransactionSummary=Awaited<ReturnType<typeof transactionSummary>>;
-const cached=unstable_cache(async(day:string)=>{void day;return encodeAdmin(await transactionSummary())},["transaction-summary-v1"],{revalidate:20,tags:[PUBLIC_TAG,TRANSACTION_SUMMARY_TAG]});
+const cached=unstable_cache(async(day:string)=>{void day;return encodeAdmin(await transactionSummary())},["transaction-summary-v1"],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG]});
 export async function loadTransactionSummary(){return decodeAdmin<TransactionSummary>(await cached(localDate()))}

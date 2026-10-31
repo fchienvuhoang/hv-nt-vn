@@ -22,6 +22,7 @@ export async function reviewEntry(
       throw new Error(
         "Giao dịch không còn chờ kiểm tra. Tải lại trang để xem trạng thái mới",
       );
+    if(await tx.fundAllocation.count({where:{transactionId:{in:[entry.id,...(input.targetId?[input.targetId]:[])]}}}))throw new Error("Giao dịch đã tách phân bổ; hãy đảo các lượt điều chuyển trước khi đối chiếu/gộp giao dịch.");
     const fund = input.fundId
       ? await tx.fund.findUniqueOrThrow({ where: { id: input.fundId } })
       : null;
@@ -76,6 +77,7 @@ export async function reviewEntry(
         },
       });
       await tx.transactionNote.updateMany({where:{transactionId:loser.id},data:{transactionId:survivor.id}});
+      await tx.transferItem.updateMany({where:{transactionId:loser.id},data:{transactionId:survivor.id}});
       await tx.bankTransaction.updateMany({
         where: { mergedIntoId: loser.id },
         data: { mergedIntoId: survivor.id, ...updatedStamp(actor) },

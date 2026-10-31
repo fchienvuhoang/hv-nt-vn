@@ -1,3 +1,4 @@
+import {ADMIN_LEDGER_TAG,PUBLIC_DIRECTORY_TAG,publicFundTag} from "@/lib/cache-tags";
 import { TRANSACTION_SUMMARY_TAG } from "@/lib/transaction-summary";
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -14,8 +15,12 @@ export async function POST(request: Request) {
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const result = await scheduledSync();
-    if (!result.skipped) revalidateTag(TRANSACTION_SUMMARY_TAG, { expire: 0 });
-    if (result.inserted || result.updated) revalidateTag(PUBLIC_TAG, { expire: 0 });
+    if(result.balances?.some(b=>b.persisted))revalidateTag(TRANSACTION_SUMMARY_TAG,{expire:0});
+    if(result.inserted||result.updated)revalidateTag(ADMIN_LEDGER_TAG,{expire:0});
+    if(result.affectedFundIds?.length){
+      revalidateTag(PUBLIC_DIRECTORY_TAG,{expire:0});
+      for(const id of result.affectedFundIds)revalidateTag(publicFundTag(id),{expire:0});
+    }
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     revalidateTag(TRANSACTION_SUMMARY_TAG, { expire: 0 });

@@ -17,16 +17,14 @@ export async function ingestBankPage(
   items: SourceItem[],
   actor: Actor,
 ) {
-  const [rules, existing] = await Promise.all([
-    tx.fund.findMany({
-      where: { OR: [{ accountId }, { accountIds: { has: accountId } }] },
-    }),
-    tx.bankTransaction.findMany({
-      where: { accountId, sourceId: { in: items.map((i) => i.id) } },
-    }),
-  ]);
+  if(!items.length)return {inserted:0,updated:0,knownCount:0,affectedFundIds:[] as string[]};
+  const existing=await tx.bankTransaction.findMany({where:{accountId,sourceId:{in:items.map(i=>i.id)}},select:{id:true,sourceId:true,sourceHash:true,fundId:true}});
+  const fingerprints=new Map(items.map(item=>[item.id,createHash("sha256").update(JSON.stringify(item)).digest("hex")]));
   const known = new Map(existing.map((row) => [row.sourceId, row]));
+  if(items.every(item=>known.get(item.id)?.sourceHash===fingerprints.get(item.id)))return {inserted:0,updated:0,knownCount:existing.length,affectedFundIds:[] as string[]};
   const fresh = items.filter((item) => !known.has(item.id));
+  const rules=fresh.length?await tx.fund.findMany({where:{OR:[{accountId},{accountIds:{has:accountId}}]}}):[];
+  const affectedFundIds=new Set<string>();
   const dates = fresh.map((item) =>
     parseSourceTime(item.transactionTime).getTime(),
   );
@@ -51,9 +49,7 @@ export async function ingestBankPage(
   const links: { excelId: string; bankId: string }[] = [];
   let changed = 0;
   for (const item of items) {
-    const hash = createHash("sha256")
-      .update(JSON.stringify(item))
-      .digest("hex");
+    const hash = fingerprints.get(item.id)!;
     const old = known.get(item.id);
     if (old?.sourceHash === hash) continue;
     const at = parseSourceTime(item.transactionTime),
@@ -74,6 +70,15 @@ export async function ingestBankPage(
       matchKey: ledgerMatchKey({ direction: item.type, amount, at, narrative }),
     };
     if (old) {
+      const allocated=await tx.fundAllocation.findMany({where:{transactionId:old.id}});
+      if(allocated.length){
+        if(item.type!=="CREDIT"||!old.fundId)throw new Error("Giao dịch đã tách phân bổ bị đổi chiều; cần đảo các điều chuyển trước khi đồng bộ lại.");
+        const fixed=allocated.filter(a=>a.fundId!==old.fundId).reduce((n,a)=>n+a.amount,0n),remainder=amount-fixed;
+        if(remainder<0n)throw new Error("Số tiền nguồn mới nhỏ hơn phần đã điều chuyển; cần đảo các điều chuyển của giao dịch trước khi đồng bộ lại.");
+        if(remainder>0n)await tx.fundAllocation.upsert({where:{transactionId_fundId:{transactionId:old.id,fundId:old.fundId}},create:{transactionId:old.id,fundId:old.fundId,accountId,amount:remainder},update:{amount:remainder}});
+        else await tx.fundAllocation.deleteMany({where:{transactionId:old.id,fundId:old.fundId}});
+        for(const allocation of allocated)affectedFundIds.add(allocation.fundId);
+      }
       await tx.bankTransaction.update({ where: { id: old.id }, data: values });
       await tx.auditLog.create({
         data: {
@@ -87,6 +92,7 @@ export async function ingestBankPage(
           },
         },
       });
+      if(old.fundId)affectedFundIds.add(old.fundId);
       changed++;
       continue;
     }
@@ -102,6 +108,7 @@ export async function ingestBankPage(
         ? "REVIEW"
         : "POSTED";
     const fundId = match.exact?.fundId ?? automatic.fundId;
+    if(fundId)affectedFundIds.add(fundId);
     additions.push({
       ...createdStamp(actor),
       ...values,
@@ -127,6 +134,8 @@ export async function ingestBankPage(
     await tx.bankTransaction.createMany({ data: additions });
   for (const link of links) {
     await tx.transactionNote.updateMany({where:{transactionId:link.excelId},data:{transactionId:link.bankId}});
+    await tx.fundAllocation.updateMany({where:{transactionId:link.excelId},data:{transactionId:link.bankId}});
+    await tx.transferItem.updateMany({where:{transactionId:link.excelId},data:{transactionId:link.bankId}});
     await tx.bankTransaction.update({
       where: { id: link.excelId },
       data: {
@@ -149,5 +158,5 @@ export async function ingestBankPage(
       },
     });
   }
-  return { inserted: additions.length, updated: changed };
+  return { inserted: additions.length, updated: changed,knownCount:existing.length,affectedFundIds:[...affectedFundIds] };
 }

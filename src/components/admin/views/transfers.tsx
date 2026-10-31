@@ -1,6 +1,7 @@
 "use client";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
+import { TransferDetailsModal } from "@/components/admin/transfer-details";
 import { RecordAuthor } from "@/components/admin/record-author";
 import { AdminDialogButton } from "@/components/admin/dialog-workspace";
 import { Plus, Undo2 } from "lucide-react";
@@ -19,7 +20,7 @@ export default function Transfers() {
       <Heading
         eyebrow="SỔ ĐIỀU CHUYỂN NỘI BỘ"
         title="Điều chuyển"
-        description="Phân bổ giữa các thiện pháp cùng tài khoản. Tổng hùn phước và tổng chi không thay đổi."
+        description="Cắt đúng số tiền từ các khoản hùn phước mới nhất; tự tách khoản cuối và giữ nguyên tổng tiền từng tài khoản."
       >
         <AdminDialogButton kind="transfer" className="button primary">
           <Plus size={16} />
@@ -54,7 +55,7 @@ export default function Transfers() {
               <tbody>
                 {transfers.map((t) => (
                   <tr key={t.id}>
-                    <td className="nowrap">{t.account?.number ?? t.fromFund.account.number}</td>
+                    <td className="nowrap">{t.account?.number ?? (t.mode==="ALLOCATION"?"Nhiều tài khoản":t.fromFund.account.number)}</td>
 
                     <td>
                       <span className="code">{t.fromFund.code}</span>
@@ -64,7 +65,7 @@ export default function Transfers() {
                       <span className="code">{t.toFund.code}</span>
                       <small>{t.toFund.name}</small>
                     </td>
-                    <td className="transfer-reason">{t.reason}</td>
+                    <td className="transfer-reason">{t.reason}<small>{t.mode==="ALLOCATION"?"Điều chuyển các phần hùn phước":"Điều chuyển số dư cũ"}{t.targetIncome!==null?` · Mức thành tựu ${vnd(t.targetIncome)}`:""}</small></td>
                     <td className="money align-right nowrap">
                       {vnd(t.amount)}
                     </td>
@@ -78,6 +79,7 @@ export default function Transfers() {
                       )}
                     </td>
                     <td>
+                      {t._count.items>0&&<TransferDetailsModal id={t.id} count={t._count.items}/>}
                       {!t.reversal && !t.reversalOf && (
                         <Modal
                           title="Đảo khoản điều chuyển"

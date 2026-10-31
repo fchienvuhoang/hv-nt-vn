@@ -4102,3 +4102,15 @@ tfoot td {
 .loading-indicator.compact { display: inline-flex; flex-direction: row; gap: 8px; width: auto; min-height: 0; padding: 5px 0; font-size: 11px; }
 .loading-indicator.admin-data-loading { padding: 5px 9px; }
 @media (prefers-reduced-motion: reduce) { .app-loading-spinner { animation-duration: 2.5s; } }
+
+.allocation-transfer-workspace { display: grid; gap: 12px; }
+.allocation-transfer-preview { display: grid; gap: 10px; }
+.allocation-transfer-table { max-height: 52vh; overflow: auto; }
+.allocation-transfer-table table { min-width: 900px; font-size: 12px; }
+.allocation-transfer-table th { position: sticky; top: 0; z-index: 1; }
+.allocation-transfer-table td { vertical-align: top; padding: 6px 8px; }
+.allocation-transfer-table .sheet-narrative { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 200px; }
+.transaction-allocation-labels { display: flex; flex-wrap: wrap; gap: 3px; }
+
+.source-account-link { display: inline-flex; align-items: center; gap: 4px; color: #7b3040; text-decoration: underline; text-underline-offset: 3px; }
+.source-account-link:hover { color: #b47b22; }

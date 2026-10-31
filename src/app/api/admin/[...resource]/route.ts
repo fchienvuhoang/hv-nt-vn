@@ -1,10 +1,12 @@
+import {loadAdminRevision} from "@/lib/admin-revision";
 import { loadTransactionSummary } from "@/lib/transaction-summary";
+import {previewAllocationTransfer,AllocationTransferError} from "@/lib/allocation-transfers";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth, allowedAdmin } from "@/auth";
 import * as actions from "@/app/admin/actions";
 import { encodeAdmin } from "@/lib/admin-codec";
-import { loadAdminBootstrap,loadAdminTransactions,loadAdminTransfers,loadAdminSync,loadReviewCandidates } from "@/lib/admin-read-model";
+import { loadAdminBootstrap,loadAdminTransactions,loadAdminTransfers,loadAdminSync,loadReviewCandidates,loadTransferDetails } from "@/lib/admin-read-model";
 export const runtime="nodejs";
 export const maxDuration=60;
 const json=(data:unknown,status=200)=>NextResponse.json(encodeAdmin(data),{status,headers:{"Cache-Control":"private, no-store"}});
@@ -17,9 +19,11 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
   try{
     if(request.method==="GET"){
       switch(resource){
+        case "revision":return json(await loadAdminRevision());
         case "bootstrap":case "funds":return json(await loadAdminBootstrap());
         case "transaction-summary":return json(await loadTransactionSummary());
         case "transactions":return json(await loadAdminTransactions(query));
+        case "transfer-details":return json(await loadTransferDetails(z.string().min(1).max(100).parse(query.id)));
         case "transfers":return json(await loadAdminTransfers());
         case "sync":return json(await loadAdminSync(query.log??""));
         case "review-candidates":return json(await loadReviewCandidates(z.string().min(1).max(100).parse(query.id)));
@@ -38,6 +42,8 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
       case "POST transactions/assignment":result=await actions.assignTransaction({},await form());break;
       case "POST transactions/assignments":result=await actions.bulkAssignTransactions(await request.json());break;
       case "POST transaction-notes":{const data=await form();result=await actions.saveTransactionNote({},data);break;}
+      case "POST transfers/preview":result=await previewAllocationTransfer(await request.json());break;
+      case "POST transfers/allocate":result=await actions.createAllocationTransfer(await request.json());break;
       case "POST transfers":result=await actions.createTransfer({},await form());break;
       case "POST transfers/reversal":result=await actions.reverseTransfer({},await form());break;
       case "POST sync":result=await actions.syncNow();break;
@@ -51,6 +57,7 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
     }
     return json(result);
   }catch(error){
+    if(error instanceof AllocationTransferError)return json({error:error.message},400);
     if(error instanceof z.ZodError)return json({error:error.issues.map(i=>i.message).join("; ")},400);
     console.error("Admin REST request failed",resource,error instanceof Error?error.name:"unknown");
     return json({error:"Không thể xử lý dữ liệu. Vui lòng thử lại."},500);

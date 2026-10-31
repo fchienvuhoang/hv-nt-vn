@@ -11,6 +11,7 @@ import { validateFundKeywords, FundKeywordError } from "@/lib/fund-keywords";
 import { startTabReclassification, advanceTabReclassification, latestTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
 import { PUBLIC_TAG } from "@/lib/public-data";
 import { synchronize } from "@/lib/sync";
+import {commitAllocationTransfer,type AllocationTransferInput} from "@/lib/allocation-transfers";
 import { transferFunds, reverseFundTransfer } from "@/lib/transfers";
 import {
   listFundImports,
@@ -171,10 +172,10 @@ export async function saveFund(_state: ActionState, form: FormData) {
 export async function assignTransaction(_state: ActionState, form: FormData) {
   return execute(async (actor) => {
     const values = z
-      .object({ transactionId: id, fundId: id, reason })
+      .object({ transactionId: id, fundId: id, reason,sourceFundId:id.optional() })
       .parse(Object.fromEntries(form));
     const transaction=await db.bankTransaction.findUniqueOrThrow({where:{id:values.transactionId}});
-    await reassignTransactions({requestId:randomUUID(),sourceFundId:transaction.fundId,targetFundId:values.fundId,reason:values.reason,rows:[{id:transaction.id,updatedAt:transaction.updatedAt.toISOString()}]},actor);
+    await reassignTransactions({requestId:randomUUID(),sourceFundId:values.sourceFundId??transaction.fundId,targetFundId:values.fundId,reason:values.reason,rows:[{id:transaction.id,updatedAt:transaction.updatedAt.toISOString()}]},actor);
     return "Đã gán giao dịch bằng tay và lưu lịch sử.";
   });
 }
@@ -194,6 +195,9 @@ export async function advanceReclassification(input: { id: string; phase: "CHECK
     }
     return { run };
   } catch (error) { return { error: importError(error) }; }
+}
+export async function createAllocationTransfer(input:AllocationTransferInput&{requestId:string;fingerprint:string}){
+ return execute(async actor=>{await commitAllocationTransfer(input,actor);return "Đã điều chuyển đúng số tiền, lưu các phần tách và ghi chú công khai.";});
 }
 export async function createTransfer(_state: ActionState, form: FormData) {
   return execute(async (actor) => {

@@ -75,7 +75,7 @@ export function DialogWorkspace({children,funds,accounts,transferFunds,initial,i
     <div data-admin-dialog="fund-transactions"><Modal wide open={selection?.kind==="fund-transactions"} onDismiss={dismiss} title={`Giao dịch · ${transactionFund?.code??"thiện pháp"}`} description={transactionFund?.name} footerNote="Lý do và ghi chú được hiển thị công khai; mọi thao tác đều lưu người thực hiện và thời gian.">
       {transactionFund&&<FundTransactions key={`${transactionFund.id}-${revision}`} fundId={transactionFund.id} active={selection?.kind==="fund-transactions"} funds={funds} accounts={accounts}/>}
     </Modal></div>
-    <div data-admin-dialog="transfer"><Modal open={selection?.kind==="transfer"} onDismiss={dismiss} title="Điều chuyển giữa các thiện pháp" description="Ghi rõ lý do, giữ trọn lịch sử phân bổ.">
+    <div data-admin-dialog="transfer"><Modal wide open={selection?.kind==="transfer"} onDismiss={dismiss} title="Điều chuyển giữa các thiện pháp" description="Ghi rõ lý do, giữ trọn lịch sử phân bổ.">
       <TransferFormFields key={`transfer-${revision}`} requestId={requestId} accounts={accounts} funds={transferFunds}/>
     </Modal></div>
   </DialogContext.Provider>;

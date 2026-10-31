@@ -1,4 +1,6 @@
 import "server-only";
+import {fundMembership,fundShare} from "./allocation";
+import {PUBLIC_DIRECTORY_TAG,publicFundTag} from "./cache-tags";
 import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { fundTotals } from "./ledger";
@@ -7,15 +9,17 @@ import { matchesPublicTransaction } from "./public-search";
 export const PUBLIC_PAGE_SIZE = 100;
 export const PUBLIC_TAG = "public-ledger";
 const options = { revalidate: 1200, tags: [PUBLIC_TAG] };
-const publicFundSummary = unstable_cache(
-  async (slug: string, direction: "CREDIT" | "DEBIT") => {
+const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true}}),["public-fund-identity-v1"],options);
+async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
+ const identity=await publicIdentity(slug);if(!identity)return null;
+ return unstable_cache(async()=>{
     const fund = await db.fund.findUnique({
       where: { slug },
       include: { account: true },
     });
     if (!fund) return null;
     const bankAccounts = await db.bankAccount.findMany({where:{id:{in:[fund.accountId,...fund.accountIds]}},select:{id:true,number:true}});
-    const where = { fundId: fund.id, direction, entryStatus: "POSTED" };
+    const where = { ...fundMembership(fund.id), direction, entryStatus: "POSTED" };
     const [summary, count, transfers, sync] = await Promise.all([
       fundTotals(),
       db.bankTransaction.count({ where }),
@@ -73,20 +77,21 @@ const publicFundSummary = unstable_cache(
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v5"],
-  options,
-);
+  ["public-fund-summary-v6",slug,direction],
+  {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
+ )();
+}
 
 // Cache public, masked rows by stable page, never by a visitor's search term.
-const publicTransactionPage = unstable_cache(async (fundId: string, direction: "CREDIT" | "DEBIT", page: number) => {
+const publicTransactionPage = async (fundId: string, direction: "CREDIT" | "DEBIT", page: number) => unstable_cache(async()=>{
   const rows = await db.bankTransaction.findMany({
-    where:{fundId,direction,entryStatus:"POSTED"},
-    select:{id:true,amount:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{id:true,text:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}]}},
+    where:{...fundMembership(fundId),direction,entryStatus:"POSTED"},
+    select:{id:true,fundId:true,allocations:{select:{fundId:true,amount:true}},amount:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{id:true,text:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}]}},
     orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*PUBLIC_PAGE_SIZE,take:PUBLIC_PAGE_SIZE,
   });
-  return rows.map(r=>({id:r.id,account:r.account.number,amount:r.amount.toString(),at:r.occurredAt.toISOString(),
+  return rows.map(r=>({id:r.id,account:r.account.number,amount:fundShare(r,fundId).toString(),at:r.occurredAt.toISOString(),
     notes:r.notes.map(n=>({id:n.id,text:maskPhones(n.text),at:n.createdAt.toISOString()})),narrative:r.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(r.narrative),name:maskPhones(r.displayName)}));
-},["public-transaction-page-v2"],options);
+},["public-transaction-page-v3",fundId,direction,String(page)],{...options,tags:[PUBLIC_TAG,publicFundTag(fundId)]})();
 
 export async function publicFund(slug: string, page: number, direction: "CREDIT" | "DEBIT", search = "") {
   const fund=await publicFundSummary(slug,direction);
@@ -120,34 +125,39 @@ export function publicFundDTO(fund:NonNullable<Awaited<ReturnType<typeof publicF
   const {id,cutover,...result}=fund;void id;void cutover;return result;
 }
 
-const DIRECTORY_PAGE_SIZE=12,SEARCH_BLOCK_SIZE=250;
+const DIRECTORY_PAGE_SIZE=12;
 const directoryFunds=unstable_cache(async()=>{
   const totals=await fundTotals();
-  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,name:maskPhones(f.name),description:maskPhones(f.description),income:f.income.toString(),expense:f.expense.toString(),balance:f.balance.toString(),count:f.count}));
-},["public-directory-funds-v2"],options);
-// Cache stable masked blocks, not arbitrary visitor search strings.
-const directoryTransactionBlock=unstable_cache(async(page:number)=>{
- const rows=await db.bankTransaction.findMany({where:{entryStatus:"POSTED",fund:{status:"ACTIVE",publicListed:true}},select:{fundId:true,amount:true,direction:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{text:true}}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*SEARCH_BLOCK_SIZE,take:SEARCH_BLOCK_SIZE});
- return rows.map(r=>({fundId:r.fundId!,direction:r.direction,amount:r.amount.toString(),at:r.occurredAt.toISOString(),narrative:r.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(r.narrative),name:maskPhones(r.displayName),account:r.account.number,notes:r.notes.map(n=>({text:maskPhones(n.text)}))}));
-},["public-directory-transactions-v2"],options);
+  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,name:maskPhones(f.name),description:maskPhones(f.description),income:f.income.toString(),expense:f.expense.toString(),balance:f.balance.toString(),count:f.count,incomeCount:f.incomeCount,expenseCount:f.expenseCount}));
+},["public-directory-funds-v3"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
 export async function publicDirectory(search="",requestedPage=1){
  const funds=await directoryFunds(),query=search.trim().slice(0,100);
- type Preview=Omit<Awaited<ReturnType<typeof directoryTransactionBlock>>[number],"fundId">;
+ type Preview=Omit<Awaited<ReturnType<typeof publicTransactionPage>>[number],"id">&{direction:"CREDIT"|"DEBIT"};
  const matched=new Map<string,{count:number;rows:Preview[]}>();
  if(query){
-  const pages=Math.ceil(funds.reduce((n,f)=>n+f.count,0)/SEARCH_BLOCK_SIZE),active=new Set(funds.map(f=>f.id));
-  for(let first=1;first<=pages;first+=3){
-   const batches=await Promise.all(Array.from({length:Math.min(3,pages-first+1)},(_,i)=>directoryTransactionBlock(first+i)));
-   for(const rows of batches)for(const row of rows)if(active.has(row.fundId)&&matchesPublicTransaction(row,query)){
-    const group=matched.get(row.fundId)??{count:0,rows:[]};group.count++;
-    if(group.rows.length<3){const {fundId,...publicRow}=row;void fundId;group.rows.push(publicRow)}
-    matched.set(row.fundId,group);
+  const batch:(()=>Promise<void>)[]=[];
+  const flush=async()=>{await Promise.all(batch.map(load=>load()));batch.length=0};
+  for(const fund of funds)for(const direction of ["CREDIT","DEBIT"] as const){
+   const pages=Math.ceil((direction==="CREDIT"?fund.incomeCount:fund.expenseCount)/PUBLIC_PAGE_SIZE);
+   for(let page=1;page<=pages;page++){
+    const currentPage=page;
+    batch.push(async()=>{
+     const rows=await publicTransactionPage(fund.id,direction,currentPage);
+     for(const row of rows)if(matchesPublicTransaction(row,query)){
+      const group=matched.get(fund.id)??{count:0,rows:[]};group.count++;
+      const {id,...publicRow}=row;void id;
+      group.rows.push({...publicRow,direction});group.rows.sort((a,b)=>b.at.localeCompare(a.at));group.rows=group.rows.slice(0,3);
+      matched.set(fund.id,group);
+     }
+    });
+    if(batch.length===3)await flush();
    }
   }
+  if(batch.length)await flush();
  }
  const terms=normalize(query).split(" ").filter(Boolean);
  const results=funds.filter(f=>!query||matched.has(f.id)||terms.every(t=>normalize(`${f.code} ${f.name}`).includes(t)));
  const page=Math.min(Math.max(1,Math.floor(requestedPage)||1),Math.max(1,Math.ceil(results.length/DIRECTORY_PAGE_SIZE)));
- return {search:query,page,pageSize:DIRECTORY_PAGE_SIZE,count:results.length,activeCount:funds.length,transactionCount:[...matched.values()].reduce((n,g)=>n+g.count,0),funds:results.slice((page-1)*DIRECTORY_PAGE_SIZE,page*DIRECTORY_PAGE_SIZE).map(f=>{const {id,...publicFund}=f;return {...publicFund,matches:matched.get(id)?.count??0,previews:matched.get(id)?.rows??[]}})};
+ return {search:query,page,pageSize:DIRECTORY_PAGE_SIZE,count:results.length,activeCount:funds.length,transactionCount:[...matched.values()].reduce((n,g)=>n+g.count,0),funds:results.slice((page-1)*DIRECTORY_PAGE_SIZE,page*DIRECTORY_PAGE_SIZE).map(f=>{const {id,incomeCount,expenseCount,...publicFund}=f;void incomeCount;void expenseCount;return {...publicFund,matches:matched.get(id)?.count??0,previews:matched.get(id)?.rows??[]}})};
 }
 export type PublicDirectoryDTO=Awaited<ReturnType<typeof publicDirectory>>;

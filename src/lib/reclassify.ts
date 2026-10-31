@@ -56,7 +56,7 @@ export async function startTabReclassification(input: ReclassificationScope, act
     const superseded = await tx.tabReclassification.updateMany({where:{scopeKey:key,actor:actorStamp(actor).actor,status:{in:["CHECKING","READY","APPLYING"]}},data:{status:"STALE",error:"Đã bắt đầu một lượt kiểm tra mới cho cùng tab và bộ lọc.",finishedAt:new Date()}});
     const run=await tx.tabReclassification.create({data:{scopeKey:key,scope,ruleHash:hash(rules),...actorStamp(actor)}});
     const conditions=Prisma.sql`"occurredAt" >= ${range.start} AND "occurredAt" < ${range.end}
-      AND ${scope.tab==="FUND" ? Prisma.sql`"fundId" = ${scope.fundId}` : Prisma.sql`"fundId" IS NULL`}
+      AND ${scope.tab==="FUND" ? Prisma.sql`(("fundId" = ${scope.fundId} AND NOT EXISTS(SELECT 1 FROM "FundAllocation" fa WHERE fa."transactionId"="BankTransaction".id)) OR EXISTS(SELECT 1 FROM "FundAllocation" fa WHERE fa."transactionId"="BankTransaction".id AND fa."fundId"=${scope.fundId}))` : Prisma.sql`"fundId" IS NULL`}
       ${scope.account?Prisma.sql`AND "accountId" = ${scope.account}`:Prisma.empty}
       ${scope.type?Prisma.sql`AND "direction"::text = ${scope.type}`:Prisma.empty}
       ${scope.q?Prisma.sql`AND (POSITION(LOWER(${scope.q}) IN LOWER(narrative)) > 0 OR POSITION(LOWER(${scope.q}) IN LOWER("refId")) > 0)`:Prisma.empty}`;

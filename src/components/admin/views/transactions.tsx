@@ -148,11 +148,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                       {vnd(r.amount)}
                     </td>
                     <td className="classification-cell">
-                      <span
-                        className={`badge ${r.fund ? "active" : "pending"}`}
-                      >
-                        {r.fund?.code ?? "Chờ phân loại"}
-                      </span>
+                      {r.allocations.length&&!params.fund?<div className="transaction-allocation-labels">{r.allocations.map(a=><span key={a.id} className="badge active">{a.fund.code} · {vnd(a.amount)}</span>)}</div>:<span className={`badge ${r.fund?"active":"pending"}`}>{r.fund?.code??"Chờ phân loại"}</span>}
                       <span className="sheet-assignment" title={`${r.assignment === "MANUAL" ? "Gán tay" : r.assignment === "AUTO" ? "Tự động" : "Chưa gán"} · ${r.matchReason}`}>
                         {r.assignment === "MANUAL" ? "Tay" : r.assignment === "AUTO" ? "Tự động" : ""}
                       </span>
@@ -165,7 +161,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                         <span className="badge neutral">
                           Đã đối chiếu — không tính lặp
                         </span>
-                      ) : (
+                      ) : r.allocations.length&&!params.fund ? <small>Chọn tab thiện pháp để đổi phần phân bổ.</small> : (
                         <Modal
                           title={
                             r.fund
@@ -193,11 +189,12 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                               name="transactionId"
                               value={r.id}
                             />
+                            {params.fund&&<input type="hidden" name="sourceFundId" value={params.fund}/>}
                             <label>
                               Thiện pháp
                               <select
                                 name="fundId"
-                                defaultValue={r.fundId ?? ""}
+                                defaultValue={r.fund?.id ?? ""}
                                 required
                               >
                                 <option value="" disabled>

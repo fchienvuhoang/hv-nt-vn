@@ -186,10 +186,35 @@ Gửi `/minh-bach` để thí chủ xem danh sách thiện pháp `ACTIVE`, tổn
 
 Tìm kiếm trên `/minh-bach` gọi REST `/api/public/funds?q=...&page=...`, giữ URL và Back/Forward bằng History API. Tìm theo mã/tên thiện pháp hoặc nội dung/người chuyển/số tiền/ghi chú công khai ở cả hai chiều thu chi. Mỗi thiện pháp trả tối đa ba khoản xem trước và số kết quả đầy đủ; nút chi tiết giữ từ khóa và chiều giao dịch. Khoản chưa phân loại, nghi trùng, bản gộp và thiện pháp tạm dừng/hoàn thành không nằm trong kết quả tổng hợp.
 
-Cache server dùng chung tag `public-ledger`, TTL 20 phút, được vô hiệu hóa sau thay đổi. Danh sách và các khối giao dịch được cache theo trang cố định, không theo từ khóa của khách. Chỉ tìm trên DTO đã che số điện thoại; không gửi source thô hoặc danh tính quản trị viên. Kiểm thử `npm run test:public-directory` cần database test localhost trống và QA server dùng cùng database.
+Cache server dùng chung tag `public-ledger`, TTL 20 phút, được vô hiệu hóa sau thay đổi. Danh sách tổng hợp dùng cache riêng; giao dịch cache theo từng thiện pháp, chiều và trang cố định, không theo từ khóa của khách. Tìm kiếm tổng hợp tái sử dụng các trang đã che dữ liệu này. Chỉ tìm trên DTO đã che số điện thoại; không gửi source thô hoặc danh tính quản trị viên. Kiểm thử `npm run test:public-directory` cần database test localhost trống và QA server dùng cùng database.
 
 ## Ghim thiện pháp trong quản trị
 
 Nút ghim cạnh mã thiện pháp lưu `Fund.pinnedAt`; các mục được ghim xếp đầu danh sách quản trị, mục ghim gần nhất đứng trước. Bỏ ghim trả về thứ tự mặc định. Bộ lọc/trạng thái vẫn được giữ; ghim không thay đổi trang công khai hoặc số liệu tài chính. REST `PATCH /api/admin/funds/pin` có kiểm tra quyền/nguồn yêu cầu, lưu người sửa và nhật ký thao tác. Áp dụng migration `20261031110000_fund_pins`.
 
 Trang tổng hợp `/minh-bach` hiển thị dạng danh sách dọc, chỉ lấy thiện pháp `ACTIVE` và `publicListed=true`. Nút con mắt ngay cột Công khai trong bảng quản trị bật/tắt và lưu ngay qua REST `PATCH /api/admin/funds/visibility`, có toast, ghi người sửa và lịch sử thao tác. Mặc định false (kể cả dữ liệu cũ); quản trị cần chủ động bật từng thiện pháp. `/t` chuyển hướng sang `/minh-bach` và giữ từ khóa/phân trang; URL chi tiết `/t/[slug]` được giữ nguyên. Tùy chọn chỉ kiểm soát danh sách/tìm kiếm tổng hợp, không khóa link chi tiết đã chia sẻ. Áp dụng migration `20261031120000_public_listing`.
+
+## Giảm database operations (01/11/2026)
+
+- Giữ cron mỗi phút, đủ 10 lượt quét trong ngày và hai lượt đối soát ngày trước, khóa PostgreSQL và lịch sử mọi invocation.
+- Đọc các job đang chờ và khóa lịch dự kiến trong một truy vấn; tạo các job thiếu theo lô. Không upsert lại từng slot đã tồn tại mỗi phút. Trạng thái còn việc được tính từ các job đã nạp.
+- Kiểm tra sourceId/hash một lần mỗi trang; trang không đổi/rỗng bỏ qua đọc từ khóa và đối chiếu Excel. Giao dịch nguồn bị sửa vẫn được cập nhật, giữ phân loại thủ công và ghi audit. Cursor job và counters invocation được ghi cùng một SQL CTE trong transaction nhập trang, nên vẫn khớp nếu tiến trình dừng sau commit.
+- Nguồn số dư vẫn được gọi mỗi phút. Lưu ngay khi tổng thu/chi thay đổi hoặc có lỗi/hồi phục; số dư không đổi và lỗi lặp được ghi heartbeat mỗi 5 phút. `sourceFetchedAt` là thời điểm bản thành công được lưu gần nhất, không phải thời điểm kiểm tra mới nhất từng phút. Không dùng RAM của instance làm khóa/cache tài chính.
+- `/api/admin/revision` kiểm tra phiên bản dữ liệu qua một truy vấn cache 30 giây. Các màn hình quản trị đang mở kiểm tra phiên bản mỗi phút và chỉ đọc lại dữ liệu khi phần liên quan thay đổi; thao tác lưu vẫn làm mới ngay. Trạng thái sync được cache dùng chung 15 giây; bootstrap tái dùng accounts/states đã đọc.
+- Đồng bộ có giao dịch thay đổi chỉ vô hiệu hóa cache quản trị, danh sách tổng hợp và các thiện pháp bị ảnh hưởng. Cache trang/chiều giao dịch của các thiện pháp khác được giữ. Thay đổi cấu hình thủ công vẫn dùng invalidation rộng để tránh bỏ sót.
+
+Đo trên database test, cùng 3 invocation không đổi, 2 tài khoản × 2 chiều, 80 giao dịch đã biết: trước 198 câu SQL, sau 117 (giảm 41%). Có tính câu điều khiển transaction; đây là số đo SQL thử nghiệm, không phải số bill Prisma thực tế hoặc cam kết tiết kiệm cho mọi lưu lượng. Chưa bao gồm lợi ích giảm polling quản trị/cache công khai. `npm run test:operations` bảo vệ ngân sách SQL của tình huống này và kiểm tra sửa giao dịch nguồn, phân loại thủ công, counters, heartbeat. Không cần Redis hoặc migration mới cho bản tối ưu này.
+
+## Điều chuyển các phần hùn phước (01/11/2026)
+
+Modal Điều chuyển có hai cách: nhập số tiền cần cắt, hoặc nhập tổng hùn phước muốn giữ lại ở nguồn (không phải số dư sau chi). Hệ thống lấy các khoản CREDIT/POSTED mới nhất trở ngược, chuyển trọn phần hoặc tách khoản cuối để đủ đúng từng đồng. Có thể chọn cả hai tài khoản hoặc giới hạn một tài khoản; mỗi phần vẫn thuộc tài khoản ngân hàng gốc và không được làm số dư khả dụng của nguồn trong tài khoản đó bị âm. Nếu lịch sử chỉ có số tổng mà thiếu giao dịch chi tiết thì phải nhập đủ chi tiết trước khi cắt phần đó.
+
+REST `POST /api/admin/transfers/preview` trả toàn bộ kế hoạch, bản gốc/giữ lại/chuyển đi và fingerprint. `POST /api/admin/transfers/allocate` xác minh lại kế hoạch trong transaction Serializable; dữ liệu đổi thì yêu cầu xem trước lại. Request UUID chống gửi lặp. Ghi các phần, nhật ký chi tiết và ghi chú công khai theo lô trong cùng transaction. Modal chỉ đóng sau khi lưu thành công.
+
+`FundAllocation` chỉ xuất hiện khi một giao dịch được chia cho nhiều thiện pháp; số tiền, nội dung, refId, tài khoản và dữ liệu gốc của `BankTransaction` không bị sửa bởi điều chuyển. Sổ thiện pháp và các trang giao dịch chiếu theo phần phân bổ; trang tất cả/thống kê ngày vẫn tính giao dịch ngân hàng gốc một lần. Các phần đã điều chuyển là MANUAL, không bị phân loại tự động lại. Có thể gán lại phần từ tab thiện pháp hoặc modal Xem giao dịch. Ghi chú gốc được dùng chung và che số điện thoại trên các trang công khai.
+
+Bảng lịch sử có người thực hiện, thời gian, mức thành tựu, lý do và nút Xem các giao dịch; chi tiết `TransferItem` giữ snapshot tại lúc chuyển. Có thể đảo cả lượt khi các phần tiền và số dư vẫn còn đủ; lượt gốc và các ghi chú vẫn được giữ. Các bút toán cũ có mode BALANCE, không tự chuyển thành các giao dịch giả; mode ALLOCATION mới không được cộng/trừ thêm như bút toán số dư để tránh tính tiền hai lần.
+
+Đồng bộ không thay lại phân loại thủ công. Nếu nguồn sửa số tiền của một khoản đã tách, các phần đã chuyển giữ cố định và phần còn lại ở thiện pháp gốc được điều chỉnh; nếu nguồn nhỏ hơn phần đã chuyển hoặc đổi chiều thì dừng trang đó, yêu cầu xử lý/đảo các điều chuyển trước. Đối chiếu Excel tự động mang theo các phần và chi tiết lịch sử sang giao dịch ngân hàng tương ứng.
+
+Migration: `20261101010000_allocation_transfers`. Kiểm thử: `npm run test:allocation-transfers`, cùng bài REST `tests/allocation-transfers-http.mts` trên database QA riêng. Không dùng giao dịch thật để kiểm thử điều chuyển.

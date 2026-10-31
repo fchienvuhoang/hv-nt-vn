@@ -23,14 +23,33 @@ function read<T>(path:string,ttl:number,force=false):Promise<T>{
   const promise=adminRequest<T>(path).then(data=>{entries.set(path,{data,at:Date.now()});if(entries.size>50)entries.delete(entries.keys().next().value!);return data}).finally(()=>pending.delete(path));
   pending.set(path,promise);return promise;
 }
+type Revision={ledger:string;source:string;sync:string;day:string};
+function resourceRevision(path:string,version:Revision){
+ if(path.startsWith("sync?"))return version.sync+version.ledger;
+ if(path==="bootstrap"||path==="transaction-summary")return version.ledger+version.source+version.day;
+ return version.ledger+version.day;
+}
 export function useAdminResource<T>(path:string,ttl=15000,enabled=true){
   const [state,setState]=useState<{key:string;data?:T;error?:string;loading:boolean}>(()=>({key:path,data:entries.get(path)?.data as T|undefined,loading:true}));
   useEffect(()=>{
     if(!enabled)return;
-    let alive=true,sequence=0;
-    async function load(force=false){const current=++sequence;setState(previous=>({key:path,data:previous.key===path?previous.data:entries.get(path)?.data as T|undefined,loading:true}));try{const data=await read<T>(path,ttl,force);if(alive&&current===sequence)setState({key:path,data,loading:false})}catch(cause){if(alive&&current===sequence)setState(previous=>({...previous,loading:false,error:cause instanceof Error?cause.message:"Không tải được dữ liệu"}))}}
+    let alive=true,sequence=0,lastRevision:string|undefined,checking=false;
+    async function load(force=false){const current=++sequence;setState(previous=>({key:path,data:previous.key===path?previous.data:entries.get(path)?.data as T|undefined,loading:true}));try{const data=await read<T>(path,ttl,force);if(alive&&current===sequence)setState({key:path,data,loading:false});return true}catch(cause){if(alive&&current===sequence)setState(previous=>({...previous,loading:false,error:cause instanceof Error?cause.message:"Không tải được dữ liệu"}));return false}}
     void load();
-    const refresh=()=>{if(!document.hidden)void load(true)},visible=()=>{if(!document.hidden&&Date.now()-(entries.get(path)?.at??0)>ttl)void load()};
+    async function check(){
+      if(document.hidden||checking)return;checking=true;
+      try{
+        const version=resourceRevision(path,await read<Revision>("revision",15000));
+        if(!alive)return;
+        if(!entries.has(path)||lastRevision!==undefined&&lastRevision!==version){if(!await load(true))return;}
+        lastRevision=version;
+      }catch{/* Keep existing data on a transient version-check failure. */}
+      finally{checking=false;}
+    }
+    void check();
+    const refresh=()=>{if(!document.hidden)void load(true)},visible=()=>{
+      if(!document.hidden&&Date.now()-(entries.get(path)?.at??0)>ttl)void check();
+    };
     window.addEventListener("admin:data-changed",refresh);document.addEventListener("visibilitychange",visible);
     const timer=setInterval(visible,60000);
     return()=>{alive=false;clearInterval(timer);window.removeEventListener("admin:data-changed",refresh);document.removeEventListener("visibilitychange",visible)};
@@ -69,3 +88,6 @@ export const getFundTransactions=(input:Parameters<typeof Actions.getFundTransac
 export const startReclassification=(scope:Parameters<typeof Actions.startReclassification>[0])=>write<Result<"startReclassification">>("reclassification","POST",scope,false);
 export const advanceReclassification=(input:Parameters<typeof Actions.advanceReclassification>[0])=>write<Result<"advanceReclassification">>("reclassification","PATCH",input,input.phase==="APPLY");
 export const getLatestReclassification=(scope:Parameters<typeof Actions.getLatestReclassification>[0])=>adminRequest<Result<"getLatestReclassification">>(`reclassification?${new URLSearchParams({scope:JSON.stringify(scope)})}`);
+
+export const previewTransfer=(input:import("./allocation-transfers").AllocationTransferInput)=>adminRequest<import("./allocation-transfers").AllocationTransferPreview>("transfers/preview",{method:"POST",body:JSON.stringify(input),headers:{"Content-Type":"application/json"}});
+export const createAllocationTransfer=(input:Parameters<typeof Actions.createAllocationTransfer>[0])=>write<Result<"createAllocationTransfer">>("transfers/allocate","POST",input);

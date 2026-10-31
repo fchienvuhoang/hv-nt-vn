@@ -17,6 +17,7 @@ export async function scheduledSync(now = new Date()) {
   let acquired = false;
   let quickPages = 0, fullPages = 0, inserted = 0, updated = 0;
   const jobIds: string[] = [];
+  const affectedFundIds=new Set<string>();
   const deadline = Date.now() + Math.max(15000, Math.min(45000, Number(process.env.SYNC_BUDGET_MS) || 20000));
   const maxPages = Math.max(4, Math.min(30, Number(process.env.SYNC_MAX_PAGES) || 8));
   try {
@@ -27,7 +28,7 @@ export async function scheduledSync(now = new Date()) {
     }
     const accounts = await db.bankAccount.findMany({ orderBy: { number: "asc" }, include: { syncStates: { select: { completedTo: true, direction: true } } } });
     if (!accounts.length) throw new Error("Chưa có tài khoản sao kê");
-    const balances = await refreshSourceBalances(accounts);
+    const balances = await refreshSourceBalances(accounts,now);
     const today = localDate(now);
     for (const account of accounts) {
       if (!account.syncFrom) {
@@ -36,27 +37,22 @@ export async function scheduledSync(now = new Date()) {
       }
     }
     const progress: Progress = accounts.flatMap(a => (["CREDIT", "DEBIT"] as const).map(direction => ({ accountId: a.id, number: a.number, direction, page: 1, done: false })));
-    for (const slot of dueSyncSlots(now)) {
-      await db.syncJob.upsert({ where: { slotKey: slot.slotKey }, create: { ...slot, progress }, update: {} });
+    const planned:Prisma.SyncJobCreateManyInput[]=dueSyncSlots(now).map(slot=>({...slot,progress}));
+    const yesterday=localDate(new Date(startOfVietnamDay(today).getTime()-86400000));
+    for(const account of accounts){
+      const configuredFrom=account.syncFrom??account.cutoverAt;
+      const completed=account.syncStates.length===2&&account.syncStates.every(s=>s.completedTo)?Math.min(...account.syncStates.map(s=>s.completedTo!.getTime())):null;
+      const from=configuredFrom&&completed!==null?new Date(Math.max(configuredFrom.getTime(),completed)):configuredFrom;
+      if(!from||localDate(from)>=today||account.syncStates.length===2&&account.syncStates.every(s=>s.completedTo&&s.completedTo>=startOfVietnamDay(today)))continue;
+      planned.push({slotKey:`HISTORY:${account.id}:${localDate(from)}:${yesterday}`,kind:"HISTORY",targetDate:localDate(from),rangeTo:yesterday,scheduledAt:now,progress:progress.filter(s=>s.accountId===account.id)});
     }
-    // Preserve configured historical synchronization, separately from small live scans.
-    const yesterday = localDate(new Date(startOfVietnamDay(today).getTime() - 86400000));
-    for (const account of accounts) {
-      const configuredFrom = account.syncFrom ?? account.cutoverAt;
-      const completed = account.syncStates.length === 2 && account.syncStates.every(s => s.completedTo)
-        ? Math.min(...account.syncStates.map(s => s.completedTo!.getTime())) : null;
-      const from = configuredFrom && completed !== null ? new Date(Math.max(configuredFrom.getTime(), completed)) : configuredFrom;
-      if (!from || localDate(from) >= today) continue;
-      const covered = account.syncStates.length === 2 && account.syncStates.every(s => s.completedTo && s.completedTo >= startOfVietnamDay(today));
-      if (covered) continue;
-      await db.syncJob.upsert({ where: { slotKey: `HISTORY:${account.id}:${localDate(from)}:${yesterday}` },
-        create: { slotKey: `HISTORY:${account.id}:${localDate(from)}:${yesterday}`, kind: "HISTORY", targetDate: localDate(from), rangeTo: yesterday, scheduledAt: now, progress: progress.filter(s => s.accountId === account.id) }, update: {} });
-    }
-    // Persist unfinished quick scans across calls, rather than losing a busy minute.
-    let quick = await db.syncJob.findFirst({ where: { kind: "QUICK", status: { in: ["QUEUED", "RUNNING", "PARTIAL", "FAILED"] } }, orderBy: { scheduledAt: "asc" } });
-    if (!quick) quick = await db.syncJob.create({ data: { slotKey: `QUICK:${invocation.id}`, kind: "QUICK", targetDate: today, scheduledAt: now, progress } });
-    let full = await db.syncJob.findFirst({ where: { kind: { in: ["FULL_DAY", "PREVIOUS_DAY"] }, status: { in: ["QUEUED", "RUNNING", "PARTIAL", "FAILED"] } }, orderBy: { scheduledAt: "asc" } });
-    if (!full) full = await db.syncJob.findFirst({ where: { kind: "HISTORY", status: { in: ["QUEUED", "RUNNING", "PARTIAL", "FAILED"] } }, orderBy: { scheduledAt: "asc" } });
+    const openStatuses=["QUEUED","RUNNING","PARTIAL","FAILED"];
+    const jobs=await db.syncJob.findMany({where:{OR:[{status:{in:openStatuses}},{slotKey:{in:planned.map(j=>j.slotKey)}}]},orderBy:[{scheduledAt:"asc"},{id:"asc"}]});
+    const missing=planned.filter(j=>!jobs.some(old=>old.slotKey===j.slotKey));
+    if(!jobs.some(j=>j.kind==="QUICK"&&openStatuses.includes(j.status)))missing.push({slotKey:`QUICK:${invocation.id}`,kind:"QUICK",targetDate:today,scheduledAt:now,progress});
+    if(missing.length)jobs.push(...await db.syncJob.createManyAndReturn({data:missing,skipDuplicates:true}));
+    const queued=jobs.filter(j=>openStatuses.includes(j.status)).sort((a,b)=>a.scheduledAt.getTime()-b.scheduledAt.getTime()||a.id.localeCompare(b.id));
+    const quick=queued.find(j=>j.kind==="QUICK"),full=queued.find(j=>["FULL_DAY","PREVIOUS_DAY"].includes(j.kind))??queued.find(j=>j.kind==="HISTORY");
     // A full-day batch gets a turn every other call if quick work is backlogged.
     // This prevents reconciliation starvation on slow upstream responses.
     const fullFirst = full && Math.floor(now.getTime() / 60000) % 2 === 0;
@@ -81,17 +77,29 @@ export async function scheduledSync(now = new Date()) {
         const result = await fetchSourcePage(stream.number, stream.direction, job.targetDate, job.rangeTo ?? job.targetDate, page, Math.max(1000, Math.min(10000, deadline - Date.now() - 5000)), pageSize);
         if (result.total > 0 && page <= Math.ceil(result.total / pageSize) && !result.items.length) throw new Error("Nguồn trả trang rỗng trước khi hết dữ liệu");
         const items = [...new Map(result.items.map(i => [i.id, i])).values()].filter(i => parseSourceTime(i.transactionTime) >= syncFrom && localDate(parseSourceTime(i.transactionTime)) >= job.targetDate && localDate(parseSourceTime(i.transactionTime)) <= (job.rangeTo ?? job.targetDate));
-        const known = job.kind === "QUICK" && items.length > 0 ? await db.bankTransaction.count({ where: { accountId: account.id, sourceId: { in: items.map(i => i.id) } } }) : 0;
-        // Quick scans may stop at a fully-known page; whole-day scans NEVER do.
-        const done = page >= Math.ceil(result.total / pageSize) || (job.kind === "QUICK" && known === items.length && items.length > 0);
-        const previous = { page: stream.page, done: stream.done };
-        stream.page++; stream.done = done;
+        const previous={page:stream.page,done:stream.done};
         try {
           const outcome = await serializable(async tx => {
             const lease = await tx.syncLease.updateMany({ where: { id: "bank-sync", token, expiresAt: { gt: new Date() } }, data: { expiresAt: new Date(Date.now() + 120000) } });
             if (!lease.count) throw new Error("Lượt đồng bộ đã hết quyền xử lý");
             const saved = await ingestBankPage(tx, account.id, items, "scheduler");
-            await tx.syncJob.update({ where: { id: job.id }, data: { progress: work as unknown as Prisma.InputJsonValue, pages: { increment: 1 }, inserted: { increment: saved.inserted }, updated: { increment: saved.updated } } });
+            // Reuse the ingest lookup; hash changes are still ingested before a quick stop.
+            const done=page>=Math.ceil(result.total/pageSize)||(job.kind==="QUICK"&&items.length>0&&saved.knownCount===items.length);
+            stream.page=page+1;stream.done=done;
+            // Persist cursor and per-invocation counters atomically in one SQL operation.
+            // A process termination cannot leave imported money ahead of its history counters.
+            const recorded=await tx.$executeRaw`
+              WITH job_saved AS (
+                UPDATE "SyncJob" AS j SET progress=${JSON.stringify(work)}::jsonb,
+                  pages=j.pages+1, inserted=j.inserted+${saved.inserted}, updated=j.updated+${saved.updated}
+                WHERE j.id=${job.id} RETURNING j.id
+              )
+              UPDATE "SyncInvocation" AS i SET
+                "quickPages"=i."quickPages"+${job.kind==="QUICK"?1:0},
+                "fullPages"=i."fullPages"+${job.kind==="QUICK"?0:1},
+                inserted=i.inserted+${saved.inserted}, updated=i.updated+${saved.updated}
+              WHERE i.id=${invocation.id} AND EXISTS(SELECT 1 FROM job_saved)`;
+            if(recorded!==1)throw new Error("Không lưu được tiến độ đồng bộ");
             // Recency for today reflects complete quick passes, not old-day audits.
             if (done && job.targetDate === today) await tx.syncState.upsert({ where: { accountId_direction: { accountId: account.id, direction: stream.direction } }, create: { accountId: account.id, direction: stream.direction, lastSuccessAt: new Date() }, update: { lastSuccessAt: new Date() } });
             if (done && job.kind === "HISTORY") await tx.syncState.upsert({ where: { accountId_direction: { accountId: account.id, direction: stream.direction } }, create: { accountId: account.id, direction: stream.direction, completedTo: new Date(startOfVietnamDay(job.rangeTo ?? job.targetDate).getTime() + 86400000) }, update: { completedTo: new Date(startOfVietnamDay(job.rangeTo ?? job.targetDate).getTime() + 86400000) } });
@@ -99,15 +107,16 @@ export async function scheduledSync(now = new Date()) {
           }, deadline);
           if (job.kind === "QUICK") quickPages++; else fullPages++;
           inserted += outcome.inserted; updated += outcome.updated;
-          await db.syncInvocation.update({ where: { id: invocation.id }, data: { quickPages, fullPages, inserted, updated } });
+          for(const id of outcome.affectedFundIds)affectedFundIds.add(id);
         } catch (error) { Object.assign(stream, previous); throw error; }
       }
       const complete = work.every(s => s.done);
+      job.status=complete?"SUCCESS":"PARTIAL";
       await db.syncJob.update({ where: { id: job.id }, data: { progress: work as unknown as Prisma.InputJsonValue, status: complete ? "SUCCESS" : "PARTIAL", finishedAt: complete ? new Date() : null } });
     }
-    const pending = await db.syncJob.count({ where: { status: { in: ["QUEUED", "RUNNING", "PARTIAL", "FAILED"] } } }) > 0;
+    const pending = jobs.some(j=>openStatuses.includes(j.status));
     await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: pending ? "PARTIAL" : "SUCCESS", quickPages, fullPages, inserted, updated, finishedAt: new Date() } });
-    return { invocationId: invocation.id, quickPages, fullPages, inserted, updated, pending, balances };
+    return { invocationId: invocation.id, quickPages, fullPages, inserted, updated, pending, balances, affectedFundIds:[...affectedFundIds] };
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0,500) : "Đồng bộ thất bại";
     await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: "FAILED", quickPages, fullPages, inserted, updated, error: message, finishedAt: new Date() } });

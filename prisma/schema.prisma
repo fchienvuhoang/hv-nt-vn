@@ -48,6 +48,7 @@ model BankAccount {
   createdAt          DateTime @default(now())
 }
 model Fund {
+  allocations FundAllocation[]
   id                 String     @id @default(cuid())
   accountId          String
   account            BankAccount @relation(fields: [accountId], references: [id])
@@ -91,6 +92,8 @@ model TransactionNote {
 }
 
 model BankTransaction {
+  allocations FundAllocation[]
+  allocationTransfers TransferItem[]
   notes TransactionNote[]
   id             String      @id @default(cuid())
   accountId      String
@@ -134,6 +137,11 @@ model BankTransaction {
   updatedByName String?
 }
 model Transfer {
+  mode String @default("BALANCE")
+  targetIncome BigInt?
+  requestKey String @default("")
+  planFingerprint String @default("")
+  items TransferItem[]
   id          String   @id @default(cuid())
   requestId   String   @unique
   accountId   String?
@@ -305,4 +313,32 @@ model TabReclassificationItem {
   status String @default("PENDING")
   @@id([runId,transactionId])
   @@index([runId,status,transactionId])
+}
+
+model FundAllocation {
+ id String @id @default(cuid())
+ transactionId String
+ transaction BankTransaction @relation(fields:[transactionId],references:[id],onDelete:Cascade)
+ fundId String
+ fund Fund @relation(fields:[fundId],references:[id])
+ accountId String
+ amount BigInt
+ @@unique([transactionId,fundId])
+ @@index([fundId,accountId])
+}
+model TransferItem {
+ id String @id @default(cuid())
+ transferId String
+ transfer Transfer @relation(fields:[transferId],references:[id],onDelete:Cascade)
+ transactionId String
+ transaction BankTransaction @relation(fields:[transactionId],references:[id])
+ amount BigInt
+ originalAmount BigInt
+ sourceBefore BigInt
+ sourceAfter BigInt
+ destinationBefore BigInt
+ destinationAfter BigInt
+ snapshot Json
+ @@unique([transferId,transactionId])
+ @@index([transactionId])
 }

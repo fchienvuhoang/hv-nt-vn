@@ -15,6 +15,8 @@
     "db:studio": "prisma studio",
     "test:integration": "node --conditions=react-server --import tsx tests/integration.mts",
     "test:excel-integration": "node --conditions=react-server --import tsx tests/excel-import-integration.mts",
+    "test:allocation-transfers": "node --conditions=react-server --import tsx tests/allocation-transfers-integration.mts",
+    "test:operations": "node --conditions=react-server --import tsx tests/operations-budget-integration.mts",
     "test:scheduled-sync": "node --conditions=react-server --import tsx tests/scheduled-sync-integration.mts",
     "test:fund-keywords": "node --conditions=react-server --import tsx tests/fund-keywords-integration.mts",
     "test:reclassify": "node --conditions=react-server --import tsx tests/reclassify-integration.mts",

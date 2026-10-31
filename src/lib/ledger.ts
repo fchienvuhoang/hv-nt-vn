@@ -3,26 +3,35 @@ import { db } from "./db";
 import type { Prisma } from "@/generated/prisma/client";
 export type LedgerClient = Prisma.TransactionClient;
 export async function fundTotals(client: LedgerClient = db) {
-  const [funds, movements, sent, received] = await Promise.all([
+  const [funds, baseMovements, sent, received, allocations] = await Promise.all([
     client.fund.findMany({
       include: { account: true },
       orderBy: [{ status: "asc" }, { code: "asc" }],
     }),
     client.bankTransaction.groupBy({
       by: ["fundId", "accountId", "direction"],
-      where: { fundId: { not: null }, entryStatus: "POSTED" },
+      where: { fundId: { not: null }, entryStatus: "POSTED", allocations:{none:{}} },
       _sum: { amount: true },
       _count: true,
     }),
     client.transfer.groupBy({
       by: ["fromFundId", "accountId"],
+      where:{mode:"BALANCE"},
       _sum: { amount: true },
     }),
     client.transfer.groupBy({
       by: ["toFundId", "accountId"],
+      where:{mode:"BALANCE"},
       _sum: { amount: true },
     }),
+    client.fundAllocation.groupBy({by:["fundId","accountId"],where:{transaction:{entryStatus:"POSTED",direction:"CREDIT"}},_sum:{amount:true},_count:true}),
   ]);
+  const grouped=new Map<string,{fundId:string|null;accountId:string;direction:"CREDIT"|"DEBIT";_sum:{amount:bigint};_count:number}>();
+  for(const row of [...baseMovements,...allocations.map(a=>({...a,direction:"CREDIT" as const}))]){
+    const key=JSON.stringify([row.fundId,row.accountId,row.direction]),old=grouped.get(key);
+    grouped.set(key,{fundId:row.fundId,accountId:row.accountId,direction:row.direction,_sum:{amount:(old?._sum.amount??0n)+(row._sum.amount??0n)},_count:(old?._count??0)+row._count});
+  }
+  const movements=[...grouped.values()];
   return funds.map((fund) => {
     const txs = movements.filter((t) => t.fundId === fund.id),
       out = sent.filter((t) => t.fromFundId === fund.id),
@@ -75,6 +84,8 @@ export async function fundTotals(client: LedgerClient = db) {
       transferIn: byAccount.reduce((n, a) => n + a.transferIn, 0n),
       transferOut: byAccount.reduce((n, a) => n + a.transferOut, 0n),
       count: byAccount.reduce((n, a) => n + a.count, 0),
+      incomeCount:txs.filter(t=>t.direction==="CREDIT").reduce((n,t)=>n+t._count,0),
+      expenseCount:txs.filter(t=>t.direction==="DEBIT").reduce((n,t)=>n+t._count,0),
     };
   });
 }
