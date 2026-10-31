@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PublicLink } from "@/components/public-link";
+import { AdminLink } from "@/components/admin/admin-link";
 import Image from "next/image";
 import { ArrowUpRight, Sprout, Check, Pause, Circle } from "lucide-react";
 import { vnd } from "@/lib/domain";
@@ -9,8 +11,9 @@ export function Brand({
   href?: string;
   featured?: boolean;
 }) {
+  const BrandLink=href.startsWith("/admin")?AdminLink:href.startsWith("/t/")?PublicLink:Link;
   return (
-    <Link href={href} className={`brand${featured ? " brand-featured" : ""}`}>
+    <BrandLink href={href} className={`brand${featured ? " brand-featured" : ""}`}>
       <Image
         src="/branding/hoc-vien-nguyen-thuy-viet-nam.png"
         alt="Logo Học Viện Nguyên Thủy Việt Nam"
@@ -23,7 +26,7 @@ export function Brand({
       <span>
         Hùn phước<small>Học Viện Nguyên Thủy Việt Nam</small>
       </span>
-    </Link>
+    </BrandLink>
   );
 }
 export function Status({ status }: { status: string }) {
@@ -140,6 +143,7 @@ export function Pagination({
   pageSize?: number;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
+  const PageLink=base.startsWith("/admin")?AdminLink:base.startsWith("/t/")?PublicLink:Link;
   return (
     <div className="pagination">
       <span>
@@ -147,14 +151,14 @@ export function Pagination({
       </span>
       <div>
         {page > 1 && (
-          <Link className="button subtle" href={`${base}&page=${page - 1}`}>
+          <PageLink className="button subtle" href={`${base}&page=${page - 1}`}>
             ← Trước
-          </Link>
+          </PageLink>
         )}
         {page < pages && (
-          <Link className="button subtle" href={`${base}&page=${page + 1}`}>
+          <PageLink className="button subtle" href={`${base}&page=${page + 1}`}>
             Sau →
-          </Link>
+          </PageLink>
         )}
       </div>
     </div>

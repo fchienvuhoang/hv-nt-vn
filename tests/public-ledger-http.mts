@@ -13,6 +13,7 @@ try{
  const annotated=await db.bankTransaction.findFirstOrThrow({where:{fundId:fund.id,refId:"0"}});
  await db.transactionNote.create({data:{transactionId:annotated.id,requestId:`QA-${fund.id}`,text:"Quản trị viên đã điều chuyển NOTESEARCH 0987654321",actor:"qa-private@example.test",actorId:"PRIVATE-QA-ID",actorName:"QA admin"}});
  const noteHtml=await html("?q=notesearch");assert.equal(rowCount(noteHtml),1);assert.ok(noteHtml.includes("Ghi chú quản trị:"));assert.ok(noteHtml.includes("*******321"));assert.ok(!noteHtml.includes("0987654321"));assert.ok(!noteHtml.includes("PRIVATE-QA-ID"));assert.ok(!noteHtml.includes("qa-private@example.test"));
+ const apiResponse=await fetch(`${origin}/api/public/funds/${fund.slug}?q=notesearch`);assert.equal(apiResponse.status,200);assert.match(apiResponse.headers.get("content-type")??"",/application\/json/);const publicJson=await apiResponse.text();const publicData=JSON.parse(publicJson);assert.equal(publicData.rows.length,1);assert.ok(!("id" in publicData));for(const hidden of ["0987654321","0912345678","qa-private@example.test","PRIVATE-QA-ID"])assert.ok(!publicJson.includes(hidden));
  const first=await html();assert.equal(rowCount(first),100);assert.ok(first.includes("205<!-- --> giao dịch"));
  assert.equal(rowCount(await html("?page=2")),100);assert.equal(rowCount(await html("?page=3")),5);
  const found=await html("?q=beyondpage");assert.equal(rowCount(found),1);assert.ok(found.includes("BEYONDPAGE"),"search must reach a transaction beyond the first 100 rows");

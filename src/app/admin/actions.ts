@@ -8,7 +8,7 @@ import { requireAdminActor } from "@/lib/auth";
 import { actorStamp, createdStamp, updatedStamp, type Actor } from "@/lib/actor";
 import { serializable } from "@/lib/ledger";
 import { validateFundKeywords, FundKeywordError } from "@/lib/fund-keywords";
-import { startTabReclassification, advanceTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
+import { startTabReclassification, advanceTabReclassification, latestTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
 import { PUBLIC_TAG } from "@/lib/public-data";
 import { synchronize } from "@/lib/sync";
 import { transferFunds, reverseFundTransfer } from "@/lib/transfers";
@@ -310,4 +310,10 @@ export async function saveTransactionNote(_state:ActionState,form:FormData) {
 }
 export async function addTransactionNote(input:{requestId:string;transactionId:string;text:string}) {
   return execute(async actor=>{await appendTransactionNote(input,actor);return "Đã thêm ghi chú công khai.";});
+}
+
+export async function getLatestReclassification(scope:ReclassificationScope) {
+  const actor=await requireAdminActor();
+  try { return {run:await latestTabReclassification(scope,actor)}; }
+  catch(error) { return {error:importError(error)}; }
 }

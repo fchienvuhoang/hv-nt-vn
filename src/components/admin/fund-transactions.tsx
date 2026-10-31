@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { getFundTransactions, bulkAssignTransactions, addTransactionNote } from "@/app/admin/actions";
+import { getFundTransactions, bulkAssignTransactions, addTransactionNote } from "@/lib/admin-api";
 import type { FundTransactionList } from "@/lib/transaction-management";
 import { dateTime, vnd } from "@/lib/domain";
 import { useToast } from "@/components/toasts";

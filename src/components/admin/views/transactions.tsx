@@ -1,14 +1,14 @@
+"use client";
+import { useAdminResource } from "@/lib/admin-api";
+import type { AdminTransactions,AdminBootstrap } from "@/lib/admin-read-model";
 import { TransactionNoteEditor } from "@/components/admin/transaction-note-editor";
 import { TabReclassification } from "@/components/admin/tab-reclassification";
-import { latestTabReclassification, reclassificationScope, type ReclassificationScope } from "@/lib/reclassify";
+import type { ReclassificationScope } from "@/lib/reclassify";
 import { TransactionTabs } from "@/components/admin/transaction-tabs";
 import { transactionDates } from "@/lib/transaction-scope";
 import { SyncRecency } from "@/components/admin/sync-recency";
-import { syncAccountStatus } from "@/lib/sync-status";
-import { requireAdminActor } from "@/lib/auth";
 import { EntryReview } from "@/components/admin/entry-review";
 import { Modal } from "@/components/modal";
-import { db } from "@/lib/db";
 import {
   Empty,
   Pagination,
@@ -16,81 +16,17 @@ import {
 } from "@/components/ui";
 import { dateTime, localDate, vnd, fundUsesAccount } from "@/lib/domain";
 import { ActionForm } from "@/components/action-form";
-import { assignTransaction } from "@/app/admin/actions";
-import type { Prisma } from "@/generated/prisma/client";
-export default async function Transactions({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    page?: string;
-    pending?: string;
-    account?: string;
-    q?: string;
-    type?: string;
-    fund?: string;
-    review?: string;
-    from?: string;
-    to?: string;
-  }>;
-}) {
-  const actor = await requireAdminActor();
-  const params = await searchParams;
-  const range = transactionDates(params.from, params.to);
-  const page = pageNumber(params.page);
-  const pageSize = 100;
-  const query = (params.q ?? "").slice(0, 100);
-  const direction =
-    params.type === "CREDIT" || params.type === "DEBIT"
-      ? params.type
-      : undefined;
-  const scope: Prisma.BankTransactionWhereInput = {
-    occurredAt: { gte: range.start, lt: range.end },
-    entryStatus:
-      params.review === "1"
-        ? "REVIEW"
-        : params.review === "merged"
-          ? "MERGED"
-          : { not: "MERGED" },
-    ...(params.account ? { accountId: params.account } : {}),
-    ...(direction ? { direction } : {}),
-    ...(query
-      ? {
-          OR: [
-            { narrative: { contains: query, mode: "insensitive" } },
-            { refId: { contains: query, mode: "insensitive" } },
-          ],
-        }
-      : {}),
-  };
-  const where: Prisma.BankTransactionWhereInput = {
-    ...scope,
-    ...(params.pending === "1"
-      ? { fundId: null }
-      : params.fund
-        ? { fundId: params.fund }
-        : {}),
-  };
-  const historyScope = { ...scope };
-  delete historyScope.occurredAt;
-  const [rows, groups, historyGroups, accounts, funds] = await Promise.all([
-    db.bankTransaction.findMany({
-      where,
-      orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: { fund: true, account: true, notes: { orderBy: [{createdAt:"asc"},{id:"asc"}] } },
-    }),
-    db.bankTransaction.groupBy({ by: ["fundId"], where: scope, _count: true }),
-    db.bankTransaction.groupBy({ by: ["fundId"], where: { ...historyScope, fundId: { not: null } }, _count: true, _min: { occurredAt: true }, _max: { occurredAt: true } }),
-    syncAccountStatus(),
-    db.fund.findMany({ orderBy: { code: "asc" } }),
-  ]);
-  const counts = new Map(groups.map(group => [group.fundId, group._count]));
-  const historyCounts = new Map(historyGroups.map(group => [group.fundId, group]));
-  const today = localDate();
-  const totalCount = groups.reduce((sum, group) => sum + group._count, 0);
-  const pendingCount = counts.get(null) ?? 0;
-  const count = params.pending === "1" ? pendingCount : params.fund ? counts.get(params.fund) ?? 0 : totalCount;
+import { assignTransaction } from "@/lib/admin-api";
+type TransactionParams={page?:string;pending?:string;account?:string;q?:string;type?:string;fund?:string;review?:string;from?:string;to?:string};
+export default function Transactions({params,bootstrap}:{params:TransactionParams;bootstrap?:AdminBootstrap}) {
+  const range=transactionDates(params.from,params.to),page=pageNumber(params.page),pageSize=100,query=(params.q??"").slice(0,100);
+  const direction=params.type==="CREDIT"||params.type==="DEBIT"?params.type:undefined;
+  const apiParams=new URLSearchParams(Object.entries({...params,from:range.from,to:range.to}).filter(([,v])=>v!==undefined&&v!=="") as [string,string][]);
+  apiParams.delete("view");apiParams.delete("modal");apiParams.delete("fundId");apiParams.sort();
+  const {data,loading,error}=useAdminResource<AdminTransactions>(`transactions?${apiParams}`);
+  const rows=data?.rows??[],accounts=data?.accounts??bootstrap?.recency??[],funds=data?.funds??bootstrap?.funds??[];
+  const historyCounts=new Map((data?.history??[]).map(group=>[group.fundId,group]));
+  const today=localDate(),totalCount=data?.total??0,pendingCount=data?.pending??0,count=data?.count??0;
   const baseParams = new URLSearchParams({
     view: "transactions",
     from: range.from, to: range.to,
@@ -108,22 +44,23 @@ export default async function Transactions({
     from: range.from, to: range.to, account: params.account ?? "", type: direction ?? "", q: query,
   } : null;
   const canReclassify = tabScope && !range.error && params.review !== "1" && params.review !== "merged";
-  const lastRun = canReclassify ? await latestTabReclassification(tabScope, actor) : null;
   const tabLabel = params.pending === "1" ? "Chưa phân loại" : funds.find(f=>f.id===params.fund)?.code ?? "Thiện pháp";
   return (
     <div className="transaction-sheet">
       <div className="sheet-toolbar">
-        <h1>Giao dịch <span>{count.toLocaleString("vi-VN")}</span></h1>
+        <h1>Giao dịch <span>{data?count.toLocaleString("vi-VN"):"…"}</span></h1>
         <SyncRecency initial={accounts} initialNow={accounts[0]?.checkedAt ?? 0} />
       </div>
+      {error&&<div className="notice danger" role="alert">{error}</div>}
+      {loading&&<div className="admin-data-loading" role="status">Đang tải dữ liệu giao dịch…</div>}
       {range.error && <div className="notice danger" role="alert">{range.error}</div>}
-      <TransactionTabs funds={funds.map(f=>{const h=historyCounts.get(f.id); const last=h?._max.occurredAt?localDate(h._max.occurredAt):today; return {id:f.id,code:f.code,name:f.name,status:f.status,count:h?._count??0,from:h?._min.occurredAt?localDate(h._min.occurredAt):range.from,to:last>today?last:today};})} total={totalCount} pending={pendingCount} selectedCount={count} selectedFund={params.fund} isPending={params.pending === "1"} base={tabParams.toString()} />
+      <TransactionTabs loading={!data} funds={funds.map(f=>{const h=historyCounts.get(f.id); const last=h?.to?localDate(new Date(h.to)):today; return {id:f.id,code:f.code,name:f.name,status:f.status,count:h?.count??0,from:h?.from?localDate(new Date(h.from)):range.from,to:last>today?last:today};})} total={totalCount} pending={pendingCount} selectedCount={count} selectedFund={params.fund} isPending={params.pending === "1"} base={tabParams.toString()} />
       {tabScope && <div className="transaction-tab-actions" aria-label={`Thao tác tab ${tabLabel}`}>
         <span>Tab <strong>{tabLabel}</strong> · {count.toLocaleString("vi-VN")} giao dịch theo bộ lọc</span>
-        {canReclassify ? <TabReclassification key={reclassificationScope(tabScope).key} scope={tabScope} initial={lastRun} label={tabLabel} filterLabel={`${params.account ? "TK " + (accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Chỉ kiểm tra phân loại trong chế độ Đang ghi nhận.</small>}
+        {canReclassify ? <TabReclassification key={JSON.stringify(tabScope)} scope={tabScope} initial={null} label={tabLabel} filterLabel={`${params.account ? "TK " + (accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Chỉ kiểm tra phân loại trong chế độ Đang ghi nhận.</small>}
       </div>}
       <section className="sheet-panel" aria-label="Danh sách giao dịch">
-        <form className="filter-bar" action="/admin" method="get">
+        <form key={apiParams.toString()} className="filter-bar" action="/admin" method="get">
           <input type="hidden" name="view" value="transactions" />
           {params.pending === "1" ? <input type="hidden" name="pending" value="1" /> : params.fund ? <input type="hidden" name="fund" value={params.fund} /> : null}
           <label>
@@ -165,7 +102,7 @@ export default async function Transactions({
           </label>
           <button className="button primary">Lọc</button>
         </form>
-        {!rows.length ? (
+        {loading&&!data?<p role="status">Đang tải các giao dịch…</p>:!rows.length ? (
           <Empty title="Không có giao dịch phù hợp" />
         ) : (
           <div className="table-scroll table-card sheet-scroll" tabIndex={0} role="region" aria-label="Bảng giao dịch, cuộn để xem thêm">

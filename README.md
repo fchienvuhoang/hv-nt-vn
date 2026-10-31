@@ -157,8 +157,15 @@ Tab Giao dịch có Tất cả / Chưa phân loại với số lượng theo ph�
 
 ## Gán nhiều giao dịch và ghi chú công khai
 
-Tại danh sách thiện pháp, bấm **Xem giao dịch** để mở modal đã tải sẵn, lấy giao dịch qua Server Action có kiểm tra đăng nhập. Tìm/lọc, chọn tối đa 500 giao dịch qua nhiều trang, kiểm tra tổng thu/chi theo tài khoản, chọn thiện pháp nhận và nhập lý do chung. Các khoản được gán `MANUAL`, lưu lịch sử người thực hiện và tự thêm giải thích công khai ở từng giao dịch. Nếu một khoản đã bị sửa sau lúc chọn, toàn bộ lượt bị hủy để quản trị chọn lại; gửi lại cùng mã yêu cầu không nhập lặp. Tài khoản ngân hàng, tiền và nội dung gốc không đổi.
+Tại danh sách thiện pháp, bấm **Xem giao dịch** để mở modal đã tải sẵn, lấy giao dịch qua REST API có kiểm tra đăng nhập. Tìm/lọc, chọn tối đa 500 giao dịch qua nhiều trang, kiểm tra tổng thu/chi theo tài khoản, chọn thiện pháp nhận và nhập lý do chung. Các khoản được gán `MANUAL`, lưu lịch sử người thực hiện và tự thêm giải thích công khai ở từng giao dịch. Nếu một khoản đã bị sửa sau lúc chọn, toàn bộ lượt bị hủy để quản trị chọn lại; gửi lại cùng mã yêu cầu không nhập lặp. Tài khoản ngân hàng, tiền và nội dung gốc không đổi.
 
 Có thể thêm nhiều ghi chú công khai từ modal hoặc tab giao dịch. Ghi chú được lưu bổ sung, có người viết/thời gian và không ghi đè nội dung nguồn. Trang công khai che số điện thoại trong ghi chú, giữ 3 số cuối, và dùng chung cache có làm mới sau thao tác. Áp dụng migration `20261031090000_transaction_notes` trước khi chạy phiên bản này.
 
 Kiểm thử riêng trên cơ sở dữ liệu localhost dùng tên bắt đầu `hvntvn_test`: `npm run test:transaction-management`.
+
+
+## Điều hướng và REST API
+
+Khung quản trị và mã các modal được tải sẵn. Menu chính, tab trạng thái thiện pháp, nhóm giao dịch, nhật ký, bộ lọc và phân trang đổi URL bằng History API; dữ liệu được lấy từ `/api/admin/...`, không tải lại RSC hay giao diện. Các thao tác lưu trả JSON và làm mới cache dữ liệu liên quan. API kiểm tra phiên, email quản trị và nguồn gửi yêu cầu ghi; dữ liệu quản trị không cache ở trình duyệt trung gian. Số tiền và thời gian được truyền bằng codec bảo toàn BigInt/Date.
+
+Trang công khai giữ SSR cho lần truy cập đầu; chuyển thu/chi, tìm kiếm và phân trang gọi `/api/public/funds/[slug]`. Dữ liệu công khai dùng cache server hiện có, chỉ trả nội dung đã che số điện thoại và không trả danh tính quản trị viên.

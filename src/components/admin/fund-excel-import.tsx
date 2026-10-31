@@ -2,7 +2,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/toasts";
 import { FileUp, Play, RotateCw } from "lucide-react";
-import { uploadFundExcel, commitFundExcel } from "@/app/admin/actions";
+import { uploadFundExcel, commitFundExcel } from "@/lib/admin-api";
 import type { ExcelUploadState } from "@/app/admin/actions";
 import type { FundImportSummary } from "@/lib/fund-imports";
 import { dateTime, vnd } from "@/lib/domain";

@@ -107,3 +107,8 @@ export async function publicFund(slug: string, page: number, direction: "CREDIT"
   const currentPage=Math.min(requestedPage,Math.max(1,Math.ceil(matches.length/PUBLIC_PAGE_SIZE)));
   return {...fund,page:currentPage,count:matches.length,rows:matches.slice((currentPage-1)*PUBLIC_PAGE_SIZE,currentPage*PUBLIC_PAGE_SIZE)};
 }
+
+export type PublicFundDTO=Omit<NonNullable<Awaited<ReturnType<typeof publicFund>>>,"id"|"cutover">;
+export function publicFundDTO(fund:NonNullable<Awaited<ReturnType<typeof publicFund>>>):PublicFundDTO {
+  const {id,cutover,...result}=fund;void id;void cutover;return result;
+}

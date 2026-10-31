@@ -1,25 +1,13 @@
-import { db } from "@/lib/db";
-import { dateTime, localDate, startOfVietnamDay } from "@/lib/domain";
+"use client";
+import type { AdminSync } from "@/lib/admin-read-model";
+import { dateTime } from "@/lib/domain";
 import { FULL_DAY_TIMES, PREVIOUS_DAY_TIMES } from "@/lib/sync-schedule";
 import { Modal } from "@/components/modal";
 const names: Record<string,string> = { RECEIVED:"Đã nhận", RUNNING:"Đang chạy", QUEUED:"Chờ chạy", SKIPPED:"Bỏ qua — đang có lượt chạy", PARTIAL:"Còn dữ liệu", SUCCESS:"Hoàn tất", FAILED:"Thất bại", SUPERSEDED:"Đã đổi cấu hình" };
 const preciseTime = (at: Date) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" }).format(at);
-export async function ScheduledSyncHistory({ full }: { full: boolean }) {
-  const since = startOfVietnamDay(localDate());
-  const fullKinds = { in: ["FULL_DAY", "PREVIOUS_DAY"] };
-  const [requestsToday, requestsAll, quickToday, grouped, lastCall, sweepsToday, sweepsDone, sweepsAll, lastSweep, requests, sweeps] = await Promise.all([
-    db.syncInvocation.count({where:{receivedAt:{gte:since}}}),
-    db.syncInvocation.count(),
-    db.syncInvocation.count({where:{receivedAt:{gte:since},quickPages:{gt:0}}}),
-    db.syncInvocation.groupBy({by:["status"],where:{receivedAt:{gte:since}},_count:true}),
-    db.syncInvocation.findFirst({orderBy:{receivedAt:"desc"},select:{receivedAt:true}}),
-    db.syncJob.count({where:{kind:fullKinds,startedAt:{gte:since}}}),
-    db.syncJob.count({where:{kind:fullKinds,finishedAt:{gte:since},status:"SUCCESS"}}),
-    db.syncJob.count({where:{kind:fullKinds,startedAt:{not:null}}}),
-    db.syncJob.findFirst({where:{kind:fullKinds,lastCalledAt:{not:null}},orderBy:{lastCalledAt:"desc"},select:{lastCalledAt:true}}),
-    full ? Promise.resolve([]) : db.syncInvocation.findMany({orderBy:{receivedAt:"desc"},take:100}),
-    full ? db.syncJob.findMany({where:{kind:fullKinds},orderBy:{scheduledAt:"desc"},take:100}) : Promise.resolve([]),
-  ]);
+export function ScheduledSyncHistory({full,data}:{full:boolean;data?:AdminSync}) {
+  if(!data?.stats)return <p role="status">Đang tải thống kê đồng bộ…</p>;
+  const {requests,sweeps,stats:{requestsToday,requestsAll,quickToday,grouped,lastCall,sweepsToday,sweepsDone,sweepsAll,lastSweep}}=data;
   return <>
     <div className="sync-call-stats">
       <span>Webhook hôm nay <strong>{requestsToday}</strong> · tổng <b>{requestsAll}</b></span>

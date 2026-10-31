@@ -1,43 +1,35 @@
+"use client";
+import { useState } from "react";
+import { useAdminResource } from "@/lib/admin-api";
+import type { ReviewCandidates } from "@/lib/admin-read-model";
 import { Modal } from "@/components/modal";
 import { ActionForm } from "@/components/action-form";
-import { resolveDuplicate } from "@/app/admin/actions";
-import { db } from "@/lib/db";
+import { resolveDuplicate } from "@/lib/admin-api";
 import {
   dateTime,
   vnd,
-  localDate,
-  startOfVietnamDay,
   fundUsesAccount,
 } from "@/lib/domain";
 import type { BankTransaction, Fund } from "@/generated/prisma/client";
-export async function EntryReview({
+export function EntryReview({
   entry,
   funds,
 }: {
-  entry: BankTransaction;
-  funds: Fund[];
+  entry: Pick<BankTransaction,"id"|"occurredAt"|"accountId"|"direction"|"amount"|"origin"|"narrative"|"fundId">;
+  funds: Pick<Fund,"id"|"code"|"name"|"accountId"|"accountIds">[];
 }) {
-  const start = startOfVietnamDay(localDate(entry.occurredAt));
-  const candidates = await db.bankTransaction.findMany({
-    where: {
-      accountId: entry.accountId,
-      entryStatus: "POSTED",
-      direction: entry.direction,
-      amount: entry.amount,
-      occurredAt: { gte: start, lt: new Date(start.getTime() + 86400000) },
-    },
-    include: { fund: { select: { code: true } } },
-    orderBy: { occurredAt: "desc" },
-    take: 100,
-  });
+  const [opened,setOpened]=useState(false);
+  const {data:candidates=[],loading,error}=useAdminResource<ReviewCandidates>(`review-candidates?id=${encodeURIComponent(entry.id)}`,15000,opened);
   return (
     <Modal
-      wide
+      wide onOpen={()=>setOpened(true)} onDismiss={()=>setOpened(false)}
       title="Kiểm tra giao dịch nghi trùng"
       description="Khoản này chưa cộng vào tổng cho tới khi bạn xác nhận."
       trigger="Kiểm tra nghi trùng"
       triggerClassName="button subtle small"
     >
+      {loading&&<p role="status">Đang tải giao dịch đối chiếu…</p>}
+      {error&&<div className="notice danger">{error}</div>}
       <div className="modal-context">
         <strong>
           {vnd(entry.amount)} · {entry.direction === "CREDIT" ? "Thu" : "Chi"}

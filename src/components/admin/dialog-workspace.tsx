@@ -8,7 +8,7 @@ import { FundTransactions } from "./fund-transactions";
 import { FundForm } from "./fund-form";
 import { FundExcelImport } from "./fund-excel-import";
 import { TransferFormFields } from "./transfer-form-fields";
-import { getFundImportHistory } from "@/app/admin/actions";
+import { getFundImportHistory } from "@/lib/admin-api";
 import { useToast } from "@/components/toasts";
 
 type DialogKind = "create-fund" | "edit-fund" | "import-fund" | "transfer" | "fund-transactions";

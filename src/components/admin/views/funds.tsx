@@ -1,6 +1,7 @@
+"use client";
 import { AdminDialogButton } from "@/components/admin/dialog-workspace";
 import { RecordAuthor } from "@/components/admin/record-author";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/admin-link";
 import {
   ExternalLink,
   Settings2,
@@ -8,14 +9,12 @@ import {
   FileUp,
   List,
 } from "lucide-react";
-import { requireAdmin } from "@/lib/auth";
-import { fundTotals, accountTotals } from "@/lib/ledger";
+import type { AdminBootstrap } from "@/lib/admin-read-model";
 import { Status, Empty } from "@/components/ui";
 import { vnd, fundUsesAccount } from "@/lib/domain";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
-export default async function Funds({ params = {} }: { params?: AdminParams }) {
-  await requireAdmin();
-  const [all, balances] = await Promise.all([fundTotals(), accountTotals()]);
+export default function Funds({ params = {},bootstrap }: { params?: AdminParams;bootstrap?:AdminBootstrap }) {
+  const all=bootstrap?.funds??[],balances=bootstrap?.balances??[];
   const query = (params.q ?? "").trim().toLocaleLowerCase("vi");
   const status = ["ACTIVE", "COMPLETED", "PAUSED", "ALL"].includes(params.status ?? "")
     ? params.status! : "ACTIVE";
@@ -72,7 +71,7 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
             </Link>
           ))}
         </nav>
-        <form className="filter-bar" action="/admin" method="get">
+        <form key={`${params.q??""}-${params.account??""}-${status}`} className="filter-bar" action="/admin" method="get">
           <input type="hidden" name="view" value="funds" />
           <input type="hidden" name="status" value={status} />
           <label>
@@ -96,7 +95,7 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
           </label>
           <button className="button subtle">Lọc danh sách</button>
         </form>
-        {!funds.length ? (
+        {!bootstrap?<p role="status">Đang tải danh sách thiện pháp…</p>:!funds.length ? (
           <Empty
             title={
               all.length

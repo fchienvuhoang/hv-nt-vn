@@ -1,25 +1,17 @@
+"use client";
 import { RecordAuthor } from "@/components/admin/record-author";
 import { AdminDialogButton } from "@/components/admin/dialog-workspace";
 import { Plus, Undo2 } from "lucide-react";
-import { requireAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { useAdminResource } from "@/lib/admin-api";
+import type { AdminTransfers } from "@/lib/admin-read-model";
 import { Heading, Section, Empty } from "@/components/ui";
 import { ActionForm } from "@/components/action-form";
 import { Modal } from "@/components/modal";
-import { reverseTransfer } from "@/app/admin/actions";
+import { reverseTransfer } from "@/lib/admin-api";
 import { vnd } from "@/lib/domain";
-export default async function Transfers() {
-  await requireAdmin();
-  const transfers = await db.transfer.findMany({
-    include: {
-      fromFund: { include: { account: true } },
-      account: true,
-      toFund: true,
-      reversal: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+export default function Transfers() {
+  const {data,loading,error}=useAdminResource<AdminTransfers>("transfers");
+  const transfers=data??[];
   return (
     <>
       <Heading
@@ -36,7 +28,8 @@ export default async function Transfers() {
         title="Lịch sử điều chuyển"
         note="100 bút toán gần nhất. Khoản đã ghi không bị xóa; hủy bằng bút toán đảo."
       >
-        {!transfers.length ? (
+        {error&&<div className="notice danger">{error}</div>}
+        {loading&&!data?<p role="status">Đang tải điều chuyển…</p>:!transfers.length ? (
           <Empty title="Chưa có điều chuyển">
             Chọn Tạo điều chuyển để phân bổ tiền giữa các thiện pháp.
           </Empty>

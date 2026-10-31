@@ -1,0 +1,73 @@
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+import {decodeAdmin} from "../src/lib/admin-codec";
+const dbUrl=new URL(process.env.DATABASE_URL??"postgresql://invalid/invalid");
+if(!["localhost","127.0.0.1"].includes(dbUrl.hostname)||!dbUrl.pathname.startsWith("/hvntvn_test"))throw new Error("Require isolated test DB");
+const origin=process.env.QA_ORIGIN??"http://localhost:3001";
+if(!origin.startsWith("http://localhost:"))throw new Error("Localhost only");
+const {db}=await import("../src/lib/db");
+const {accountTotals}=await import("../src/lib/ledger");
+const {localDate}=await import("../src/lib/domain");
+const {encode}=await import("next-auth/jwt");
+if(!process.env.AUTH_SECRET)throw new Error("Require test AUTH_SECRET");
+const token=await encode({token:{email:"qa-admin@example.test",name:"QA admin",sub:"qa"},secret:process.env.AUTH_SECRET,salt:"authjs.session-token",maxAge:3600});
+const cookie=`authjs.session-token=${token}`;
+async function api<T=Record<string,unknown>>(path:string,method="GET",body?:FormData|object,options:{auth?:boolean;origin?:string;cookie?:string}={}){
+ const form=body instanceof FormData;
+ const response=await fetch(origin+"/api/admin/"+path,{method,headers:{...(options.auth===false?{}:{cookie:options.cookie??cookie}),...(method==="GET"?{}:{origin:options.origin??origin}),...(!form&&body?{"Content-Type":"application/json"}:{})},body:body?(form?body:JSON.stringify(body)):undefined,redirect:"manual"});
+ assert.match(response.headers.get("content-type")??"",/application\/json/);
+ assert.match(response.headers.get("cache-control")??"",/no-store/);
+ return {response,data:decodeAdmin<T>(await response.json())};
+}
+const form=(values:Record<string,string>)=>{const f=new FormData();for(const[k,v]of Object.entries(values))f.set(k,v);return f};
+if(await db.bankAccount.count())throw new Error("Require empty isolated test database");
+const account=await db.bankAccount.create({data:{number:"0572",owner:"TEST ONLY",label:"Tài khoản kiểm thử"}});
+const second=await db.bankAccount.create({data:{number:"0856",owner:"TEST ONLY",label:"Tài khoản kiểm thử"}});
+const fixtureFund=await db.fund.create({data:{accountId:account.id,accountIds:[second.id],code:"TPTEST",slug:"0572-tptest",name:"TEST REST",keywords:["TU KHOA TEST"],openingIncome:10000000n}});
+await db.fund.create({data:{accountId:account.id,accountIds:[second.id],code:"TPOTHER",slug:"0572-tpother",name:"TEST other",status:"PAUSED",keywords:[]}});
+await db.bankTransaction.createMany({data:[200000n,100000n,50000n].map((amount,i)=>({accountId:account.id,fundId:i===1?null:fixtureFund.id,sourceId:`REST-TEST-${i}`,refId:`TEST-${i}`,amount,direction:i===2?"DEBIT" as const:"CREDIT" as const,narrative:`TEST ONLY ${i===1?"KHONG RO MA":"TPTEST"} 0912 345 678`,displayName:"THI CHU TEST 0987654321",occurredAt:new Date(),sourceHash:"TEST",source:{test:true}}))});
+try{
+ for(const view of ["funds","transactions","transfers","sync"]){
+  assert.equal((await fetch(`${origin}/admin?view=${view}`,{redirect:"manual"})).status,307);
+  const html=await(await fetch(`${origin}/admin?view=${view}`,{headers:{cookie}})).text();assert.ok(!html.includes("Chưa thể tải dữ liệu"));
+ }
+ for(const path of ["bootstrap","funds","transactions","transfers","sync","imports?fundId=missing","fund-transactions?fundId=missing","reclassification?scope={}","review-candidates?id=missing"])assert.equal((await api(path,"GET",undefined,{auth:false})).response.status,401);
+ for(const path of ["funds","transactions/assignment","transactions/assignments","transaction-notes","transfers","transfers/reversal","sync","imports","imports/commit","transactions/review","reclassification"])assert.equal((await api(path,"POST",{}, {auth:false})).response.status,401);
+ const bootstrap=await api<{funds:{id:string;code:string;income:bigint;createdAt:Date}[];accounts:{id:string}[]}>("bootstrap");assert.equal(bootstrap.response.status,200);assert.equal(typeof bootstrap.data.funds[0].income,"bigint");assert.ok(bootstrap.data.funds[0].createdAt instanceof Date);
+ const fund=await db.fund.findUniqueOrThrow({where:{slug:"0572-tptest"}}),other=await db.fund.findUniqueOrThrow({where:{slug:"0572-tpother"}});
+ const created=await api<{success?:string}>("funds","POST",form({code:"TPREST",name:"TEST REST shared fund",status:"ACTIVE",description:"",keywords:"REST SHARED KEY",accountId:"FORGED",actorId:"FORGED",actorName:"FORGED"}));assert.ok(created.data.success);
+ const shared=await db.fund.findUniqueOrThrow({where:{code:"TPREST"}});assert.equal(shared.createdById,"qa");assert.equal(shared.createdByName,"QA admin");assert.deepEqual([shared.accountId,...shared.accountIds].sort(),bootstrap.data.accounts.map(a=>a.id).sort());
+ const collision=await api<{fieldErrors?:{keywords?:string[]}}>("funds","POST",form({code:"TPRESTDUP",name:"TEST duplicate",status:"ACTIVE",description:"",keywords:"restsharedkey"}));assert.ok(collision.data.fieldErrors?.keywords?.length);
+ const fields={id:fund.id,code:fund.code,name:"TEST REST updated",status:fund.status,description:"Liên hệ 0912345678",keywords:fund.keywords.join("\n")};
+ assert.equal((await api("funds","PUT",form(fields),{origin:"https://evil.example"})).response.status,403);assert.equal((await db.fund.findUniqueOrThrow({where:{id:fund.id}})).name,fund.name);
+ assert.ok((await api<{success?:string}>("funds","PUT",form(fields))).data.success);
+ assert.equal((await db.fund.findUniqueOrThrow({where:{id:fund.id}})).updatedById,"qa");
+ const bank=await db.bankTransaction.findFirstOrThrow({where:{fundId:fund.id,direction:"CREDIT"}});
+ await fetch(`${origin}/t/${fund.slug}`);
+ const noteId=randomUUID(),noteText="REST note visible 0987654321";
+ for(let i=0;i<2;i++)assert.ok((await api<{success?:string}>("transaction-notes","POST",form({requestId:noteId,transactionId:bank.id,text:noteText}))).data.success);
+ assert.equal(await db.transactionNote.count({where:{requestId:noteId}}),1);
+ const publicHtml=await(await fetch(`${origin}/t/${fund.slug}`)).text();assert.ok(publicHtml.includes("REST note visible *******321"));assert.ok(!publicHtml.includes("0987654321"));assert.ok(!publicHtml.includes("qa-admin@example.test"));
+ const unassigned=await db.bankTransaction.findFirstOrThrow({where:{fundId:null}});
+ assert.ok((await api<{success?:string}>("transactions/assignment","POST",form({transactionId:unassigned.id,fundId:fund.id,reason:"REST manual assignment"}))).data.success);
+ assert.equal((await db.bankTransaction.findUniqueOrThrow({where:{id:unassigned.id}})).assignment,"MANUAL");
+ const data=await api<{rows:{id:string;amount:bigint;updatedAt:Date;source?:unknown}[];count:number;pending:number}>("transactions");assert.equal(data.data.count,3);assert.equal(data.data.pending,0);assert.ok(!("source" in data.data.rows[0]));assert.ok(data.data.rows[0].updatedAt instanceof Date);
+ const selected=data.data.rows.filter(r=>r.id!==unassigned.id);
+ const before=(await accountTotals()).map(a=>[a.id,a.expected.toString()]);
+ const payload={requestId:randomUUID(),sourceFundId:fund.id,targetFundId:shared.id,reason:"REST bulk correction",rows:selected.map(r=>({id:r.id,updatedAt:r.updatedAt.toISOString()})),actorId:"FORGED"};
+ const moved=await Promise.all([api<{success?:string}>("transactions/assignments","POST",payload),api<{success?:string}>("transactions/assignments","POST",payload)]);assert.ok(moved.every(r=>r.data.success));
+ assert.equal(await db.transactionNote.count({where:{kind:"REASSIGNMENT",transactionId:{in:selected.map(r=>r.id)}}}),2);assert.deepEqual((await accountTotals()).map(a=>[a.id,a.expected.toString()]),before);
+ const transfer=form({requestId:randomUUID(),accountId:fund.accountId,fromFundId:fund.id,toFundId:other.id,amount:"10000",reason:"REST transfer QA"});
+ assert.ok((await api<{success?:string}>("transfers","POST",transfer)).data.success);assert.ok((await api<{success?:string}>("transfers","POST",transfer)).data.success);assert.equal(await db.transfer.count(),1);
+ for(const log of ["","full","runs","audit"])assert.equal((await api(`sync?log=${log}`)).response.status,200);
+ assert.equal((await api("imports?fundId="+fund.id)).response.status,200);
+ assert.equal((await api("fund-transactions?fundId="+shared.id)).response.status,200);
+ const scope={tab:"PENDING",from:localDate(),to:localDate()};const run=await api<{run:{id:string}}>("reclassification","POST",scope);assert.ok(run.data.run.id);
+ assert.equal((await api("reclassification?"+new URLSearchParams({scope:JSON.stringify(scope)}))).response.status,200);
+ assert.equal((await api("reclassification","PATCH",{id:run.data.run.id,phase:"CHECK"})).response.status,200);
+ assert.equal((await api("reclassification","PATCH",{id:run.data.run.id,phase:"FORGED"})).response.status,400);
+ const denied=await encode({token:{email:"not-allowed@example.test",sub:"denied"},secret:process.env.AUTH_SECRET,salt:"authjs.session-token",maxAge:60});assert.equal((await api("bootstrap","GET",undefined,{cookie:`authjs.session-token=${denied}`})).response.status,403);
+ console.log("PASS: REST JSON-only reads/writes, authentication/allowlist, CSRF rejection, lossless dates/money, validation, actor provenance, shared accounts, notes/privacy/cache, atomic idempotent reassignment, unchanged account totals, transfers, all logs, import/reclassification endpoints");
+}finally{
+ await db.tabReclassification.deleteMany();await db.auditLog.deleteMany();await db.transfer.deleteMany();await db.bankTransaction.deleteMany();await db.fund.deleteMany();await db.bankAccount.deleteMany();await db.$disconnect();
+}

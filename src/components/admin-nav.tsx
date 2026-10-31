@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/admin-link";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeftRight,

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { ActionForm } from "@/components/action-form";
-import { createTransfer } from "@/app/admin/actions";
+import { createTransfer } from "@/lib/admin-api";
 import { fundUsesAccount, vnd } from "@/lib/domain";
 export function TransferFormFields({
   requestId,

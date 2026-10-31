@@ -1,0 +1,55 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { auth, allowedAdmin } from "@/auth";
+import * as actions from "@/app/admin/actions";
+import { encodeAdmin } from "@/lib/admin-codec";
+import { loadAdminBootstrap,loadAdminTransactions,loadAdminTransfers,loadAdminSync,loadReviewCandidates } from "@/lib/admin-read-model";
+export const runtime="nodejs";
+export const maxDuration=60;
+const json=(data:unknown,status=200)=>NextResponse.json(encodeAdmin(data),{status,headers:{"Cache-Control":"private, no-store"}});
+async function handle(request:NextRequest,context:{params:Promise<{resource:string[]}>}){
+  const session=await auth();
+  if(!session?.user?.email)return json({error:"Phiên đăng nhập đã hết hạn."},401);
+  if(!allowedAdmin(session.user.email))return json({error:"Email không có quyền quản trị."},403);
+  const resource=(await context.params).resource.join("/"),query=Object.fromEntries(request.nextUrl.searchParams);
+  if(request.method!=="GET"&&request.headers.get("origin")!==request.nextUrl.origin)return json({error:"Nguồn yêu cầu không hợp lệ."},403);
+  try{
+    if(request.method==="GET"){
+      switch(resource){
+        case "bootstrap":case "funds":return json(await loadAdminBootstrap());
+        case "transactions":return json(await loadAdminTransactions(query));
+        case "transfers":return json(await loadAdminTransfers());
+        case "sync":return json(await loadAdminSync(query.log??""));
+        case "review-candidates":return json(await loadReviewCandidates(z.string().min(1).max(100).parse(query.id)));
+        case "imports":return json(await actions.getFundImportHistory(z.string().min(1).max(100).parse(query.fundId)));
+        case "fund-transactions":return json(await actions.getFundTransactions({...query,fundId:query.fundId,page:Number(query.page)||1}));
+        case "reclassification":return json(await actions.getLatestReclassification(JSON.parse(query.scope??"{}")));
+        default:return json({error:"Không tìm thấy API."},404);
+      }
+    }
+    let result:unknown;
+    const form=()=>request.formData();
+    switch(`${request.method} ${resource}`){
+      case "POST funds":case "PUT funds":result=await actions.saveFund({},await form());break;
+      case "POST transactions/assignment":result=await actions.assignTransaction({},await form());break;
+      case "POST transactions/assignments":result=await actions.bulkAssignTransactions(await request.json());break;
+      case "POST transaction-notes":{const data=await form();result=await actions.saveTransactionNote({},data);break;}
+      case "POST transfers":result=await actions.createTransfer({},await form());break;
+      case "POST transfers/reversal":result=await actions.reverseTransfer({},await form());break;
+      case "POST sync":result=await actions.syncNow();break;
+      case "PUT sync/start-date":result=await actions.configureSyncStart({},await form());break;
+      case "POST imports":result=await actions.uploadFundExcel({},await form());break;
+      case "POST imports/commit":result=await actions.commitFundExcel(await request.json());break;
+      case "POST transactions/review":result=await actions.resolveDuplicate({},await form());break;
+      case "POST reclassification":result=await actions.startReclassification(await request.json());break;
+      case "PATCH reclassification":result=await actions.advanceReclassification(z.object({id:z.string().min(1).max(100),phase:z.enum(["CHECK","APPLY"])}).parse(await request.json()));break;
+      default:return json({error:"Phương thức hoặc API không hợp lệ."},405);
+    }
+    return json(result);
+  }catch(error){
+    if(error instanceof z.ZodError)return json({error:error.issues.map(i=>i.message).join("; ")},400);
+    console.error("Admin REST request failed",resource,error instanceof Error?error.name:"unknown");
+    return json({error:"Không thể xử lý dữ liệu. Vui lòng thử lại."},500);
+  }
+}
+export const GET=handle;export const POST=handle;export const PUT=handle;export const PATCH=handle;

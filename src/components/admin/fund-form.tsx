@@ -3,7 +3,7 @@ import { useActionState, useEffect, useId, useRef, useState } from "react";
 import type { ActionState } from "@/app/admin/actions";
 import { useActionToast } from "@/components/toasts";
 import { useCloseModal } from "@/components/modal";
-import { saveFund } from "@/app/admin/actions";
+import { saveFund } from "@/lib/admin-api";
 import { dateTime } from "@/lib/domain";
 import type { BankAccount, Fund } from "@/generated/prisma/client";
 export function FundForm({

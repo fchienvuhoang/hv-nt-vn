@@ -1,16 +1,16 @@
+"use client";
 import { RecordAuthor } from "@/components/admin/record-author";
 import { ScheduledSyncHistory } from "@/components/admin/scheduled-sync-history";
 import { Cable, RefreshCw, Settings2 } from "lucide-react";
-import { requireAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
-import Link from "next/link";
+import { useAdminResource } from "@/lib/admin-api";
+import type { AdminBootstrap,AdminSync } from "@/lib/admin-read-model";
+import { AdminLink as Link } from "@/components/admin/admin-link";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
 import { SyncRecency } from "@/components/admin/sync-recency";
-import { syncAccountStatus } from "@/lib/sync-status";
 import { Empty } from "@/components/ui";
 import { ActionForm } from "@/components/action-form";
 import { Modal } from "@/components/modal";
-import { syncNow, configureSyncStart } from "@/app/admin/actions";
+import { syncNow, configureSyncStart } from "@/lib/admin-api";
 import { dateTime, localDate } from "@/lib/domain";
 const actionNames: Record<string, string> = {
   FUND_CREATED: "Tạo thiện pháp",
@@ -39,28 +39,10 @@ const actionNames: Record<string, string> = {
   DUPLICATE_REVIEWED: "Kiểm tra giao dịch nghi trùng",
   LEGACY_SUMMARY_REPLACED: "Thay tổng cũ bằng chi tiết Excel",
 };
-export default async function Sync({ params = {} }: { params?: AdminParams }) {
-  const auditTab = params.log === "audit";
-  const scheduleTab = !auditTab && params.log !== "runs";
-  await requireAdmin();
-  const [runs, states, audits, accounts, recency] = await Promise.all([
-    db.syncRun.findMany({ orderBy: { startedAt: "desc" }, take: 30 }),
-    db.syncState.findMany({
-      include: { account: true },
-      orderBy: [{ accountId: "asc" }, { direction: "asc" }],
-    }),
-    db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
-    db.bankAccount.findMany({
-      select: {
-        id: true,
-        number: true,
-        label: true,
-        syncFrom: true,
-      },
-      orderBy: { number: "asc" },
-    }),
-    syncAccountStatus(),
-  ]);
+export default function Sync({params={},bootstrap}:{params?:AdminParams;bootstrap?:AdminBootstrap}) {
+  const auditTab=params.log==="audit",scheduleTab=!auditTab&&params.log!=="runs";
+  const {data,loading,error}=useAdminResource<AdminSync>(`sync?${new URLSearchParams({log:params.log??""})}`,5000);
+  const runs=data?.runs??[],audits=data?.audits??[],states=bootstrap?.states??[],accounts=bootstrap?.accounts??[],recency=bootstrap?.recency??[];
   return (
     <div className="sync-workspace">
       <div className="sync-toolbar">
@@ -206,7 +188,8 @@ export default async function Sync({ params = {} }: { params?: AdminParams }) {
         <Link href={adminUrl("sync", { log: "audit" })} scroll={false} className={auditTab ? "selected" : ""} aria-current={auditTab ? "page" : undefined}>Lịch sử thao tác</Link>
       </nav>
       <section className="sync-log-panel" aria-label={scheduleTab ? (params.log === "full" ? "Quét toàn ngày" : "Webhook mỗi phút") : auditTab ? "Lịch sử thao tác" : "Đồng bộ thủ công"}>
-      {scheduleTab ? <ScheduledSyncHistory full={params.log === "full"} /> : !auditTab ? (
+      {error&&<div className="notice danger" role="alert">{error}</div>}
+      {loading&&!data?<p role="status">Đang tải nhật ký…</p>:scheduleTab ? <ScheduledSyncHistory full={params.log === "full"} data={data} /> : !auditTab ? (
         <>
           {!runs.length ? (
             <Empty />

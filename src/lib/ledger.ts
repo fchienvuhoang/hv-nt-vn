@@ -78,10 +78,10 @@ export async function fundTotals(client: LedgerClient = db) {
     };
   });
 }
-export async function accountTotals() {
+export async function accountTotals(preloadedFunds?: Awaited<ReturnType<typeof fundTotals>>) {
   const [accounts, funds, txs, reviews] = await Promise.all([
     db.bankAccount.findMany({ orderBy: { number: "asc" } }),
-    fundTotals(),
+    preloadedFunds ? Promise.resolve(preloadedFunds) : fundTotals(),
     db.bankTransaction.groupBy({
       by: ["accountId", "direction", "fundId"],
       where: { entryStatus: "POSTED" },
