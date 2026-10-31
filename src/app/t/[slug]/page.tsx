@@ -54,11 +54,17 @@ export default async function FundPage({
             <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)}
           </div>
         </div>
+        {fund.pendingImports > 0 && (
+          <div className="notice">
+            Đang nhập lịch sử Excel; số liệu có thể chưa đầy đủ cho tới khi nhập
+            xong.
+          </div>
+        )}
         <div className="metrics">
           <Metric
             label="Tổng hùn phước"
             value={fund.income}
-            note="Gồm tổng lịch sử trước ngày chuyển đổi"
+            note="Các khoản hùn phước đã ghi nhận"
             accent
           />
           <Metric
@@ -80,7 +86,7 @@ export default async function FundPage({
             Điều chuyển ra: <strong>{vnd(fund.transferOut)}</strong>
           </span>
           <span>
-            Điều chuyển ròng trước chốt:{" "}
+            Điều chuyển ròng lịch sử:{" "}
             <strong>{vnd(fund.openingTransferNet)}</strong>
           </span>
         </div>
@@ -102,12 +108,14 @@ export default async function FundPage({
               Khoản chi
             </Link>
           </div>
-          <div className="notice historical-note">
-            Trước {fund.cutover ? dateTime(fund.cutover) : "ngày chuyển đổi"}:
-            hùn phước <strong>{vnd(fund.openingIncome)}</strong>, chi{" "}
-            <strong>{vnd(fund.openingExpense)}</strong>. Đây là tổng lịch sử từ
-            sổ cũ; danh sách bên dưới ghi nhận từ ngày chuyển đổi.
-          </div>
+          {(BigInt(fund.openingIncome) !== 0n ||
+            BigInt(fund.openingExpense) !== 0n) && (
+            <div className="notice historical-note">
+              Tổng lịch sử cũ đã được tính: hùn phước {vnd(fund.openingIncome)},
+              chi {vnd(fund.openingExpense)}. Các khoản này chưa có chi tiết
+              được nhập từ Excel.
+            </div>
+          )}
           {!fund.rows.length ? (
             <Empty
               title={
@@ -134,7 +142,7 @@ export default async function FundPage({
                 <tbody>
                   {fund.rows.map((r) => (
                     <tr key={r.id}>
-                      <td className="nowrap">{dateTime(r.at)}</td>
+                      <td className="nowrap">{dateTime(r.at)}<small>TK {r.account}</small></td>
                       <td>
                         <p className="narrative">
                           {r.narrative || "Không có nội dung chuyển khoản"}

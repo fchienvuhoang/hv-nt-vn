@@ -3239,3 +3239,351 @@ body:has(dialog[open]) {
     padding-top: 28px;
   }
 }
+
+.trial-accounts {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.trial-accounts legend {
+  font-size: 11px;
+  color: #987153;
+  padding: 0 6px;
+}
+.trial-accounts label + label {
+  margin-top: 12px;
+}
+
+/* Fund-led accounting and Excel import. */
+.fund-account-summaries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+.account-balance-panel {
+  padding: 20px 23px;
+  background: #fffdf9;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.account-expected {
+  font-size: 28px;
+  color: var(--primary);
+  display: block;
+  letter-spacing: -0.8px;
+  margin: 13px 0;
+}
+.account-breakdown {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  margin-bottom: 9px;
+  border-top: 1px solid #f0e4d5;
+  color: #a38366;
+  font-size: 10px;
+}
+.account-breakdown b {
+  display: block;
+  color: #7d5140;
+  font-size: 12px;
+  font-weight: 550;
+  margin-top: 3px;
+}
+.account-balance-panel > small {
+  font-size: 9px;
+  color: #b09174;
+}
+.review-link {
+  display: block;
+  font-size: 11px;
+  color: #a7573d;
+  margin-top: 12px;
+}
+.import-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin: 22px 0 12px;
+}
+.import-summary strong {
+  display: block;
+  font-size: 19px;
+  color: var(--primary);
+  margin-top: 5px;
+}
+.import-summary small {
+  font-size: 10px;
+}
+.excel-import-preview {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding-top: 24px;
+}
+.excel-import-preview > .muted {
+  font-size: 10px;
+  margin-bottom: 16px;
+}
+.excel-import-preview .checkbox-label {
+  margin-top: 10px;
+}
+.import-sample {
+  max-height: 300px;
+  margin: 20px 0;
+}
+.import-progress {
+  font-size: 11px;
+  color: #9b7754;
+  margin: 20px 0;
+}
+.import-progress progress {
+  display: block;
+  width: 100%;
+  accent-color: var(--primary);
+  height: 7px;
+  margin-bottom: 9px;
+}
+.excel-import .notice li {
+  margin-top: 6px;
+}
+.sync-account-setting + .sync-account-setting {
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+  margin-top: 25px;
+}
+.sync-account-setting h3 {
+  margin-bottom: 13px;
+}
+tfoot td {
+  background: #fcf2e2;
+  border-top: 1px solid #ead7b9;
+  font-size: 11px;
+}
+@media (max-width: 900px) {
+  .fund-account-summaries {
+    grid-template-columns: 1fr;
+  }
+  .account-balance-panel {
+    padding: 18px;
+  }
+  .account-expected {
+    font-size: 26px;
+  }
+  .import-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .import-summary > div:first-child {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 680px) {
+  .fund-account-summaries {
+    gap: 13px;
+  }
+  .account-breakdown {
+    gap: 15px;
+  }
+  .account-breakdown b {
+    font-size: 11px;
+  }
+  .import-summary strong {
+    font-size: 17px;
+  }
+  .import-summary small {
+    font-size: 9px;
+  }
+}
+
+/* Compact admin chrome and a viewport-sized transaction worksheet. */
+.workspace-header-inner {
+  height: 44px;
+  max-width: 1520px;
+  padding: 0 36px;
+  gap: 18px;
+}
+.workspace-header-inner .brand { font-size: 17px; gap: 8px; }
+.workspace-header-inner .academy-logo { width: 32px; height: 32px; }
+.workspace-header-inner .brand small { font-size: 7px; margin-top: 1px; }
+.workspace-header-actions { gap: 12px; }
+.workspace-user .avatar { width: 26px; height: 26px; }
+.workspace-nav-wrap { max-width: 1520px; padding: 0 36px; }
+.workspace-nav { gap: 3px; padding: 0; }
+.workspace-nav a { padding: 7px 14px; min-height: 32px; gap: 6px; }
+.nav-placeholder { height: 32px; }
+.admin-workspace:has(.transaction-sheet) { height: 100dvh; min-height: 0; overflow: hidden; }
+.workspace-main:has(.transaction-sheet) {
+  padding-top: 8px;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.admin-workspace:has(.transaction-sheet) > .workspace-footer { display: none; }
+.transaction-sheet { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 6px; }
+.sheet-toolbar { display: flex; align-items: center; gap: 14px; min-height: 28px; flex-shrink: 0; }
+.workspace-main .sheet-toolbar h1 { font-size: 17px; margin: 0; white-space: nowrap; }
+.sheet-toolbar h1 span { font-size: 11px; font-weight: 500; color: #957a68; margin-left: 5px; }
+.sheet-toolbar > p { margin: 0; font-size: 11px; color: #957a68; }
+.sheet-toolbar > .action-form { margin: 0 0 0 auto; }
+.sheet-toolbar .button { min-height: 26px; padding: 4px 9px; font-size: 11px; }
+.sheet-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.transaction-sheet .filter-bar {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) minmax(130px, 1.1fr) minmax(80px, .6fr) minmax(115px, .9fr) minmax(150px, 1.2fr) auto;
+  align-items: end;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 0 0 8px;
+  margin: 0;
+}
+.transaction-sheet .filter-bar label,
+.transaction-sheet .filter-bar label:first-of-type,
+.transaction-sheet .filter-bar label:not(:first-of-type) { min-width: 0; width: auto; gap: 3px; font-size: 10px; }
+.transaction-sheet .filter-bar input,
+.transaction-sheet .filter-bar select { min-height: 28px; height: 28px; padding: 3px 7px; font-size: 11px; border-radius: 4px; width: 100%; }
+.transaction-sheet .filter-bar .button { height: 28px; min-height: 28px; padding: 4px 12px; font-size: 11px; border-radius: 4px; }
+.sheet-scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid #dbcfc3; background: white; scrollbar-width: thin; scrollbar-color: #c4b2a1 #f6f1eb; }
+.sheet-scroll:focus-visible { outline: 2px solid var(--saffron); outline-offset: 1px; }
+.sheet-table { table-layout: fixed; border-collapse: separate; border-spacing: 0; min-width: 1080px; font-size: 12px; line-height: 1.3; isolation: isolate; }
+.sheet-col-index { width: 42px; }
+.sheet-col-time { width: 138px; }
+.sheet-col-account { width: 54px; }
+.sheet-col-ref { width: 145px; }
+.sheet-col-money { width: 145px; }
+.sheet-col-fund { width: 138px; }
+.sheet-col-action { width: 142px; }
+.sheet-table th { height: 29px; padding: 4px 7px; font-size: 11px; font-weight: 600; color: #644b40; background: #f1e8db; border-bottom: 1px solid #cfbda8; border-right: 1px solid #dfd1c1; border-radius: 0; top: 0; z-index: 3; }
+.sheet-table td { height: 30px; padding: 3px 7px; vertical-align: middle; border-bottom: 1px solid #e8e3dc; border-right: 1px solid #e8e3dc; }
+.sheet-table tr:last-child td { border-bottom: 1px solid #e8e3dc; }
+.sheet-table td:last-child, .sheet-table th:last-child { border-right: 0; }
+.sheet-table tbody tr:nth-child(even) { background: #faf9f6; }
+.sheet-table tbody tr:hover { background: #fff1cf; }
+.sheet-table .sheet-index { text-align: right; color: #998574; font-size: 10px; background: #f5f2ed; font-variant-numeric: tabular-nums; }
+.sheet-table .sheet-review { background: #fff7e2; }
+.sheet-clip { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet-ref { font-size: 11px; font-variant-numeric: tabular-nums; }
+.sheet-sender, .sheet-assignment { color: #9b8472; font-size: 10px; }
+.sheet-table .classification-cell { min-width: 0; }
+.sheet-table .badge { font-size: 10px; padding: 2px 5px; line-height: 1.3; white-space: nowrap; }
+.sheet-assignment { margin-left: 5px; }
+.sheet-row-actions > .button { min-height: 23px; height: 23px; padding: 2px 6px; font-size: 10px; border-radius: 3px; white-space: nowrap; }
+.sheet-row-actions > .badge { white-space: normal; }
+.transaction-sheet .pagination { flex-shrink: 0; margin: 0; padding: 6px 0; min-height: 34px; font-size: 11px; }
+.transaction-sheet .pagination .button { min-height: 25px; padding: 3px 9px; font-size: 11px; }
+@media (max-width: 900px) {
+  .transaction-sheet .filter-bar { grid-template-columns: 1.6fr 1fr 1fr; gap: 5px 8px; }
+}
+@media (max-width: 680px) {
+  .workspace-header-inner { height: 42px; padding: 0 10px; }
+  .workspace-header-inner .brand { font-size: 15px; }
+  .workspace-header-inner .academy-logo { width: 29px; height: 29px; }
+  .workspace-nav-wrap { padding: 0 5px; }
+  .workspace-nav { display: flex; gap: 0; padding: 0; }
+  .workspace-nav a { flex: 1; padding: 7px 3px; font-size: 9px; gap: 3px; min-height: 32px; }
+  .workspace-nav a svg { width: 12px; height: 12px; }
+  .workspace-main:has(.transaction-sheet) { padding-top: 6px; padding-bottom: 0; }
+  .sheet-toolbar { gap: 5px; }
+  .sheet-toolbar > p { display: none; }
+  .workspace-main .sheet-toolbar h1 { font-size: 15px; }
+  .sheet-toolbar .button { font-size: 10px; }
+  .transaction-sheet .filter-bar { grid-template-columns: 1.3fr 1fr 1fr; }
+  .transaction-sheet .filter-bar input, .transaction-sheet .filter-bar select { font-size: 12px; height: 30px; }
+  .transaction-sheet .filter-bar .button { height: 30px; }
+}
+
+/* Keep compact chrome aligned with the shared admin content width. */
+@media (min-width: 1500px) {
+  .workspace-header-inner, .workspace-nav-wrap { padding-left: 46px; padding-right: 46px; }
+}
+@media (max-width: 1150px) and (min-width: 901px) {
+  .workspace-header-inner, .workspace-nav-wrap { padding-left: 25px; padding-right: 25px; }
+}
+@media (max-width: 900px) and (min-width: 681px) {
+  .workspace-header-inner, .workspace-nav-wrap { padding-left: 20px; padding-right: 20px; }
+}
+@media (max-width: 680px) {
+  .workspace-header-inner, .workspace-nav-wrap { padding-left: 15px; padding-right: 15px; }
+}
+
+/* Funds: prioritize the list, with compact account totals and status navigation. */
+.admin-workspace:has(.fund-workspace) { height: 100dvh; min-height: 0; overflow: hidden; }
+.workspace-main:has(.fund-workspace) { display: flex; flex-direction: column; min-height: 0; padding-top: 8px; padding-bottom: 0; }
+.admin-workspace:has(.fund-workspace) > .workspace-footer { display: none; }
+.fund-workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 7px; }
+.fund-topline { display: flex; align-items: center; gap: 14px; flex-shrink: 0; min-height: 30px; }
+.workspace-main .fund-topline h1 { font-size: 17px; margin: 0; white-space: nowrap; }
+.fund-account-inline { display: flex; flex-wrap: wrap; gap: 3px 18px; font-size: 10px; color: #8b7260; line-height: 1.5; }
+.fund-account-inline strong { color: #693d35; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fund-inline-review { color: #a46516; text-decoration: underline; }
+.fund-topline > .button { margin-left: auto; flex-shrink: 0; min-height: 28px; padding: 4px 9px; font-size: 11px; }
+.fund-list-panel { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.fund-status-tabs { display: flex; gap: 4px; border-bottom: 1px solid #e4d7c8; margin-bottom: 7px; flex-shrink: 0; }
+.fund-status-tabs a { display: flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 11px; color: #8c7463; border-bottom: 2px solid transparent; white-space: nowrap; }
+.fund-status-tabs a.selected { color: var(--primary); border-bottom-color: var(--saffron); background: #faf1e5; font-weight: 600; }
+.fund-status-tabs a:hover { background: #faf1e5; }
+.fund-status-tabs a span { font-size: 10px; background: #eee5d9; color: #856c56; padding: 0 5px; border-radius: 3px; }
+.fund-workspace .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 7px; margin: 0; flex-shrink: 0; }
+.fund-workspace .filter-bar label { gap: 3px; font-size: 10px; }
+.fund-workspace .filter-bar label:first-of-type { flex: 1; min-width: 170px; }
+.fund-workspace .filter-bar label:not(:first-of-type) { min-width: 155px; }
+.fund-workspace .filter-bar input, .fund-workspace .filter-bar select { min-height: 28px; height: 28px; padding: 3px 7px; font-size: 11px; width: 100%; border-radius: 4px; }
+.fund-workspace .filter-bar .button { height: 28px; min-height: 28px; padding: 3px 10px; font-size: 11px; align-self: end; }
+.fund-list-scroll { overflow: auto; flex: 1; min-height: 0; border: 1px solid #dfd3c6; background: white; scrollbar-width: thin; }
+.fund-list-scroll table { border-collapse: separate; border-spacing: 0; min-width: 1020px; font-size: 12px; }
+.fund-list-scroll th { padding: 7px 9px; font-size: 10px; top: 0; background: #f3ebdf; border-bottom: 1px solid #dfd3c6; border-radius: 0; }
+.fund-list-scroll td { padding: 5px 9px; height: 40px; border-bottom: 1px solid #eee5da; }
+.fund-list-scroll tbody tr:nth-child(even) { background: #fcfaf7; }
+.fund-list-scroll tbody tr:hover { background: #fff4de; }
+.fund-list-scroll .table-fund-name { display: inline-block; vertical-align: middle; margin: 0 0 0 7px; min-width: 0; max-width: 290px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.4; font-size: 12px; }
+.fund-list-scroll .code { font-size: 10px; padding: 2px 5px; }
+.fund-list-scroll .badge { font-size: 10px; padding: 3px 6px; white-space: nowrap; }
+.fund-list-scroll .table-actions { flex-wrap: nowrap; gap: 5px; }
+.fund-list-scroll .table-actions .button { min-height: 25px; padding: 3px 7px; font-size: 10px; }
+.fund-list-scroll .table-actions .icon-button { width: 25px; height: 25px; min-height: 25px; }
+.fund-list-scroll tfoot td { position: sticky; bottom: 0; background: #f7efe3; border-top: 1px solid #dfd3c6; font-size: 11px; z-index: 1; height: 32px; }
+@media (max-width: 900px) {
+  .fund-topline { flex-wrap: wrap; gap: 4px 10px; }
+  .fund-account-inline { order: 3; flex-basis: 100%; gap: 3px 14px; }
+}
+@media (max-width: 680px) {
+  .workspace-main:has(.fund-workspace) { padding-top: 6px; }
+  .fund-workspace { gap: 4px; }
+  .fund-status-tabs { gap: 0; }
+  .fund-status-tabs a { flex: 1; justify-content: center; gap: 4px; padding: 7px 4px; font-size: 10px; }
+  .fund-workspace .filter-bar { display: grid; grid-template-columns: 1fr 1fr auto; gap: 5px; }
+  .fund-workspace .filter-bar label:first-of-type, .fund-workspace .filter-bar label:not(:first-of-type) { min-width: 0; }
+  .fund-workspace .filter-bar input, .fund-workspace .filter-bar select { font-size: 12px; }
+}
+
+/* Stronger header contrast without adding vertical space. */
+.workspace-header {
+  background: linear-gradient(110deg, #702d3b, #843c43);
+  border-top-color: #e3b65f;
+  box-shadow: 0 2px 8px #4c1e2920;
+  flex-shrink: 0;
+}
+.workspace-header-inner .brand { color: #fff8ec; font-size: 19px; font-weight: 700; }
+.workspace-header-inner .brand small { color: #f4dfbf; font-size: 9px; letter-spacing: .2px; font-weight: 500; }
+.workspace-header-inner .academy-logo { border: 1px solid #e4bb70; border-radius: 5px; }
+.workspace-label { color: #efd8b2; border-left-color: #ffffff35; font-size: 10px; letter-spacing: 1px; }
+.workspace-user { color: #fff5e6; font-size: 12px; font-weight: 600; }
+.workspace-user small { color: #f0d9c3; font-size: 10px; font-weight: 400; }
+.workspace-user .avatar { background: #f4d59a; color: #6b2938; font-weight: 700; }
+.workspace-header-actions .icon-button { color: #ffeac9; }
+.workspace-header-actions .icon-button:hover { background: #ffffff18; color: white; }
+.workspace-nav-wrap { border-top-color: #ffffff20; }
+.workspace-nav { gap: 5px; }
+.workspace-nav a { color: #fae9d2; font-size: 13px; font-weight: 600; line-height: 18px; padding-top: 7px; padding-bottom: 7px; }
+.workspace-nav a:hover { background: #ffffff16; color: #fff; }
+.workspace-nav a.selected { background: #f1cc83; color: #592330; font-weight: 700; }
+.workspace-nav a.selected:after { background: #e8a735; height: 3px; }
+.workspace-nav a:focus-visible, .workspace-header-actions .icon-button:focus-visible { outline: 2px solid #ffe2a3; outline-offset: -2px; }
+.workspace-secure { color: #f0dbbb; font-size: 10px; }
+@media (max-width: 680px) {
+  .workspace-header-inner .brand { font-size: 17px; }
+  .workspace-header-inner .brand small { font-size: 8px; }
+  .workspace-nav { gap: 2px; }
+  .workspace-nav a { font-size: 11px; gap: 4px; padding-left: 3px; padding-right: 3px; }
+  .workspace-nav a svg { width: 14px; height: 14px; }
+}

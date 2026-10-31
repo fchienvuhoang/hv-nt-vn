@@ -1,69 +1,77 @@
 import Link from "next/link";
-import { ExternalLink, Settings2, Plus, Sprout } from "lucide-react";
+import {
+  ExternalLink,
+  Settings2,
+  Plus,
+  FileUp,
+  List,
+} from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
-import { fundTotals } from "@/lib/ledger";
-import { Heading, Section, Status, Empty } from "@/components/ui";
-import { vnd } from "@/lib/domain";
+import { fundTotals, accountTotals } from "@/lib/ledger";
+import { Status, Empty } from "@/components/ui";
+import { vnd, fundUsesAccount } from "@/lib/domain";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
 export default async function Funds({ params = {} }: { params?: AdminParams }) {
   await requireAdmin();
-  const all = await fundTotals();
+  const [all, balances] = await Promise.all([fundTotals(), accountTotals()]);
   const query = (params.q ?? "").trim().toLocaleLowerCase("vi");
-  const funds = all.filter(
+  const status = ["ACTIVE", "COMPLETED", "PAUSED", "ALL"].includes(params.status ?? "")
+    ? params.status! : "ACTIVE";
+  const matching = all.filter(
     (f) =>
-      (!params.account || f.accountId === params.account) &&
-      (!params.status || f.status === params.status) &&
+      (!params.account || fundUsesAccount(f, params.account)) &&
       (!query ||
         `${f.code} ${f.name} ${f.keywords.join(" ")}`
           .toLocaleLowerCase("vi")
           .includes(query)),
   );
-  const accounts = [
-    ...new Map(all.map((f) => [f.accountId, f.account])).values(),
+  const funds = matching.filter((f) => status === "ALL" || f.status === status);
+  const tabs = [
+    { value: "ACTIVE", label: "Đang hoạt động" },
+    { value: "COMPLETED", label: "Hoàn thành" },
+    { value: "PAUSED", label: "Tạm dừng" },
+    { value: "ALL", label: "Tất cả" },
   ];
+  const scoped = funds.map((f) => {
+    const a = params.account
+      ? f.byAccount.find((a) => a.accountId === params.account)
+      : null;
+    return a
+      ? { ...f, income: a.income, expense: a.expense, balance: a.balance }
+      : f;
+  });
+  const accounts = balances;
   return (
-    <>
-      <Heading
-        eyebrow="QUẢN LÝ THIỆN PHÁP"
-        title="Các thiện pháp"
-        description="Quản lý trạng thái, từ khóa và nguồn hùn phước tại cùng một nơi."
-      >
-        <Link
-          scroll={false}
-          href={adminUrl("funds", { ...params, modal: "create-fund" })}
-          className="button primary"
-        >
-          <Plus size={16} />
-          Tạo thiện pháp
+    <div className="fund-workspace">
+      <div className="fund-topline">
+        <h1>Thiện pháp</h1>
+        <div className="fund-account-inline" aria-label="Tổng tiền theo tài khoản">
+          {balances.map((a) => (
+            <span key={a.id} title={`${a.label}. Số dư dự kiến, không phải xác nhận trực tiếp từ ngân hàng.`}>
+              TK {a.number}: Hùn <strong>{vnd(a.income)}</strong>
+              <span className="fund-inline-balance"> · Dư <strong>{vnd(a.expected)}</strong></span>
+              {a.reviewCount > 0 && <Link href={`/admin?view=transactions&review=1&account=${a.id}`} className="fund-inline-review"> · {a.reviewCount} nghi trùng</Link>}
+            </span>
+          ))}
+        </div>
+        <Link scroll={false} href={adminUrl("funds", { ...params, modal: "create-fund" })} className="button primary small">
+          <Plus size={14} />Tạo thiện pháp
         </Link>
-      </Heading>
-      <div className="fund-counts">
-        <span>
-          <Sprout size={15} />
-          <strong>{all.length}</strong> thiện pháp
-        </span>
-        <span>
-          <i className="status-dot" />
-          <strong>
-            {all.filter((f) => f.status === "ACTIVE").length}
-          </strong>{" "}
-          đang hoạt động
-        </span>
-        <span>
-          <strong>{all.filter((f) => f.status === "PAUSED").length}</strong> tạm
-          dừng
-        </span>
-        <span>
-          <strong>{all.filter((f) => f.status === "COMPLETED").length}</strong>{" "}
-          hoàn thành
-        </span>
       </div>
-      <Section
-        title="Danh sách thiện pháp"
-        note="Chọn Cấu hình để sửa thông tin và quy tắc phân loại."
-      >
+      <section className="fund-list-panel" aria-label="Danh sách thiện pháp">
+        <nav className="fund-status-tabs" aria-label="Trạng thái thiện pháp">
+          {tabs.map((tab) => (
+            <Link key={tab.value} scroll={false}
+              href={adminUrl("funds", { q: params.q, account: params.account, status: tab.value })}
+              aria-current={status === tab.value ? "page" : undefined}
+              className={status === tab.value ? "selected" : ""}>
+              {tab.label}<span>{tab.value === "ALL" ? matching.length : matching.filter((f) => f.status === tab.value).length}</span>
+            </Link>
+          ))}
+        </nav>
         <form className="filter-bar" action="/admin" method="get">
           <input type="hidden" name="view" value="funds" />
+          <input type="hidden" name="status" value={status} />
           <label>
             Tìm thiện pháp
             <input
@@ -83,15 +91,6 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
               ))}
             </select>
           </label>
-          <label>
-            Trạng thái
-            <select name="status" defaultValue={params.status ?? ""}>
-              <option value="">Tất cả trạng thái</option>
-              <option value="ACTIVE">Đang hoạt động</option>
-              <option value="PAUSED">Tạm dừng</option>
-              <option value="COMPLETED">Hoàn thành</option>
-            </select>
-          </label>
           <button className="button subtle">Lọc danh sách</button>
         </form>
         {!funds.length ? (
@@ -105,11 +104,11 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
             <span>
               {all.length
                 ? "Thử đổi từ khóa hoặc bộ lọc."
-                : "Tạo thiện pháp mới hoặc nhập bảng tổng hợp từ Sheets tại mục Đối soát đầu kỳ."}
+                : "Tạo thiện pháp mới rồi chọn Nhập Excel để nhập lịch sử từ Sheets."}
             </span>
           </Empty>
         ) : (
-          <div className="table-scroll workspace-table">
+          <div className="table-scroll fund-list-scroll" tabIndex={0} role="region" aria-label="Bảng thiện pháp">
             <table>
               <thead>
                 <tr>
@@ -123,25 +122,21 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                 </tr>
               </thead>
               <tbody>
-                {funds.map((f) => (
+                {scoped.map((f) => (
                   <tr key={f.id}>
                     <td>
                       <span className="code">{f.code}</span>
-                      <h3 className="table-fund-name">{f.name}</h3>
-                      <small
-                        className="keyword-preview"
-                        title={f.keywords.join(" · ")}
-                      >
-                        {f.keywords.slice(0, 3).join(" · ") ||
-                          "Nhận theo mã chính"}
-                        {f.keywords.length > 3
-                          ? ` · +${f.keywords.length - 3} từ khóa`
-                          : ""}
-                      </small>
+                      <h3 className="table-fund-name" title={`${f.name}\nTừ khóa: ${f.keywords.join(" · ") || f.code}`}>{f.name}</h3>
                     </td>
                     <td className="nowrap">
-                      <span className="account-number">{f.account.number}</span>
-                      <small>{f.account.label}</small>
+                      <span className="account-number">
+                        {[f.accountId, ...f.accountIds]
+                          .map(
+                            (id) => balances.find((a) => a.id === id)?.number,
+                          )
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
                     </td>
                     <td>
                       <Status status={f.status} />
@@ -159,6 +154,26 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                       <div className="inline-actions table-actions">
                         <Link
                           scroll={false}
+                          className="button primary small"
+                          href={adminUrl("funds", {
+                            ...params,
+                            modal: "import-fund",
+                            fundId: f.id,
+                          })}
+                        >
+                          <FileUp size={14} />
+                          Nhập Excel
+                        </Link>
+                        <Link
+                          href={`/admin?view=transactions&fund=${f.id}`}
+                          className="icon-button"
+                          aria-label={`Giao dịch ${f.code}`}
+                          title={`Giao dịch ${f.code}`}
+                        >
+                          <List size={16} />
+                        </Link>
+                        <Link
+                          scroll={false}
                           className="button subtle small"
                           href={adminUrl("funds", {
                             ...params,
@@ -169,7 +184,7 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                           <Settings2 size={14} />
                           Cấu hình
                         </Link>
-                        {f.account.finalizedAt && (
+                        {
                           <Link
                             className="icon-button"
                             href={`/t/${f.slug}`}
@@ -179,16 +194,35 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                           >
                             <ExternalLink size={16} />
                           </Link>
-                        )}
+                        }
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={3}>
+                    <strong>
+                      Tổng {funds.length} thiện pháp đang hiển thị
+                    </strong>
+                  </td>
+                  <td className="money align-right nowrap">
+                    {vnd(scoped.reduce((n, f) => n + f.income, 0n))}
+                  </td>
+                  <td className="money align-right nowrap">
+                    {vnd(scoped.reduce((n, f) => n + f.expense, 0n))}
+                  </td>
+                  <td className="money align-right nowrap">
+                    {vnd(scoped.reduce((n, f) => n + f.balance, 0n))}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
-      </Section>
-    </>
+      </section>
+    </div>
   );
 }

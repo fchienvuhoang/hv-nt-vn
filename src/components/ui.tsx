@@ -132,12 +132,14 @@ export function Pagination({
   page,
   total,
   base,
+  pageSize = 30,
 }: {
   page: number;
   total: number;
   base: string;
+  pageSize?: number;
 }) {
-  const pages = Math.max(1, Math.ceil(total / 30));
+  const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <div className="pagination">
       <span>

@@ -16,7 +16,7 @@ export function FundForm({
     >
       {fund && <input type="hidden" name="id" value={fund.id} />}
       <label>
-        Tài khoản sao kê
+        Tài khoản chính (cho số tổng hợp cũ)
         <select name="accountId" defaultValue={fund?.accountId} required>
           {accounts
             .filter((a) => !fund || a.id === fund.accountId)
@@ -27,6 +27,24 @@ export function FundForm({
             ))}
         </select>
       </label>
+      <fieldset className="trial-accounts">
+        <legend>Tài khoản nhận hùn phước</legend>
+        {accounts.map((a) => (
+          <label className="checkbox-label" key={a.id}>
+            <input
+              type="checkbox"
+              name="accountIds"
+              value={a.id}
+              defaultChecked={
+                !fund ||
+                a.id === fund.accountId ||
+                fund.accountIds.includes(a.id)
+              }
+            />
+            {a.number} · {a.label}
+          </label>
+        ))}
+      </fieldset>
       <div className="form-row">
         <label>
           Mã thiện pháp

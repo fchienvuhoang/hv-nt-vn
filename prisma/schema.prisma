@@ -32,15 +32,20 @@ model BankAccount {
   openingDifference  BigInt   @default(0)
   differenceReason   String   @default("")
   finalizedAt        DateTime?
+  trialStartedAt     DateTime?
+  syncFrom           DateTime?
   funds              Fund[]
   transactions       BankTransaction[]
   syncStates         SyncState[]
+  excelImports       FundImport[]
+  transfers          Transfer[]
   createdAt          DateTime @default(now())
 }
 model Fund {
   id                 String     @id @default(cuid())
   accountId          String
   account            BankAccount @relation(fields: [accountId], references: [id])
+  accountIds         String[]   @default([])
   code               String
   name               String
   slug               String     @unique
@@ -51,6 +56,7 @@ model Fund {
   openingExpense     BigInt     @default(0)
   openingTransferNet BigInt     @default(0)
   transactions       BankTransaction[]
+  imports            FundImport[]
   transfersOut       Transfer[] @relation("TransferFrom")
   transfersIn        Transfer[] @relation("TransferTo")
   createdAt          DateTime   @default(now())
@@ -62,6 +68,14 @@ model BankTransaction {
   id             String      @id @default(cuid())
   accountId      String
   account        BankAccount @relation(fields: [accountId], references: [id])
+  origin         String      @default("BANK")
+  entryStatus    String      @default("POSTED")
+  matchKey       String      @default("")
+  importId       String?
+  importBatch    FundImport? @relation(fields: [importId], references: [id])
+  mergedIntoId   String?
+  mergedInto     BankTransaction? @relation("MergedEntry", fields: [mergedIntoId], references: [id])
+  mergedEntries  BankTransaction[] @relation("MergedEntry")
   sourceId       String
   refId          String
   amount         BigInt
@@ -83,10 +97,16 @@ model BankTransaction {
   @@index([accountId, occurredAt])
   @@index([fundId, direction, occurredAt])
   @@index([assignment, occurredAt])
+  @@index([accountId, origin, entryStatus, occurredAt])
+  @@index([accountId, matchKey])
+  @@index([importId])
+  @@index([mergedIntoId])
 }
 model Transfer {
   id          String   @id @default(cuid())
   requestId   String   @unique
+  accountId   String?
+  account     BankAccount? @relation(fields: [accountId], references: [id])
   fromFundId  String
   toFundId    String
   fromFund    Fund     @relation("TransferFrom", fields: [fromFundId], references: [id])
@@ -137,4 +157,35 @@ model AuditLog {
   details    Json
   createdAt  DateTime @default(now())
   @@index([createdAt])
+}
+
+model FundImport {
+  id             String   @id @default(cuid())
+  accountId      String?
+  account        BankAccount? @relation(fields: [accountId], references: [id])
+  fundId         String
+  fund           Fund     @relation(fields: [fundId], references: [id])
+  fileName       String
+  fileHash       String
+  sheetName      String
+  actor          String
+  status         String   @default("STAGED")
+  cursor         Int      @default(0)
+  rowCount       Int
+  skipped        Int      @default(0)
+  added          Int      @default(0)
+  matched        Int      @default(0)
+  review         Int      @default(0)
+  income         BigInt
+  expense        BigInt
+  sourceIncome   BigInt?
+  sourceExpense  BigInt?
+  sample         Json
+  errors         Json
+  data           Json
+  entries        BankTransaction[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([fundId, fileHash, sheetName])
+  @@index([fundId, createdAt])
 }

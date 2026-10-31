@@ -13,12 +13,14 @@
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "test:integration": "node --conditions=react-server --import tsx tests/integration.mts"
+    "test:integration": "node --conditions=react-server --import tsx tests/integration.mts",
+    "test:excel-integration": "node --conditions=react-server --import tsx tests/excel-import-integration.mts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "dotenv": "^18.0.9",
+    "exceljs": "^4.4.0",
     "lucide-react": "^1.65.0",
     "next": "16.4.3",
     "next-auth": "^5.0.0-beta.32",

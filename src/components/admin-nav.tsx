@@ -2,20 +2,16 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  LayoutDashboard,
   ArrowLeftRight,
   Sprout,
   Shuffle,
-  ClipboardCheck,
   RefreshCw,
 } from "lucide-react";
 import { adminUrl, getAdminView } from "@/lib/admin-navigation";
 const items = [
-  { view: "overview", label: "Tổng quan", icon: LayoutDashboard },
   { view: "transactions", label: "Giao dịch", icon: ArrowLeftRight },
   { view: "funds", label: "Thiện pháp", icon: Sprout },
   { view: "transfers", label: "Điều chuyển", icon: Shuffle },
-  { view: "reconciliation", label: "Đối soát đầu kỳ", icon: ClipboardCheck },
   { view: "sync", label: "Đồng bộ & lịch sử", icon: RefreshCw },
 ] as const;
 export function AdminNav() {

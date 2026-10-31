@@ -1,11 +1,9 @@
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminView, type AdminParams } from "@/lib/admin-navigation";
-import Overview from "@/components/admin/views/overview";
 import Funds from "@/components/admin/views/funds";
 import Transactions from "@/components/admin/views/transactions";
 import Transfers from "@/components/admin/views/transfers";
-import Reconciliation from "@/components/admin/views/reconciliation";
 import Sync from "@/components/admin/views/sync";
 import { AdminDialogs } from "@/components/admin/admin-dialogs";
 import Loading from "./loading";
@@ -31,14 +29,11 @@ export default async function AdminPage({
     case "transfers":
       content = <Transfers />;
       break;
-    case "reconciliation":
-      content = <Reconciliation />;
-      break;
     case "sync":
       content = <Sync />;
       break;
     default:
-      content = <Overview />;
+      content = <Funds params={params} />;
   }
   return (
     <>

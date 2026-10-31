@@ -12,7 +12,7 @@ const originalFetch = globalThis.fetch;
 async function clean() {
   await db.auditLog.deleteMany(); await db.syncLease.deleteMany(); await db.syncRun.deleteMany();
   await db.transfer.deleteMany({ where: { reversalOf: { not: null } } }); await db.transfer.deleteMany();
-  await db.bankTransaction.deleteMany(); await db.syncState.deleteMany(); await db.fund.deleteMany(); await db.bankAccount.deleteMany();
+  await db.bankTransaction.deleteMany(); await db.syncState.deleteMany(); await db.fundImport.deleteMany(); await db.fund.deleteMany(); await db.bankAccount.deleteMany();
 }
 try {
   await clean();

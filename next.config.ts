@@ -4,12 +4,18 @@ const nextConfig: NextConfig = {
   // Data Cache is used explicitly; keep route-segment auth/runtime controls available.
   cacheComponents: false,
   poweredByHeader: false,
+  experimental: { serverActions: { bodySizeLimit: "6mb" } },
   async headers() {
-    return [{ source: "/(.*)", headers: [
-      { key: "X-Content-Type-Options", value: "nosniff" },
-      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-      { key: "X-Frame-Options", value: "DENY" },
-    ] }];
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
+        ],
+      },
+    ];
   },
 };
 export default nextConfig;

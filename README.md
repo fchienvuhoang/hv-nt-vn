@@ -39,7 +39,7 @@ Không có tài khoản mặc định hoặc cơ chế bỏ qua đăng nhập. K
 2. Tạo Prisma Postgres, cấu hình các biến trên trong Vercel Production. Đặt vùng functions gần database.
 3. Chạy `npm run db:migrate` và `npm run db:seed` từ máy/công việc CI có kết nối tới database Production, trước khi mở ứng dụng. Seed có thể chạy lại, không ghi đè tài khoản có sẵn. Nếu database có yêu cầu dùng URL trực tiếp để migration, chạy lệnh với `DATABASE_URL` trực tiếp ở riêng môi trường migration.
 4. Build command `npm run build` (bao gồm `prisma generate`). Không chạy migration tự động trong mọi preview deployment. Preview phải dùng database riêng, không dùng chung Production.
-5. Hoàn tất chốt sổ rồi mới tạo lịch đồng bộ. Không cần `vercel.json` cron.
+5. Cấu hình ngày bắt đầu lấy sao kê trong Đồng bộ & lịch sử, sau đó tạo cron. Không cần chốt sổ hoặc `vercel.json` cron.
 
 Google SSO cần cấu hình thật và kiểm thử tài khoản được cấp quyền/không được cấp quyền trước khi mở cho team. Chưa có credentials nên chưa thể xác minh luồng OAuth với Google thật trong mã nguồn này.
 
@@ -66,29 +66,26 @@ Không ghi secret vào query string. Scheduler chỉ có quyền yêu cầu đ�
 - Nếu tiến trình bị platform hủy, SyncRun có thể còn RUNNING; kiểm tra thời gian và lease trước khi đánh giá tình trạng. Theo dõi lỗi scheduler và mốc hoàn thành của cả 4 luồng.
 - API nguồn `api-pilot.thiennguyen.app` chưa có hợp đồng SLA trong dự án. Cấu trúc, bankAccountId và phân trang cần kiểm tra khi nguồn thay đổi.
 
-## Chuyển đổi từ Google Sheets
+## Nhập dữ liệu Google Sheets / Excel
 
-Chi tiết trong [docs/MIGRATION.md](docs/MIGRATION.md).
+Trang mặc định sau đăng nhập là danh sách thiện pháp tại `/admin`. Tạo thiện pháp, chọn **Nhập Excel**, tải file `.xlsx` xuất từ Google Sheets (File → Download → Microsoft Excel). Hệ thống đọc từng tab, nhận diện TK Mỹ / TK Trâm, xem trước tổng và yêu cầu xác nhận trước khi ghi dữ liệu. Giới hạn 5 MB / 10.000 giao dịch mỗi file.
 
-1. Chọn ngày bắt đầu, ví dụ `2026-11-01` tương ứng 00:00 giờ Việt Nam. Chốt Sheets và số dư ngân hàng ngay trước thời điểm này. Giao dịch từ mốc này trở đi thuộc hệ thống mới.
-2. Tạo thiện pháp hoặc xuất bảng tổng hợp sang CSV theo `/templates/so-du-dau-ky.csv`. Dùng số nguyên VND không dấu phân cách. Không nhập từng giao dịch vào file này.
-3. Nhập tổng hùn, tổng chi, điều chuyển ròng lịch sử của từng thiện pháp; nhập số dư ngân hàng và tiền chưa phân bổ của tài khoản.
-4. Chênh lệch = ngân hàng − tổng số dư thiện pháp − chưa phân bổ. Chênh lệch khác 0 bắt buộc có lý do, được lưu riêng.
-5. Kiểm tra bản nháp và khóa sổ. Số đầu kỳ bất biến trên giao diện sau khi khóa. Chỉ tài khoản đã khóa mới đồng bộ và công khai thiện pháp.
-6. Chạy song song và đối chiếu ít nhất một chu kỳ vận hành trước khi ngừng Sheets.
+Một thiện pháp có thể nhận ở cả hai tài khoản; số dư và điều chuyển luôn được theo dõi riêng theo tài khoản. Nhập từng tab, xem tài khoản được nhận diện, tổng thu/chi và lỗi. Không nhập dòng tổng hoặc dòng phụ m²/số vị thành giao dịch. Tổng không khớp cần kiểm tra và xác nhận rõ. File có dòng lỗi phải sửa rồi tải lại.
 
-CSV cùng mã cập nhật số tổng hợp, không cộng dồn; không xóa các mã khác. Không nhập danh sách giao dịch lịch sử đã được tính trong số dư đầu kỳ vào giao dịch mới. Bản hiện tại công khai tổng lịch sử + chi tiết sau mốc chuyển đổi; chưa nhập chi tiết lịch sử từng dòng hoặc đọc trực tiếp Google Sheets.
+Nhập chạy từng lô, có thể tiếp tục khi gián đoạn; cùng file/tab không ghi lại lần hai. Giao dịch khớp duy nhất theo mã tham chiếu đầy đủ hoặc thời gian/nội dung/số tiền được ghép với sao kê. Trường hợp nghi trùng đưa vào kiểm tra, chưa cộng tiền cho tới khi quản trị xác nhận. Phân bổ tay ở thiện pháp khác được bảo vệ. Xem [hướng dẫn chuyển đổi](docs/MIGRATION.md).
+
+Không còn chức năng chốt sổ hay điều kiện khóa đồng bộ. Các tổng lịch sử đã tồn tại được giữ; khi thay bằng giao dịch Excel chi tiết, quản trị phải xác nhận thay tổng cũ để tránh cộng hai lần.
 
 ## Quy tắc nghiệp vụ
 
-- Một giao dịch gán vào tối đa một thiện pháp, cùng tài khoản nguồn.
+- Một giao dịch gán vào tối đa một thiện pháp có liên kết tài khoản nguồn.
 - Mã có ranh giới, không nhầm TP01 với TP010. Chuẩn hóa dấu, chữ hoa/thường, khoảng trắng.
 - Mã chính ưu tiên từ khóa mở rộng. Nhiều mã/thiện pháp khớp → chờ kiểm tra. Mã khớp thiện pháp tạm dừng/hoàn thành → chờ tay, không rơi sang từ khóa thiện pháp khác.
 - Chỉ ACTIVE nhận tự động. Gán tay có thể chọn PAUSED/COMPLETED, bắt buộc lý do và giữ qua các lượt đồng bộ.
 - Thay trạng thái/từ khóa không tự sửa giao dịch cũ. Nút chạy lại chỉ xử lý tối đa 500 giao dịch UNASSIGNED mới nhất. Có thể lọc và gán tay các giao dịch còn lại.
 - Điều chuyển phải cùng tài khoản, số tiền dương, đủ số dư. Transaction serializable, thử lại khi xung đột; requestId chống gửi trùng. Không làm tăng tổng hùn/chi. Hủy bằng bút toán đảo duy nhất, có lý do và kiểm tra số dư.
 - Tiền dùng BigInt VND, không tính bằng số thực. Giờ nguồn không có offset được hiểu là giờ Việt Nam.
-- Tổng lịch sử nằm trong Fund; tổng số dư tính từ đầu kỳ + sao kê mới + điều chuyển. Tiền chưa phân bổ và chênh lệch đầu kỳ được giữ ở cấp tài khoản.
+- Số dư dự kiến = tổng số dư thiện pháp + tiền chưa phân bổ theo tài khoản. Thu và chi chỉ tính giao dịch POSTED; REVIEW và MERGED không cộng vào tổng. Số tổng hợp cũ được giữ tương thích cho tới khi thay bằng chi tiết.
 - Đây là sổ phân bổ nội bộ, không có chức năng thực hiện chuyển khoản ngân hàng.
 
 ## Trang công khai và cache
@@ -139,10 +136,14 @@ http://localhost:3000/api/auth/callback/google
 
 Nếu log ghi `invalid_client` và `The provided client secret is invalid`, lỗi xảy ra trước bước kiểm tra ADMIN_EMAILS. Mở đúng OAuth Web client trong Google Cloud, sao chép Client Secret tương ứng vào AUTH_GOOGLE_SECRET trong .env (hoặc Vercel Environment Variables). AUTH_GOOGLE_ID và AUTH_GOOGLE_SECRET phải thuộc cùng client. AUTH_SECRET là khóa phiên ngẫu nhiên riêng, không dùng thay cho Google Client Secret. Không gửi secret qua chat hoặc commit vào Git. Khởi động lại dev server / redeploy rồi bắt đầu một phiên đăng nhập mới.
 
-## Giao diện quản trị một màn hình
+## Giao diện quản trị
 
-Các mục Tổng quan, Giao dịch, Thiện pháp, Điều chuyển, Đối soát và Đồng bộ cùng nằm tại `/admin`, chọn mục qua `?view=...`. Thanh menu luôn hiển thị; mobile chia thành hai hàng để đủ sáu mục. Các đường dẫn cũ `/admin/funds`, `/admin/transactions`, ... tự chuyển sang mục tương ứng và giữ tham số lọc/phân trang.
+Danh sách thiện pháp là trang mặc định. Bốn mục Thiện pháp, Giao dịch, Điều chuyển và Đồng bộ cùng ở `/admin`. Tạo/cấu hình thiện pháp, nhập Excel, xử lý nghi trùng, chọn ngày đồng bộ và điều chuyển sử dụng modal. Màu đỏ măng cụt, vàng nghệ và cam đất; logo học viện dùng ở đăng nhập, quản trị, trang công khai và favicon.
 
-Tạo/cấu hình thiện pháp và tạo điều chuyển dùng modal theo URL, hỗ trợ mở lại bằng đường dẫn. Phân loại tay, cấu hình số đầu kỳ, nhập CSV, khóa sổ, đảo điều chuyển và chi tiết lịch sử dùng modal tại chỗ. Modal hỗ trợ Escape, giữ focus trong hộp thoại, cuộn nội dung và khóa cuộn nền. Sau điều chuyển thành công, nút gửi bị khóa cho tới khi mở một modal điều chuyển mới để tránh gửi lặp.
+Kiểm thử nhập Excel trên PostgreSQL riêng:
 
-Tông màu chung: đỏ măng cụt `#7b3040`, vàng nghệ `#c58a32`, cam đất `#b86336` và nền kem. Áp dụng cho cả quản trị, đăng nhập và trang công khai. Thay đổi này không sửa schema hay số liệu tài chính.
+```sh
+DATABASE_URL="postgresql://USER@localhost:5432/hvntvn_test" npm run test:excel-integration
+```
+
+Script chỉ chấp nhận database test localhost và dọn dữ liệu test. Kiểm tra nhập nhiều tab/tài khoản, tiếp tục sau gián đoạn, hai yêu cầu đồng thời, chống nhập lại, ghép sao kê hai chiều, bảo vệ phân bổ tay, điều chuyển và thay tổng cũ.

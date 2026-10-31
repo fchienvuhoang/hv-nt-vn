@@ -11,8 +11,9 @@ export const publicFund = unstable_cache(
       where: { slug },
       include: { account: true },
     });
-    if (!fund?.account.finalizedAt) return null;
-    const where = { fundId: fund.id, direction };
+    if (!fund) return null;
+    const bankAccounts = await db.bankAccount.findMany({where:{id:{in:[fund.accountId,...fund.accountIds]}},select:{id:true,number:true}});
+    const where = { fundId: fund.id, direction, entryStatus: "POSTED" };
     const [summary, rows, count, transfers, sync] = await Promise.all([
       fundTotals(),
       db.bankTransaction.findMany({
@@ -43,7 +44,10 @@ export const publicFund = unstable_cache(
       slug,
       description: maskPhones(fund.description),
       status: fund.status,
-      account: fund.account.number,
+      account: bankAccounts.map(a=>a.number).join(" · "),
+      pendingImports: await db.fundImport.count({
+        where: { fundId: fund.id, status: "RUNNING" },
+      }),
       income: total.income.toString(),
       expense: total.expense.toString(),
       balance: total.balance.toString(),
@@ -52,9 +56,10 @@ export const publicFund = unstable_cache(
       openingTransferNet: fund.openingTransferNet.toString(),
       openingIncome: fund.openingIncome.toString(),
       openingExpense: fund.openingExpense.toString(),
-      cutover: fund.account.cutoverAt?.toISOString(),
+      cutover: fund.account.syncFrom?.toISOString(),
       rows: rows.map((r) => ({
         id: r.id,
+        account: bankAccounts.find(a=>a.id===r.accountId)?.number??"",
         amount: r.amount.toString(),
         at: r.occurredAt.toISOString(),
         narrative: r.hiddenNarrative
@@ -81,6 +86,6 @@ export const publicFund = unstable_cache(
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-v1"],
+  ["public-fund-v3"],
   options,
 );

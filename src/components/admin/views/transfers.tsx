@@ -12,6 +12,7 @@ export default async function Transfers() {
   const transfers = await db.transfer.findMany({
     include: {
       fromFund: { include: { account: true } },
+      account: true,
       toFund: true,
       reversal: true,
     },
@@ -62,7 +63,7 @@ export default async function Transfers() {
                     <td className="nowrap">
                       {dateTime(t.createdAt)}
                       <small>
-                        {t.actor} · TK {t.fromFund.account.number}
+                        {t.actor} · TK {t.account?.number ?? t.fromFund.account.number}
                       </small>
                     </td>
                     <td>

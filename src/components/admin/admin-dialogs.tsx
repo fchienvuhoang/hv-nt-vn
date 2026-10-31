@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { fundTotals } from "@/lib/ledger";
+import { listFundImports } from "@/lib/fund-imports";
+import { FundExcelImport } from "./fund-excel-import";
 import { Modal } from "@/components/modal";
 import { FundForm } from "./fund-form";
 import { TransferForm } from "./transfer-form";
@@ -43,6 +45,36 @@ export async function AdminDialogs({
         ) : (
           <FundForm accounts={accounts} fund={fund} />
         )}
+      </Modal>
+    );
+  }
+  if (modal === "import-fund" && fundId) {
+    const fund = await db.fund.findUnique({ where: { id: fundId } });
+    if (!fund)
+      return (
+        <Modal defaultOpen title="Nhập Excel" closeHref={closeHref}>
+          <div className="notice danger">Không tìm thấy thiện pháp.</div>
+        </Modal>
+      );
+    return (
+      <Modal
+        key={fundId}
+        defaultOpen
+        wide
+        title={`Nhập Excel · ${fund.code}`}
+        description={fund.name}
+        closeHref={closeHref}
+      >
+        <FundExcelImport
+          fundId={fund.id}
+          legacy={{
+            accountId: fund.accountId,
+            income: fund.openingIncome.toString(),
+            expense: fund.openingExpense.toString(),
+            transfer: fund.openingTransferNet.toString(),
+          }}
+          history={await listFundImports(fund.id)}
+        />
       </Modal>
     );
   }

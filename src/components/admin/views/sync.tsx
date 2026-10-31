@@ -1,11 +1,11 @@
-import { Cable, RefreshCw } from "lucide-react";
+import { Cable, RefreshCw, Settings2 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Heading, Section, Empty } from "@/components/ui";
 import { ActionForm } from "@/components/action-form";
 import { Modal } from "@/components/modal";
-import { syncNow } from "@/app/admin/actions";
-import { dateTime } from "@/lib/domain";
+import { syncNow, configureSyncStart } from "@/app/admin/actions";
+import { dateTime, localDate } from "@/lib/domain";
 const actionNames: Record<string, string> = {
   FUND_CREATED: "Tạo thiện pháp",
   FUND_UPDATED: "Sửa thiện pháp",
@@ -18,16 +18,31 @@ const actionNames: Record<string, string> = {
   TRANSFER_CREATED: "Điều chuyển",
   TRANSFER_REVERSED: "Đảo điều chuyển",
   SOURCE_UPDATED: "Nguồn sửa giao dịch",
+  SYNC_START_UPDATED: "Đổi ngày bắt đầu sao kê",
+  FUND_EXCEL_IMPORTED: "Nhập Excel vào thiện pháp",
+  EXCEL_ALLOCATION_APPLIED: "Phân bổ từ file Excel",
+  EXCEL_BANK_MATCHED: "Đối chiếu Excel và sao kê",
+  DUPLICATE_REVIEWED: "Kiểm tra giao dịch nghi trùng",
+  LEGACY_SUMMARY_REPLACED: "Thay tổng cũ bằng chi tiết Excel",
 };
 export default async function Sync() {
   await requireAdmin();
-  const [runs, states, audits] = await Promise.all([
+  const [runs, states, audits, accounts] = await Promise.all([
     db.syncRun.findMany({ orderBy: { startedAt: "desc" }, take: 30 }),
     db.syncState.findMany({
       include: { account: true },
       orderBy: [{ accountId: "asc" }, { direction: "asc" }],
     }),
     db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
+    db.bankAccount.findMany({
+      select: {
+        id: true,
+        number: true,
+        label: true,
+        syncFrom: true,
+      },
+      orderBy: { number: "asc" },
+    }),
   ]);
   return (
     <>
@@ -36,6 +51,40 @@ export default async function Sync() {
         title="Đồng bộ & lịch sử"
         description="Theo dõi tiến độ lấy sao kê và lịch sử thao tác của ban quản trị."
       >
+        <Modal
+          wide
+          title="Ngày bắt đầu sao kê"
+          description="Không cần chốt sổ. Có thể quét lại lịch sử; dữ liệu đã nhập được giữ và chống trùng."
+          trigger={
+            <>
+              <Settings2 size={16} />
+              Cấu hình sao kê
+            </>
+          }
+        >
+          {accounts.map((a) => (
+            <section className="sync-account-setting" key={a.id}>
+              <h3>
+                {a.number} · {a.label}
+              </h3>
+              <ActionForm action={configureSyncStart} label="Lưu ngày bắt đầu">
+                <input name="accountId" type="hidden" value={a.id} />
+                <label>
+                  Lấy giao dịch từ ngày
+                  <input
+                    name="from"
+                    type="date"
+                    defaultValue={
+                      a.syncFrom ? localDate(a.syncFrom) : localDate()
+                    }
+                    max={localDate()}
+                    required
+                  />
+                </label>
+              </ActionForm>
+            </section>
+          ))}
+        </Modal>
         <Modal
           title="Kết nối đồng bộ mỗi 20 phút"
           trigger={
@@ -81,8 +130,9 @@ export default async function Sync() {
         >
           <ActionForm action={syncNow} label="Bắt đầu đồng bộ" />
           <p className="modal-help">
-            Kết quả được lưu vào nhật ký bên dưới. Cần hoàn tất chốt sổ đầu kỳ
-            trước khi đồng bộ.
+            Giao dịch sẽ được lưu thật. Mặc định lấy từ hôm nay; đổi ngày tại
+            Cấu hình sao kê nếu cần lấy lịch sử. Dữ liệu Excel được đối chiếu để
+            tránh cộng hai lần.
           </p>
         </Modal>
       </Heading>
@@ -93,7 +143,8 @@ export default async function Sync() {
         >
           {!states.length ? (
             <Empty title="Chưa khởi tạo đồng bộ">
-              Hoàn tất chốt sổ đầu kỳ rồi chọn Đồng bộ ngay.
+              Chọn Đồng bộ ngay để bắt đầu. Có thể đổi ngày lấy lịch sử tại Cấu
+              hình sao kê.
             </Empty>
           ) : (
             <div className="table-scroll">

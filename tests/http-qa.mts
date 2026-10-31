@@ -66,7 +66,6 @@ try {
     "/admin?view=funds",
     "/admin?view=transactions",
     "/admin?view=transfers",
-    "/admin?view=reconciliation",
     "/admin?view=sync",
   ]) {
     const r = await get(path);
@@ -75,7 +74,7 @@ try {
     assert.equal((await get(path, false)).status, 307);
   }
   const legacy = await get("/admin/funds?edit=legacy-test");
-  const expectedLegacyTarget = "/admin?view=funds&modal=edit-fund&fundId=legacy-test";
+  const expectedLegacyTarget = "/admin?modal=edit-fund&fundId=legacy-test";
   if (legacy.status === 307) assert.equal(legacy.headers.get("location"), expectedLegacyTarget);
   else {
     // Next.js can stream a redirect as a meta refresh after the parent shell.
@@ -173,46 +172,10 @@ try {
   );
   await post("/admin?view=transfers&modal=transfer", transfer);
   assert.equal(await db.transfer.count(), 1);
-  const draft = await db.bankAccount.findUniqueOrThrow({
-    where: { number: "0856" },
-  });
-  const opening = await formFor("/admin?view=reconciliation", "cutover");
-  opening.set("accountId", draft.id);
-  opening.set(
-    "cutover",
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Ho_Chi_Minh",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date()),
-  );
-  opening.set("openingBankBalance", "500000");
-  opening.set("openingUnallocated", "500000");
-  opening.set("differenceReason", "");
-  assert.ok(
-    (await post("/admin?view=reconciliation", opening)).html.includes(
-      "Đã lưu bản nháp",
-    ),
-  );
-  const lock = await formFor("/admin?view=reconciliation", "confirmed");
-  lock.set("accountId", draft.id);
-  lock.set("confirmed", "yes");
-  assert.ok(
-    (await post("/admin?view=reconciliation", lock)).html.includes(
-      "Đã khóa sổ đầu kỳ",
-    ),
-  );
-  assert.ok(
-    (await db.bankAccount.findUniqueOrThrow({ where: { id: draft.id } }))
-      .finalizedAt,
-  );
-  // Replaying a pre-lock form is rejected by the server, not just hidden in the UI.
-  assert.ok(
-    (await post("/admin?view=reconciliation", opening)).html.includes(
-      "Sổ đầu kỳ đã khóa",
-    ),
-  );
+  const importHtml = await (await get("/admin?modal=import-fund&fundId=" + f.id)).text();
+  assert.ok(importHtml.includes('name="file"'));
+  assert.ok(importHtml.includes(".xlsx"));
+  assert.ok(!(await (await get("/admin")).text()).includes("Chốt sổ"));
   const revoked = await encode({
     token: { email: "not-allowed@example.test", sub: "qa-denied" },
     secret: process.env.AUTH_SECRET!,
@@ -229,7 +192,7 @@ try {
     307,
   );
   console.log(
-    "PASS: all admin routes guarded, unauthorized mutation rejected, valid admin forms, phone masking, shared cache and invalidation, manual assignment, transfer dedup, opening lock/replay, allowlist checked each request",
+    "PASS: all admin routes guarded, unauthorized mutation rejected, valid admin forms, phone masking, shared cache and invalidation, manual assignment, transfer dedup, Excel modal/no closing workflow, allowlist checked each request",
   );
 } finally {
   await db.$disconnect();
