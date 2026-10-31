@@ -153,11 +153,11 @@ export async function serializable<T>(
         attempt < 2 &&
         typeof error === "object" &&
         error !== null &&
-        "code" in error &&
-        (error.code === "P2034" ||
+        (("cause" in error && typeof error.cause === "object" && error.cause !== null && "kind" in error.cause && error.cause.kind === "TransactionWriteConflict") ||
+        ("code" in error && (error.code === "P2034" ||
           (error.code === "P2010" &&
             "meta" in error &&
-            JSON.stringify(error.meta).includes("TransactionWriteConflict")))
+            JSON.stringify(error.meta).includes("TransactionWriteConflict")))))
       )
         continue;
       throw error;

@@ -1,5 +1,6 @@
 "use client";
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useToast } from "@/components/toasts";
 import { FileUp, Play, RotateCw } from "lucide-react";
 import { uploadFundExcel, commitFundExcel } from "@/app/admin/actions";
 import type { ExcelUploadState } from "@/app/admin/actions";
@@ -19,10 +20,18 @@ export function FundExcelImport({
   };
   history: FundImportSummary[];
 }) {
+  const toast = useToast();
+  const handledUpload = useRef<ExcelUploadState | null>(null);
   const [state, upload, pending] = useActionState<ExcelUploadState, FormData>(
     uploadFundExcel,
     {},
   );
+  useEffect(() => {
+    if (handledUpload.current === state) return;
+    handledUpload.current = state;
+    if (state.error) toast(state.error, "error");
+    else if (state.batches) toast("Đã đọc file Excel. Kiểm tra các bảng trước khi xác nhận nhập.");
+  }, [state, toast]);
   const [selected, setSelected] = useState(""),
     [running, setRunning] = useState(false),
     [error, setError] = useState(""),
@@ -63,14 +72,16 @@ export function FundExcelImport({
         });
         if (!alive.current) break;
         if (result.error) {
+          toast(result.error, "error");
           setError(result.error);
           break;
         }
         if (!result.batch) break;
         setProgress(result.batch);
-        if (result.batch.status === "COMPLETE") break;
+        if (result.batch.status === "COMPLETE") { toast("Đã nhập xong Excel. Kiểm tra các khoản nghi trùng trong Giao dịch."); break; }
       }
     } catch {
+      if (alive.current) toast("Kết nối bị gián đoạn. Bạn có thể mở lại và tiếp tục nhập.", "error");
       if (alive.current)
         setError(
           "Kết nối bị gián đoạn. Mở lại lịch sử nhập và tiếp tục; các dòng đã lưu không bị nhập trùng.",
@@ -112,11 +123,6 @@ export function FundExcelImport({
             MB, 10.000 giao dịch.
           </small>
         </label>
-        {state.error && (
-          <div role="alert" className="notice danger">
-            {state.error}
-          </div>
-        )}
         <button className="button subtle" disabled={pending || running}>
           {pending ? (
             "Đang đọc file…"
@@ -227,7 +233,7 @@ export function FundExcelImport({
                   </label>
                 </div>
               )}
-              <div className="table-scroll import-sample">
+              <div className="table-scroll table-card import-sample">
                 <table>
                   <thead>
                     <tr>

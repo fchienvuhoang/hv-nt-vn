@@ -1,4 +1,5 @@
 import "server-only";
+import { actorStamp, createdStamp, updatedStamp, type Actor } from "./actor";
 import { db } from "./db";
 import { serializable } from "./ledger";
 import {
@@ -56,7 +57,7 @@ export async function listFundImports(fundId: string) {
 export async function stageFundImport(
   fundId: string,
   file: File,
-  actor: string,
+  actor: Actor,
 ) {
   if (!/\.xlsx$/i.test(file.name) || file.size === 0 || file.size > 5_000_000)
     throw new Error(
@@ -71,6 +72,7 @@ export async function stageFundImport(
   const sheets = await readFundWorkbook(bytes, file.name);
   const fund = await db.fund.findUniqueOrThrow({ where: { id: fundId } });
   const accounts = await db.bankAccount.findMany();
+  return serializable(async (tx) => {
   const result: FundImportSummary[] = [];
   for (const sheet of sheets) {
     const accountId = sheet.accountHint
@@ -80,7 +82,7 @@ export async function stageFundImport(
       throw new Error(
         `Không tìm thấy tài khoản ${sheet.accountHint} của bảng ${sheet.name}`,
       );
-    const batch = await db.fundImport.upsert({
+    const batch = await tx.fundImport.upsert({
       where: {
         fundId_fileHash_sheetName: {
           fundId,
@@ -95,7 +97,7 @@ export async function stageFundImport(
         fileHash: hash,
         sheetName: sheet.name,
         fileName: file.name.slice(0, 200),
-        actor,
+        ...actorStamp(actor),
         rowCount: sheet.rows.length,
         skipped: sheet.skipped,
         income: BigInt(sheet.income),
@@ -110,13 +112,15 @@ export async function stageFundImport(
       },
       select,
     });
+    await tx.auditLog.create({ data: { ...actorStamp(actor), action: "FUND_EXCEL_STAGED", entityId: fundId, details: { importId: batch.id, fileName: file.name, sheetName: sheet.name, rowCount: sheet.rows.length } } });
     result.push(dto(batch));
   }
   return result;
+  });
 }
 export async function processFundImport(
   input: { batchId: string; replaceLegacy: boolean; acceptMismatch: boolean },
-  actor: string,
+  actor: Actor,
 ) {
   return serializable(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "FundImport" WHERE id = ${input.batchId} FOR UPDATE`;
@@ -157,7 +161,7 @@ export async function processFundImport(
         );
       await tx.fund.update({
         where: { id: f.id },
-        data: { accountIds: { push: accountId } },
+        data: { accountIds: { push: accountId }, ...updatedStamp(actor) },
       });
     }
     if (batch.cursor === 0) {
@@ -174,6 +178,7 @@ export async function processFundImport(
         await tx.fund.update({
           where: { id: f.id },
           data: {
+            ...updatedStamp(actor),
             openingIncome: 0n,
             openingExpense: 0n,
             openingTransferNet: 0n,
@@ -181,7 +186,7 @@ export async function processFundImport(
         });
         await tx.auditLog.create({
           data: {
-            actor,
+            ...actorStamp(actor),
             action: "LEGACY_SUMMARY_REPLACED",
             entityId: f.id,
             details: {
@@ -266,6 +271,7 @@ export async function processFundImport(
           await tx.bankTransaction.update({
             where: { id: match.exact!.id },
             data: {
+              ...updatedStamp(actor),
               fundId: f.id,
               assignment: "MANUAL",
               matchReason: `Phân bổ từ Excel ${batch.fileName}, dòng ${row.row}`,
@@ -274,12 +280,13 @@ export async function processFundImport(
         consumed.add(match.exact!.id);
         await tx.auditLog.create({
           data: {
-            actor,
+            ...actorStamp(actor),
             action: "EXCEL_ALLOCATION_APPLIED",
             entityId: match.exact!.id,
             details: {
               beforeFundId: match.exact!.fundId,
               beforeAssignment: match.exact!.assignment,
+              ...updatedStamp(actor),
               fundId: f.id,
               importId: batch.id,
               row: row.row,
@@ -291,6 +298,7 @@ export async function processFundImport(
       else added++;
       await tx.bankTransaction.create({
         data: {
+          ...createdStamp(actor), ...updatedStamp(actor),
           accountId,
           sourceId,
           origin: "EXCEL",
@@ -335,7 +343,7 @@ export async function processFundImport(
     });
     await tx.auditLog.create({
       data: {
-        actor,
+        ...actorStamp(actor),
         action: "FUND_EXCEL_IMPORTED",
         entityId: f.id,
         details: {

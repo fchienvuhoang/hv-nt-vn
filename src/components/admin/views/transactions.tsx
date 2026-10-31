@@ -1,4 +1,10 @@
-import { requireAdmin } from "@/lib/auth";
+import { TabReclassification } from "@/components/admin/tab-reclassification";
+import { latestTabReclassification, reclassificationScope, type ReclassificationScope } from "@/lib/reclassify";
+import { TransactionTabs } from "@/components/admin/transaction-tabs";
+import { transactionDates } from "@/lib/transaction-scope";
+import { SyncRecency } from "@/components/admin/sync-recency";
+import { syncAccountStatus } from "@/lib/sync-status";
+import { requireAdminActor } from "@/lib/auth";
 import { EntryReview } from "@/components/admin/entry-review";
 import { Modal } from "@/components/modal";
 import { db } from "@/lib/db";
@@ -7,9 +13,9 @@ import {
   Pagination,
   pageNumber,
 } from "@/components/ui";
-import { dateTime, vnd, fundUsesAccount } from "@/lib/domain";
+import { dateTime, localDate, vnd, fundUsesAccount } from "@/lib/domain";
 import { ActionForm } from "@/components/action-form";
-import { assignTransaction, reclassifyPending } from "@/app/admin/actions";
+import { assignTransaction } from "@/app/admin/actions";
 import type { Prisma } from "@/generated/prisma/client";
 export default async function Transactions({
   searchParams,
@@ -22,10 +28,13 @@ export default async function Transactions({
     type?: string;
     fund?: string;
     review?: string;
+    from?: string;
+    to?: string;
   }>;
 }) {
-  await requireAdmin();
+  const actor = await requireAdminActor();
   const params = await searchParams;
+  const range = transactionDates(params.from, params.to);
   const page = pageNumber(params.page);
   const pageSize = 100;
   const query = (params.q ?? "").slice(0, 100);
@@ -33,18 +42,14 @@ export default async function Transactions({
     params.type === "CREDIT" || params.type === "DEBIT"
       ? params.type
       : undefined;
-  const where: Prisma.BankTransactionWhereInput = {
+  const scope: Prisma.BankTransactionWhereInput = {
+    occurredAt: { gte: range.start, lt: range.end },
     entryStatus:
       params.review === "1"
         ? "REVIEW"
         : params.review === "merged"
           ? "MERGED"
           : { not: "MERGED" },
-    ...(params.pending === "1"
-      ? { fundId: null }
-      : params.fund
-        ? { fundId: params.fund }
-        : {}),
     ...(params.account ? { accountId: params.account } : {}),
     ...(direction ? { direction } : {}),
     ...(query
@@ -56,7 +61,17 @@ export default async function Transactions({
         }
       : {}),
   };
-  const [rows, count, accounts, funds] = await Promise.all([
+  const where: Prisma.BankTransactionWhereInput = {
+    ...scope,
+    ...(params.pending === "1"
+      ? { fundId: null }
+      : params.fund
+        ? { fundId: params.fund }
+        : {}),
+  };
+  const historyScope = { ...scope };
+  delete historyScope.occurredAt;
+  const [rows, groups, historyGroups, accounts, funds] = await Promise.all([
     db.bankTransaction.findMany({
       where,
       orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
@@ -64,12 +79,20 @@ export default async function Transactions({
       take: pageSize,
       include: { fund: true, account: true },
     }),
-    db.bankTransaction.count({ where }),
-    db.bankAccount.findMany(),
+    db.bankTransaction.groupBy({ by: ["fundId"], where: scope, _count: true }),
+    db.bankTransaction.groupBy({ by: ["fundId"], where: { ...historyScope, fundId: { not: null } }, _count: true, _min: { occurredAt: true }, _max: { occurredAt: true } }),
+    syncAccountStatus(),
     db.fund.findMany({ orderBy: { code: "asc" } }),
   ]);
+  const counts = new Map(groups.map(group => [group.fundId, group._count]));
+  const historyCounts = new Map(historyGroups.map(group => [group.fundId, group]));
+  const today = localDate();
+  const totalCount = groups.reduce((sum, group) => sum + group._count, 0);
+  const pendingCount = counts.get(null) ?? 0;
+  const count = params.pending === "1" ? pendingCount : params.fund ? counts.get(params.fund) ?? 0 : totalCount;
   const baseParams = new URLSearchParams({
     view: "transactions",
+    from: range.from, to: range.to,
     ...(params.review ? { review: params.review } : {}),
     ...(params.pending ? { pending: params.pending } : {}),
     ...(params.account ? { account: params.account } : {}),
@@ -77,17 +100,31 @@ export default async function Transactions({
     ...(direction ? { type: direction } : {}),
     ...(params.fund ? { fund: params.fund } : {}),
   });
+  const tabParams = new URLSearchParams(baseParams);
+  tabParams.delete("pending"); tabParams.delete("fund");
+  const tabScope: ReclassificationScope | null = params.pending === "1" || params.fund ? {
+    tab: params.pending === "1" ? "PENDING" : "FUND", ...(params.pending === "1" ? {} : { fundId: params.fund }),
+    from: range.from, to: range.to, account: params.account ?? "", type: direction ?? "", q: query,
+  } : null;
+  const canReclassify = tabScope && !range.error && params.review !== "1" && params.review !== "merged";
+  const lastRun = canReclassify ? await latestTabReclassification(tabScope, actor) : null;
+  const tabLabel = params.pending === "1" ? "Chưa phân loại" : funds.find(f=>f.id===params.fund)?.code ?? "Thiện pháp";
   return (
     <div className="transaction-sheet">
       <div className="sheet-toolbar">
         <h1>Giao dịch <span>{count.toLocaleString("vi-VN")}</span></h1>
-        <p title="Các dòng đã gộp chỉ để tra cứu, không tính thêm lần nữa.">Khoản nghi trùng chưa cộng tổng.</p>
-        <ActionForm action={reclassifyPending} label="Phân loại lại" className="compact" />
+        <SyncRecency initial={accounts} initialNow={accounts[0]?.checkedAt ?? 0} />
       </div>
+      {range.error && <div className="notice danger" role="alert">{range.error}</div>}
+      <TransactionTabs funds={funds.map(f=>{const h=historyCounts.get(f.id); const last=h?._max.occurredAt?localDate(h._max.occurredAt):today; return {id:f.id,code:f.code,name:f.name,status:f.status,count:h?._count??0,from:h?._min.occurredAt?localDate(h._min.occurredAt):range.from,to:last>today?last:today};})} total={totalCount} pending={pendingCount} selectedCount={count} selectedFund={params.fund} isPending={params.pending === "1"} base={tabParams.toString()} />
+      {tabScope && <div className="transaction-tab-actions" aria-label={`Thao tác tab ${tabLabel}`}>
+        <span>Tab <strong>{tabLabel}</strong> · {count.toLocaleString("vi-VN")} giao dịch theo bộ lọc</span>
+        {canReclassify ? <TabReclassification key={reclassificationScope(tabScope).key} scope={tabScope} initial={lastRun} label={tabLabel} filterLabel={`${params.account ? "TK " + (accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Chỉ kiểm tra phân loại trong chế độ Đang ghi nhận.</small>}
+      </div>}
       <section className="sheet-panel" aria-label="Danh sách giao dịch">
         <form className="filter-bar" action="/admin" method="get">
           <input type="hidden" name="view" value="transactions" />
-          {params.fund && <input type="hidden" name="fund" value={params.fund} />}
+          {params.pending === "1" ? <input type="hidden" name="pending" value="1" /> : params.fund ? <input type="hidden" name="fund" value={params.fund} /> : null}
           <label>
             Tìm kiếm
             <input
@@ -96,6 +133,8 @@ export default async function Transactions({
               defaultValue={query}
             />
           </label>
+          <label>Từ ngày<input type="date" name="from" defaultValue={range.from} required /></label>
+          <label>Đến ngày<input type="date" name="to" defaultValue={range.to} required /></label>
           <label>
             Tài khoản
             <select name="account" defaultValue={params.account ?? ""}>
@@ -116,13 +155,6 @@ export default async function Transactions({
             </select>
           </label>
           <label>
-            Phân loại
-            <select name="pending" defaultValue={params.pending ?? ""}>
-              <option value="">Tất cả</option>
-              <option value="1">Chưa phân loại</option>
-            </select>
-          </label>
-          <label>
             Đối chiếu
             <select name="review" defaultValue={params.review ?? ""}>
               <option value="">Đang ghi nhận</option>
@@ -135,9 +167,9 @@ export default async function Transactions({
         {!rows.length ? (
           <Empty title="Không có giao dịch phù hợp" />
         ) : (
-          <div className="table-scroll sheet-scroll" tabIndex={0} role="region" aria-label="Bảng giao dịch, cuộn để xem thêm">
+          <div className="table-scroll table-card sheet-scroll" tabIndex={0} role="region" aria-label="Bảng giao dịch, cuộn để xem thêm">
             <table className="sheet-table">
-              <colgroup><col className="sheet-col-index" /><col className="sheet-col-time" /><col className="sheet-col-account" /><col className="sheet-col-ref" /><col /><col className="sheet-col-money" /><col className="sheet-col-fund" /><col className="sheet-col-action" /></colgroup>
+              <colgroup><col className="sheet-col-index" /><col className="sheet-col-time" /><col className="sheet-col-account" /><col className="sheet-col-ref" /><col className="sheet-col-narrative" /><col className="sheet-col-money" /><col className="sheet-col-fund" /><col className="sheet-col-action" /></colgroup>
               <thead>
                 <tr>
                   <th scope="col">#</th>
@@ -159,11 +191,12 @@ export default async function Transactions({
                     </td>
                     <td className="nowrap" title={r.account.owner}>{r.account.number}</td>
                     <td><span className="sheet-clip sheet-ref" title={r.refId}>{r.refId || "—"}</span></td>
-                    <td>
-                      <span className="sheet-clip" title={`${r.narrative || "Không có nội dung"}\n${r.displayName} · ${r.origin === "EXCEL" ? "Nhập Excel" : "Sao kê ngân hàng"}`}>
-                        {r.narrative || "Không có nội dung"}
-                        {r.displayName && <span className="sheet-sender"> · {r.displayName}</span>}
-                      </span>
+                    <td className="sheet-content-cell">
+                      <p className="sheet-narrative">{r.narrative || "Không có nội dung"}</p>
+                      <div className="sheet-content-meta">
+                        {r.displayName && <span className="sheet-sender"><span>Người giao dịch:</span> <strong>{r.displayName}</strong></span>}
+                        <span className="sheet-source">{r.origin === "EXCEL" ? "Nhập Excel" : "Sao kê"}</span>
+                      </div>
                     </td>
                     <td
                       className={`align-right money nowrap ${r.direction === "CREDIT" ? "positive" : ""}`}
@@ -195,7 +228,7 @@ export default async function Transactions({
                               ? "Đổi thiện pháp cho giao dịch"
                               : "Phân loại giao dịch bằng tay"
                           }
-                          description="Chỉ chọn thiện pháp thuộc cùng tài khoản sao kê."
+                          description="Chọn thiện pháp để gán. Tài khoản nguồn và số tiền của giao dịch được giữ nguyên."
                           trigger={r.fund ? "Đổi thiện pháp" : "Gán bằng tay"}
                           triggerClassName="button subtle small"
                         >

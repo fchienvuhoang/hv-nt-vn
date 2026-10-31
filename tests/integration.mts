@@ -10,6 +10,8 @@ const { fundTotals, accountTotals } = await import("../src/lib/ledger");
 const { startOfVietnamDay, localDate } = await import("../src/lib/domain");
 const originalFetch = globalThis.fetch;
 async function clean() {
+  await db.tabReclassification.deleteMany();
+  await db.syncInvocation.deleteMany(); await db.syncJob.deleteMany();
   await db.auditLog.deleteMany(); await db.syncLease.deleteMany(); await db.syncRun.deleteMany();
   await db.transfer.deleteMany({ where: { reversalOf: { not: null } } }); await db.transfer.deleteMany();
   await db.bankTransaction.deleteMany(); await db.syncState.deleteMany(); await db.fundImport.deleteMany(); await db.fund.deleteMany(); await db.bankAccount.deleteMany();

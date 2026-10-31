@@ -1,9 +1,12 @@
 "use server";
 import { z } from "zod";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminActor } from "@/lib/auth";
+import { actorStamp, createdStamp, updatedStamp, type Actor } from "@/lib/actor";
 import { serializable } from "@/lib/ledger";
-import { classify, normalize, fundUsesAccount } from "@/lib/domain";
+import { validateFundKeywords, FundKeywordError } from "@/lib/fund-keywords";
+import { startTabReclassification, advanceTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
+import { fundUsesAccount } from "@/lib/domain";
 import { PUBLIC_TAG } from "@/lib/public-data";
 import { synchronize } from "@/lib/sync";
 import { transferFunds, reverseFundTransfer } from "@/lib/transfers";
@@ -15,7 +18,7 @@ import {
 import { reviewEntry } from "@/lib/review-entry";
 import { saveSyncStart } from "@/lib/sync-settings";
 import type { Prisma } from "@/generated/prisma/client";
-export type ActionState = { error?: string; success?: string };
+export type ActionState = { error?: string; success?: string; fieldErrors?: Record<string, string[]> };
 const id = z.string().min(1).max(100);
 const money = z
   .string()
@@ -36,36 +39,31 @@ const code = z
       ),
   );
 const fundSchema = z.object({
-  accountId: id,
   code,
   name: z.string().trim().min(3).max(200),
   description: z.string().trim().max(3000),
   keywords: z.string().max(3000),
   status,
 });
-const keywordList = (value: string) => [
-  ...new Set(
-    value
-      .split(/[\n;,]/)
-      .map(normalize)
-      .filter(Boolean),
-  ),
-];
 function refresh() {
   revalidatePath("/admin", "layout");
   revalidateTag(PUBLIC_TAG, { expire: 0 });
 }
 async function execute(
-  fn: (actor: string) => Promise<string>,
+  fn: (actor: Actor) => Promise<string>,
 ): Promise<ActionState> {
-  const actor = await requireAdmin();
+  const actor = await requireAdminActor();
   try {
     const message = await fn(actor);
     refresh();
     return { success: message };
   } catch (error) {
-    if (error instanceof z.ZodError)
-      return { error: error.issues.map((i) => i.message).join("; ") };
+    if (error instanceof FundKeywordError) return { fieldErrors: error.fieldErrors };
+    if (error instanceof z.ZodError) {
+      const fieldErrors: Record<string, string[]> = {};
+      for (const issue of error.issues) { const key = String(issue.path[0] ?? "form"); (fieldErrors[key] ??= []).push(issue.message); }
+      return { error: error.issues.map((i) => i.message).join("; "), fieldErrors };
+    }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002")
         return {
@@ -86,64 +84,38 @@ async function execute(
 }
 async function audit(
   tx: Prisma.TransactionClient,
-  actor: string,
+  actor: Actor,
   action: string,
   entityId: string,
   details: Prisma.InputJsonValue,
 ) {
-  await tx.auditLog.create({ data: { actor, action, entityId, details } });
+  await tx.auditLog.create({ data: { ...actorStamp(actor), action, entityId, details } });
 }
 export async function saveFund(_state: ActionState, form: FormData) {
   return execute(async (actor) => {
     const data = fundSchema.parse(Object.fromEntries(form));
     const fundId = form.get("id")?.toString();
-    const requestedAccounts = [
-      ...new Set([
-        data.accountId,
-        ...z.array(id).max(50).parse(form.getAll("accountIds")),
-      ]),
-    ];
     await serializable(async (tx) => {
-      const account = await tx.bankAccount.findUniqueOrThrow({
-        where: { id: data.accountId },
-      });
-      if (
-        (await tx.bankAccount.count({
-          where: { id: { in: requestedAccounts } },
-        })) !== requestedAccounts.length
-      )
-        throw new Error("Có tài khoản nhận tiền không tồn tại");
+      const accounts = await tx.bankAccount.findMany({ orderBy: { number: "asc" } });
+      if (!accounts.length) throw new Error("Chưa cấu hình tài khoản sao kê");
+      const existing = fundId ? await tx.fund.findUniqueOrThrow({ where: { id: fundId } }) : null;
+      // The primary ID is retained solely for legacy totals and stable public URLs.
+      // Neither posted form fields nor the UI can restrict a fund to one account.
+      const accountId = existing?.accountId ?? accounts[0].id;
+      const account = accounts.find(a => a.id === accountId)!;
+      // Reading every fund in the serializable transaction also protects against
+      // concurrent creates/edits claiming the same normalized keyword.
+      const rules = await tx.fund.findMany({ select: { id: true, code: true, name: true, keywords: true } });
       const fields = {
-        ...data,
-        accountIds: requestedAccounts.filter((a) => a !== data.accountId),
-        keywords: keywordList(data.keywords),
+        ...data, accountId,
+        accountIds: accounts.filter(a => a.id !== accountId).map(a => a.id),
+        keywords: validateFundKeywords(data.code, data.keywords, rules, fundId),
       };
-      const sameCodes = await tx.fund.findMany({
-        where: { code: data.code, ...(fundId ? { id: { not: fundId } } : {}) },
-      });
-      if (
-        sameCodes.some((f) =>
-          requestedAccounts.some((a) => fundUsesAccount(f, a)),
-        )
-      )
-        throw new Error("Mã thiện pháp đã tồn tại trong một tài khoản đã chọn");
-      if (
-        fundId &&
-        (await tx.bankTransaction.findFirst({
-          where: { fundId, accountId: { notIn: requestedAccounts } },
-          select: { id: true },
-        }))
-      )
-        throw new Error(
-          "Không thể bỏ tài khoản đã có giao dịch của thiện pháp",
-        );
       if (fundId) {
         const before = await tx.fund.findUniqueOrThrow({
           where: { id: fundId },
         });
-        if (before.accountId !== data.accountId)
-          throw new Error("Không thể đổi tài khoản của thiện pháp");
-        await tx.fund.update({ where: { id: fundId }, data: fields });
+        await tx.fund.update({ where: { id: fundId }, data: { ...fields, ...updatedStamp(actor) } });
         await audit(tx, actor, "FUND_UPDATED", fundId, {
           before: {
             code: before.code,
@@ -157,7 +129,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
       } else {
         const created = await tx.fund.create({
           data: {
-            ...fields,
+            ...fields, ...createdStamp(actor), ...updatedStamp(actor),
             slug: `${account.number}-${data.code.toLowerCase()}`,
           },
         });
@@ -188,6 +160,7 @@ export async function assignTransaction(_state: ActionState, form: FormData) {
       await tx.bankTransaction.update({
         where: { id: transaction.id },
         data: {
+          ...updatedStamp(actor),
           fundId: fund.id,
           assignment: "MANUAL",
           matchReason: values.reason,
@@ -203,43 +176,22 @@ export async function assignTransaction(_state: ActionState, form: FormData) {
     return "Đã gán giao dịch bằng tay và lưu lịch sử.";
   });
 }
-export async function reclassifyPending() {
-  return execute(async (actor) => {
-    const count = await serializable(async (tx) => {
-      const [rules, rows] = await Promise.all([
-        tx.fund.findMany(),
-        tx.bankTransaction.findMany({
-          where: {
-            assignment: "UNASSIGNED",
-            fundId: null,
-            entryStatus: "POSTED",
-          },
-          take: 500,
-          orderBy: { occurredAt: "desc" },
-        }),
-      ]);
-      let count = 0;
-      for (const row of rows) {
-        const match = classify(row.narrative, row.accountId, rules);
-        if (!match.fundId) continue;
-        await tx.bankTransaction.update({
-          where: { id: row.id },
-          data: {
-            fundId: match.fundId,
-            assignment: "AUTO",
-            matchReason: match.reason,
-          },
-        });
-        count++;
-        await audit(tx, actor, "TRANSACTION_RECLASSIFIED", row.id, {
-          fundId: match.fundId,
-          reason: match.reason,
-        });
-      }
-      return count;
-    });
-    return `Đã phân loại ${count} giao dịch trong tối đa 500 giao dịch chờ mới nhất.`;
-  });
+export async function startReclassification(input: ReclassificationScope) {
+  const actor = await requireAdminActor();
+  try { return { run: await startTabReclassification(input, actor) }; }
+  catch (error) { return { error: importError(error) }; }
+}
+export async function advanceReclassification(input: { id: string; phase: "CHECK" | "APPLY" }) {
+  const actor = await requireAdminActor();
+  try {
+    const values = z.object({ id, phase: z.enum(["CHECK","APPLY"]) }).parse(input);
+    const run = await advanceTabReclassification(values.id,values.phase,actor);
+    if (values.phase === "APPLY") {
+      revalidateTag(PUBLIC_TAG, { expire: 0 });
+      if (run.status === "COMPLETE" || run.status === "STALE") revalidatePath("/admin", "layout");
+    }
+    return { run };
+  } catch (error) { return { error: importError(error) }; }
 }
 export async function createTransfer(_state: ActionState, form: FormData) {
   return execute(async (actor) => {
@@ -294,7 +246,7 @@ export async function uploadFundExcel(
   _state: ExcelUploadState,
   form: FormData,
 ): Promise<ExcelUploadState> {
-  const actor = await requireAdmin();
+  const actor = await requireAdminActor();
   try {
     const fundId = id.parse(form.get("fundId"));
     const file = form.get("file");
@@ -309,7 +261,7 @@ export async function commitFundExcel(input: {
   replaceLegacy: boolean;
   acceptMismatch: boolean;
 }): Promise<{ error?: string; batch?: FundImportSummary }> {
-  const actor = await requireAdmin();
+  const actor = await requireAdminActor();
   try {
     const values = z
       .object({

@@ -30,7 +30,7 @@ export default async function AdminPage({
       content = <Transfers />;
       break;
     case "sync":
-      content = <Sync />;
+      content = <Sync params={params} />;
       break;
     default:
       content = <Funds params={params} />;

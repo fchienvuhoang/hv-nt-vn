@@ -1,3 +1,4 @@
+import { RecordAuthor } from "@/components/admin/record-author";
 import Link from "next/link";
 import { Plus, Undo2 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
@@ -6,7 +7,7 @@ import { Heading, Section, Empty } from "@/components/ui";
 import { ActionForm } from "@/components/action-form";
 import { Modal } from "@/components/modal";
 import { reverseTransfer } from "@/app/admin/actions";
-import { dateTime, vnd } from "@/lib/domain";
+import { vnd } from "@/lib/domain";
 export default async function Transfers() {
   await requireAdmin();
   const transfers = await db.transfer.findMany({
@@ -44,11 +45,13 @@ export default async function Transfers() {
             Chọn Tạo điều chuyển để phân bổ tiền giữa các thiện pháp.
           </Empty>
         ) : (
-          <div className="table-scroll workspace-table">
+          <div className="table-scroll table-card workspace-table">
             <table>
               <thead>
                 <tr>
-                  <th>Thời gian / người thực hiện</th>
+                  <th>Tài khoản</th>
+                  <th>Người tạo</th>
+                  <th>Người đảo</th>
                   <th>Thiện pháp nguồn</th>
                   <th>Thiện pháp nhận</th>
                   <th>Lý do</th>
@@ -60,12 +63,9 @@ export default async function Transfers() {
               <tbody>
                 {transfers.map((t) => (
                   <tr key={t.id}>
-                    <td className="nowrap">
-                      {dateTime(t.createdAt)}
-                      <small>
-                        {t.actor} · TK {t.account?.number ?? t.fromFund.account.number}
-                      </small>
-                    </td>
+                    <td className="nowrap">{t.account?.number ?? t.fromFund.account.number}</td>
+                    <td><RecordAuthor name={t.actorName} id={t.actorId} fallback={t.actor} at={t.createdAt} /></td>
+                    <td>{t.reversal ? <RecordAuthor name={t.reversal.actorName} id={t.reversal.actorId} fallback={t.reversal.actor} at={t.reversal.createdAt} /> : <span className="record-author-unknown">{t.reversalOf ? "Bút toán đảo" : "Chưa đảo"}</span>}</td>
                     <td>
                       <span className="code">{t.fromFund.code}</span>
                       <small>{t.fromFund.name}</small>

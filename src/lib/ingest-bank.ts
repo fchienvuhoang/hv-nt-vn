@@ -1,4 +1,5 @@
 import "server-only";
+import { actorStamp, createdStamp, updatedStamp, type Actor } from "./actor";
 import { createHash, randomUUID } from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
 import type { LedgerClient } from "./ledger";
@@ -14,7 +15,7 @@ export async function ingestBankPage(
   tx: LedgerClient,
   accountId: string,
   items: SourceItem[],
-  actor: string,
+  actor: Actor,
 ) {
   const [rules, existing] = await Promise.all([
     tx.fund.findMany({
@@ -59,6 +60,7 @@ export async function ingestBankPage(
       amount = BigInt(item.transactionAmount),
       narrative = item.narrative ?? "";
     const values = {
+      ...updatedStamp(actor),
       refId: item.refId ?? "",
       amount,
       direction: item.type,
@@ -75,7 +77,7 @@ export async function ingestBankPage(
       await tx.bankTransaction.update({ where: { id: old.id }, data: values });
       await tx.auditLog.create({
         data: {
-          actor,
+          ...actorStamp(actor),
           action: "SOURCE_UPDATED",
           entityId: old.id,
           details: {
@@ -101,6 +103,7 @@ export async function ingestBankPage(
         : "POSTED";
     const fundId = match.exact?.fundId ?? automatic.fundId;
     additions.push({
+      ...createdStamp(actor),
       ...values,
       id,
       sourceId: item.id,
@@ -126,6 +129,7 @@ export async function ingestBankPage(
     await tx.bankTransaction.update({
       where: { id: link.excelId },
       data: {
+        ...updatedStamp(actor),
         entryStatus: "MERGED",
         mergedIntoId: link.bankId,
         matchReason: "Đã đối chiếu với sao kê; chỉ tính giao dịch ngân hàng",
@@ -133,11 +137,11 @@ export async function ingestBankPage(
     });
     await tx.bankTransaction.updateMany({
       where: { mergedIntoId: link.excelId },
-      data: { mergedIntoId: link.bankId },
+      data: { mergedIntoId: link.bankId, ...updatedStamp(actor) },
     });
     await tx.auditLog.create({
       data: {
-        actor,
+        ...actorStamp(actor),
         action: "EXCEL_BANK_MATCHED",
         entityId: link.bankId,
         details: link,

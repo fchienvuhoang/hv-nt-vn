@@ -1,5 +1,10 @@
-import { ActionForm } from "@/components/action-form";
+"use client";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
+import type { ActionState } from "@/app/admin/actions";
+import { useActionToast } from "@/components/toasts";
+import { useCloseModal } from "@/components/modal";
 import { saveFund } from "@/app/admin/actions";
+import { dateTime } from "@/lib/domain";
 import type { BankAccount, Fund } from "@/generated/prisma/client";
 export function FundForm({
   accounts,
@@ -8,62 +13,66 @@ export function FundForm({
   accounts: Pick<BankAccount, "id" | "number" | "label">[];
   fund?: Fund | null;
 }) {
+  const [state, dispatch, pending] = useActionState<ActionState, FormData>(saveFund, {});
+  const locked = pending || !!state.success;
+  const closeModal = useCloseModal();
+  useActionToast(state, closeModal);
+  const formRef = useRef<HTMLFormElement>(null);
+  const prefix = useId();
+  const [values, setValues] = useState({
+    code: fund?.code ?? "", name: fund?.name ?? "", status: fund?.status ?? "ACTIVE",
+    keywords: fund?.keywords.join("\n") ?? "", description: fund?.description ?? "",
+  });
+  const [edited, setEdited] = useState<Record<string, boolean>>({});
+  function change(field: keyof typeof values, value: string) {
+    setValues(previous => ({ ...previous, [field]: value }));
+    setEdited(previous => ({ ...previous, [field]: true }));
+  }
+  function fieldErrors(field: keyof typeof values) {
+    return edited[field] ? [] : (state.fieldErrors?.[field] ?? []);
+  }
+  function errorProps(field: keyof typeof values) {
+    return { "aria-invalid": fieldErrors(field).length > 0, "aria-describedby": fieldErrors(field).length ? `${prefix}-${field}-error` : undefined };
+  }
+  function errorMessage(field: keyof typeof values) {
+    const errors = fieldErrors(field);
+    return errors.length ? <span id={`${prefix}-${field}-error`} className="field-error" role="alert">{errors.join("\n")}</span> : null;
+  }
+  useEffect(() => {
+    if (state.fieldErrors) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [state]);
   return (
-    <ActionForm
-      key={fund?.id ?? "new"}
-      action={saveFund}
-      label={fund ? "Lưu cấu hình thiện pháp" : "Tạo thiện pháp"}
-    >
+    <form ref={formRef} action={dispatch} className="action-form fund-form" aria-busy={pending} onReset={event => event.preventDefault()} onSubmit={() => setEdited({})}>
+      <fieldset className="action-fields" disabled={locked}>
       {fund && <input type="hidden" name="id" value={fund.id} />}
-      <label>
-        Tài khoản chính (cho số tổng hợp cũ)
-        <select name="accountId" defaultValue={fund?.accountId} required>
-          {accounts
-            .filter((a) => !fund || a.id === fund.accountId)
-            .map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.number} · {a.label}
-              </option>
-            ))}
-        </select>
-      </label>
-      <fieldset className="trial-accounts">
-        <legend>Tài khoản nhận hùn phước</legend>
-        {accounts.map((a) => (
-          <label className="checkbox-label" key={a.id}>
-            <input
-              type="checkbox"
-              name="accountIds"
-              value={a.id}
-              defaultChecked={
-                !fund ||
-                a.id === fund.accountId ||
-                fund.accountIds.includes(a.id)
-              }
-            />
-            {a.number} · {a.label}
-          </label>
-        ))}
-      </fieldset>
+      <div className="fund-accounts-readonly" role="group" aria-label="Tài khoản thu chi dùng chung">
+        <span>Tài khoản thu / chi</span>
+        <div>{accounts.map((a) => <strong key={a.id}>{a.number} · {a.label}</strong>)}</div>
+        <small>Mọi thiện pháp dùng chung cả hai tài khoản. Thu và chi được ghi nhận đúng tài khoản thực tế, không thay đổi khi gán thiện pháp.</small>
+      </div>
       <div className="form-row">
         <label>
           Mã thiện pháp
           <input
             name="code"
             placeholder="TP112"
-            defaultValue={fund?.code}
+            value={values.code}
+            onChange={event => change("code", event.target.value)}
+            {...errorProps("code")}
             pattern="[A-Za-z][A-Za-z0-9]{1,29}"
             required
             maxLength={30}
           />
+          {errorMessage("code")}
         </label>
         <label>
           Trạng thái
-          <select name="status" defaultValue={fund?.status ?? "ACTIVE"}>
+          <select name="status" value={values.status} onChange={event => change("status", event.target.value)} {...errorProps("status")}>
             <option value="ACTIVE">Đang hoạt động</option>
             <option value="PAUSED">Tạm dừng</option>
             <option value="COMPLETED">Hoàn thành</option>
           </select>
+          {errorMessage("status")}
         </label>
       </div>
       <label>
@@ -71,22 +80,28 @@ export function FundForm({
         <input
           name="name"
           placeholder="Tên đầy đủ của thiện pháp"
-          defaultValue={fund?.name}
+          value={values.name}
+          onChange={event => change("name", event.target.value)}
+          {...errorProps("name")}
           minLength={3}
           maxLength={200}
           required
         />
+        {errorMessage("name")}
       </label>
       <label>
         Từ khóa mở rộng
         <textarea
           name="keywords"
           rows={4}
-          defaultValue={fund?.keywords.join("\n")}
+          value={values.keywords}
+          onChange={event => change("keywords", event.target.value)}
+          {...errorProps("keywords")}
           placeholder={"Mỗi dòng một từ khóa\nCHUA NGAI 10\nTT CHUA NGAI 10"}
         />
+        {errorMessage("keywords")}
         <small>
-          Mã chính được ưu tiên. Khớp nhiều thiện pháp sẽ chờ kiểm tra bằng tay.
+          Không được trùng mã hoặc từ khóa của thiện pháp khác, kể cả đã hoàn thành hoặc tạm dừng. Không phân biệt hoa/thường, dấu tiếng Việt và khoảng trắng.
         </small>
       </label>
       <label>
@@ -95,13 +110,19 @@ export function FundForm({
           name="description"
           rows={3}
           maxLength={3000}
-          defaultValue={fund?.description}
+          value={values.description}
+          onChange={event => change("description", event.target.value)}
+          {...errorProps("description")}
         />
+        {errorMessage("description")}
       </label>
       <div className="notice">
         Chỉ thiện pháp đang hoạt động nhận phân loại tự động. Thay đổi cấu hình
         không tự sửa giao dịch đã gán.
       </div>
-    </ActionForm>
+      {fund && <div className="fund-authorship"><span title={`ID người tạo: ${fund.createdById ?? "Chưa có thông tin"}`}>Tạo: <strong>{fund.createdByName || "Chưa có thông tin người tạo"}</strong> · {dateTime(fund.createdAt)}</span><span title={`ID người cập nhật: ${fund.updatedById ?? "Chưa có thông tin"}`}>Cập nhật: <strong>{fund.updatedByName || "Chưa có thông tin người sửa"}</strong> · {dateTime(fund.updatedAt)}</span></div>}
+      </fieldset>
+      <button className="button primary" type="submit" disabled={locked}>{pending ? "Đang lưu…" : fund ? "Lưu cấu hình thiện pháp" : "Tạo thiện pháp"}</button>
+    </form>
   );
 }

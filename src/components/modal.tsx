@@ -1,7 +1,10 @@
 "use client";
-import { useEffect, useId, useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+
+const ModalCloseContext = createContext<(() => void) | undefined>(undefined);
+export const useCloseModal = () => useContext(ModalCloseContext);
 
 /** Native dialog supplies focus trapping, Escape dismissal and focus restoration. */
 export function Modal({
@@ -13,6 +16,8 @@ export function Modal({
   closeHref,
   wide = false,
   triggerClassName = "button subtle",
+  footerNote = "Dữ liệu được lưu khi bạn xác nhận biểu mẫu.",
+  onDismiss,
 }: {
   title: string;
   description?: string;
@@ -22,6 +27,8 @@ export function Modal({
   closeHref?: string;
   wide?: boolean;
   triggerClassName?: string;
+  footerNote?: string;
+  onDismiss?: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId(),
@@ -30,7 +37,7 @@ export function Modal({
   useEffect(() => {
     if (defaultOpen && !dialog.current?.open) dialog.current?.showModal();
   }, [defaultOpen]);
-  const close = () => dialog.current?.close();
+  const close = useCallback(() => dialog.current?.close(), []);
   return (
     <>
       {trigger && (
@@ -49,6 +56,7 @@ export function Modal({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         onClose={() => {
+          onDismiss?.();
           if (closeHref) router.replace(closeHref, { scroll: false });
         }}
         onClick={(event) => {
@@ -78,9 +86,9 @@ export function Modal({
             <X size={20} />
           </button>
         </div>
-        <div className="modal-body">{children}</div>
+        <div className="modal-body"><ModalCloseContext.Provider value={close}>{children}</ModalCloseContext.Provider></div>
         <div className="modal-footer">
-          <span>Dữ liệu được lưu khi bạn xác nhận biểu mẫu.</span>
+          {footerNote && <span>{footerNote}</span>}
           <button type="button" className="button subtle" onClick={close}>
             Đóng
           </button>

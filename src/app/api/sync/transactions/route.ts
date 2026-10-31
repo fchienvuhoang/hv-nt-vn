@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { PUBLIC_TAG } from "@/lib/public-data";
-import { synchronize, SyncBusy } from "@/lib/sync";
+import { scheduledSync } from "@/lib/scheduled-sync";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function POST(request: Request) {
@@ -12,14 +12,13 @@ export async function POST(request: Request) {
   const expected = Buffer.from(`Bearer ${secret}`);
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const result = await synchronize("scheduler");
+    const result = await scheduledSync();
+    if (result.inserted || result.updated) revalidateTag(PUBLIC_TAG, { expire: 0 });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    if (error instanceof SyncBusy) return NextResponse.json({ ok: true, skipped: true, reason: "Đang có lượt đồng bộ chạy" });
+    // A failure may follow committed pages. Busy/no-change calls keep public cache warm.
+    revalidateTag(PUBLIC_TAG, { expire: 0 });
     console.error("Bank sync failed", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "Đồng bộ thất bại. Xem nhật ký quản trị." }, { status: 500 });
-  } finally {
-    // A failed/partial run may already have committed pages.
-    revalidateTag(PUBLIC_TAG, { expire: 0 });
   }
 }

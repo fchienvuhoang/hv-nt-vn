@@ -17,8 +17,11 @@ export function normalize(value: string) {
     .replace(/\s+/g, " ");
 }
 function contains(text: string, keyword: string) {
-  const k = normalize(keyword);
-  return k.length > 0 && ` ${text} `.includes(` ${k} `);
+  // Ignore spaces *inside* a code/phrase, while retaining word boundaries.
+  // TP112, tp 112 and T P 112 match; TP1120 and XTP112 do not.
+  const letters = normalize(keyword).replace(/ /g, "");
+  if (!letters) return false;
+  return new RegExp(`(?:^| )${letters.split("").join(" *")}(?= |$)`).test(text);
 }
 export function classify(
   narrative: string,
@@ -43,6 +46,7 @@ export function classify(
     return {
       fundId: null,
       reason: `Khớp ${matches[0].code} nhưng thiện pháp đã tạm dừng hoặc hoàn thành`,
+      matchedInactiveFundId: matches[0].id,
     };
   return {
     fundId: matches[0].id,

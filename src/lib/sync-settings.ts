@@ -1,4 +1,5 @@
 import "server-only";
+import { actorStamp, type Actor } from "./actor";
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { serializable } from "./ledger";
@@ -6,7 +7,7 @@ import { localDate, startOfVietnamDay } from "./domain";
 export async function saveSyncStart(
   accountId: string,
   from: string,
-  actor: string,
+  actor: Actor,
 ) {
   const at = startOfVietnamDay(from);
   if (
@@ -42,9 +43,12 @@ export async function saveSyncStart(
           lastSuccessAt: null,
         },
       });
+      // Pending windows may refer to the previous start date. Preserve their logs
+      // but stop processing them; subsequent calls create fresh cursors.
+      await tx.syncJob.updateMany({ where: { status: { in: ["QUEUED", "RUNNING", "PARTIAL", "FAILED"] } }, data: { status: "SUPERSEDED", finishedAt: new Date() } });
       await tx.auditLog.create({
         data: {
-          actor,
+          ...actorStamp(actor),
           action: "SYNC_START_UPDATED",
           entityId: accountId,
           details: {

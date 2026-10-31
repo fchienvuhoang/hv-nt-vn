@@ -1,3 +1,4 @@
+import { RecordAuthor } from "@/components/admin/record-author";
 import Link from "next/link";
 import {
   ExternalLink,
@@ -63,6 +64,7 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
           {tabs.map((tab) => (
             <Link key={tab.value} scroll={false}
               href={adminUrl("funds", { q: params.q, account: params.account, status: tab.value })}
+              data-status={tab.value}
               aria-current={status === tab.value ? "page" : undefined}
               className={status === tab.value ? "selected" : ""}>
               {tab.label}<span>{tab.value === "ALL" ? matching.length : matching.filter((f) => f.status === tab.value).length}</span>
@@ -108,13 +110,16 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
             </span>
           </Empty>
         ) : (
-          <div className="table-scroll fund-list-scroll" tabIndex={0} role="region" aria-label="Bảng thiện pháp">
+          <div className="table-scroll table-card fund-list-scroll" tabIndex={0} role="region" aria-label="Bảng thiện pháp">
             <table>
               <thead>
                 <tr>
                   <th>Thiện pháp / từ khóa</th>
+                  <th className="fund-public-cell">Công khai</th>
                   <th>Tài khoản</th>
                   <th>Trạng thái</th>
+                  <th>Người tạo</th>
+                  <th>Người cập nhật</th>
                   <th className="align-right">Hùn phước</th>
                   <th className="align-right">Đã chi</th>
                   <th className="align-right">Số dư</th>
@@ -125,8 +130,13 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                 {scoped.map((f) => (
                   <tr key={f.id}>
                     <td>
-                      <span className="code">{f.code}</span>
-                      <h3 className="table-fund-name" title={`${f.name}\nTừ khóa: ${f.keywords.join(" · ") || f.code}`}>{f.name}</h3>
+                      <div className="fund-identity">
+                        <span className="code">{f.code}</span>
+                        <h3 className="table-fund-name" title={`Từ khóa: ${f.keywords.join(" · ") || f.code}`}>{f.name}</h3>
+                      </div>
+                    </td>
+                    <td className="fund-public-cell">
+                      <Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={15} /><span>Trang công khai</span></Link>
                     </td>
                     <td className="nowrap">
                       <span className="account-number">
@@ -141,6 +151,8 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                     <td>
                       <Status status={f.status} />
                     </td>
+                    <td><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
+                    <td><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
                     <td className="money align-right nowrap">
                       {vnd(f.income)}
                     </td>
@@ -154,7 +166,7 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                       <div className="inline-actions table-actions">
                         <Link
                           scroll={false}
-                          className="button primary small"
+                          className="button subtle small"
                           href={adminUrl("funds", {
                             ...params,
                             modal: "import-fund",
@@ -184,17 +196,7 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
                           <Settings2 size={14} />
                           Cấu hình
                         </Link>
-                        {
-                          <Link
-                            className="icon-button"
-                            href={`/t/${f.slug}`}
-                            target="_blank"
-                            title={`Xem trang công khai ${f.code}`}
-                            aria-label={`Xem trang công khai ${f.code}`}
-                          >
-                            <ExternalLink size={16} />
-                          </Link>
-                        }
+
                       </div>
                     </td>
                   </tr>
@@ -202,7 +204,7 @@ export default async function Funds({ params = {} }: { params?: AdminParams }) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={3}>
+                  <td colSpan={6}>
                     <strong>
                       Tổng {funds.length} thiện pháp đang hiển thị
                     </strong>

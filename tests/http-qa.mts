@@ -47,7 +47,7 @@ async function formFor(path: string, field: string) {
     const name = /name="([^"]+)"/.exec(input[0])?.[1],
       value = /value="([^"]*)"/.exec(input[0])?.[1] ?? "";
     if (name && input[0].includes('type="hidden"'))
-      data.set(decode(name), decode(value));
+      data.append(decode(name), decode(value));
   }
   return data;
 }
@@ -87,6 +87,36 @@ try {
     (await fetch(origin + "/api/sync/transactions", { method: "POST" })).status,
     401,
   );
+  // Account scope is server-controlled: forged form fields cannot restrict a fund.
+  const create = await formFor("/admin?modal=create-fund", "code");
+  const createHtml = await (await get("/admin?modal=create-fund")).text();
+  assert.ok(!createHtml.includes('name="accountIds"'));
+  assert.ok(!createHtml.includes('name="accountId"'));
+  create.set("actorId", "FORGED-ID"); create.set("actorName", "FORGED-NAME");
+  create.set("accountId", "FORGED-ACCOUNT"); create.set("accountIds", "FORGED-ACCOUNT");
+  create.set("code", "TPSHARED"); create.set("name", "TEST SHARED FUND"); create.set("status", "ACTIVE"); create.set("description", ""); create.set("keywords", "TEST SHARED KEY");
+  await post("/admin?modal=create-fund", create);
+  const shared = await db.fund.findUniqueOrThrow({where:{code:"TPSHARED"}});
+  assert.equal(shared.createdById, "qa"); assert.equal(shared.createdByName, "QA admin");
+  assert.equal(shared.updatedById, "qa");
+  const createdAudit = await db.auditLog.findFirstOrThrow({where:{entityId:shared.id,action:"FUND_CREATED"}});
+  assert.equal(createdAudit.actorId,"qa");assert.equal(createdAudit.actorName,"QA admin");
+  const bankIds = (await db.bankAccount.findMany()).map(a=>a.id).sort();
+  assert.deepEqual([shared.accountId,...shared.accountIds].sort(),bankIds);
+  const conflict = await formFor("/admin?modal=create-fund", "code");
+  conflict.set("code", "TPDUPKEY"); conflict.set("name", "TEST duplicate keyword"); conflict.set("status", "ACTIVE"); conflict.set("description", ""); conflict.set("keywords", "testsharedkey");
+  const duplicateResult = await post("/admin?modal=create-fund",conflict);
+  assert.ok(duplicateResult.html.includes("trùng từ khóa"));
+  assert.ok(duplicateResult.html.includes("TPSHARED"));assert.ok(duplicateResult.html.includes("TEST SHARED FUND"));
+  assert.equal(await db.fund.count({where:{code:"TPDUPKEY"}}),0);
+  const otherAccount = bankIds.find(id=>id!==shared.accountId)!;
+  const otherEntry = await db.bankTransaction.create({data:{accountId:otherAccount,sourceId:"TEST-SHARED-CROSS",refId:"TEST-SHARED-CROSS",displayName:"TEST",direction:"DEBIT",amount:1234n,narrative:"TEST cross-account expense",occurredAt:new Date(),sourceHash:"TEST",source:{test:true}}});
+  const manual = await formFor("/admin?view=transactions&pending=1", "transactionId");
+  manual.set("transactionId",otherEntry.id);manual.set("fundId",shared.id);manual.set("reason","TEST shared account expense");
+  await post("/admin?view=transactions&pending=1",manual);
+  const assigned = await db.bankTransaction.findUniqueOrThrow({where:{id:otherEntry.id}});
+  assert.equal(assigned.updatedById,"qa");
+  assert.equal(assigned.fundId,shared.id);assert.equal(assigned.accountId,otherAccount);assert.equal(assigned.amount,1234n);
   const f = await db.fund.findUniqueOrThrow({ where: { slug: "0572-tptest" } });
   const initial = await (await get("/t/0572-tptest", false)).text();
   assert.ok(initial.includes("*******678"));
@@ -128,7 +158,7 @@ try {
     edit,
   );
   assert.equal(saved.response.status, 200);
-  assert.ok(saved.html.includes("Đã lưu thiện pháp"));
+  assert.equal((await db.fund.findUniqueOrThrow({where:{id:f.id}})).updatedById,"qa");
   assert.ok(
     (await (await get("/t/0572-tptest", false)).text()).includes(
       "TEST UPDATED AFTER INVALIDATION",
@@ -144,11 +174,7 @@ try {
   assign.set("transactionId", pending.id);
   assign.set("fundId", f.id);
   assign.set("reason", "QA manual assignment");
-  assert.ok(
-    (await post("/admin?view=transactions&pending=1", assign)).html.includes(
-      "Đã gán giao dịch",
-    ),
-  );
+  await post("/admin?view=transactions&pending=1", assign);
   assert.equal(
     (await db.bankTransaction.findUniqueOrThrow({ where: { id: pending.id } }))
       .assignment,
@@ -165,17 +191,17 @@ try {
   transfer.set("toFundId", to.id);
   transfer.set("amount", "10000");
   transfer.set("reason", "QA transfer operation");
-  assert.ok(
-    (
-      await post("/admin?view=transfers&modal=transfer", transfer)
-    ).html.includes("Đã điều chuyển"),
-  );
+  await post("/admin?view=transfers&modal=transfer", transfer);
   await post("/admin?view=transfers&modal=transfer", transfer);
   assert.equal(await db.transfer.count(), 1);
   const importHtml = await (await get("/admin?modal=import-fund&fundId=" + f.id)).text();
   assert.ok(importHtml.includes('name="file"'));
   assert.ok(importHtml.includes(".xlsx"));
   assert.ok(!(await (await get("/admin")).text()).includes("Chốt sổ"));
+  const allTransactionsHtml = await (await get("/admin?view=transactions")).text();
+  assert.ok(!allTransactionsHtml.includes("Kiểm tra phân loại tab"),"main All tab must not expose reclassification");
+  const pendingTransactionsHtml = await (await get("/admin?view=transactions&pending=1")).text();
+  assert.ok(pendingTransactionsHtml.includes("Kiểm tra phân loại tab"));
   const revoked = await encode({
     token: { email: "not-allowed@example.test", sub: "qa-denied" },
     secret: process.env.AUTH_SECRET!,
@@ -192,7 +218,7 @@ try {
     307,
   );
   console.log(
-    "PASS: all admin routes guarded, unauthorized mutation rejected, valid admin forms, phone masking, shared cache and invalidation, manual assignment, transfer dedup, Excel modal/no closing workflow, allowlist checked each request",
+    "PASS: all admin routes guarded, unauthorized mutation rejected, valid admin forms, phone masking, shared cache and invalidation, manual assignment, transfer dedup, shared fund creation ignores account fields and cross-account debit retains bank account, Excel modal/no closing workflow, allowlist checked each request",
   );
 } finally {
   await db.$disconnect();

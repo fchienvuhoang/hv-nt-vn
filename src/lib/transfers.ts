@@ -1,4 +1,5 @@
 import "server-only";
+import { actorStamp, type Actor } from "./actor";
 import { fundUsesAccount } from "./domain";
 import { fundTotals, serializable } from "./ledger";
 export async function transferFunds(
@@ -10,7 +11,7 @@ export async function transferFunds(
     amount: bigint;
     reason: string;
   },
-  actor: string,
+  actor: Actor,
 ) {
   if (input.amount <= 0n || input.reason.trim().length < 5)
     throw new Error("Số tiền phải dương và cần lý do hợp lệ");
@@ -48,11 +49,11 @@ export async function transferFunds(
         "Số dư thiện pháp nguồn trong tài khoản đã chọn không đủ",
       );
     const transfer = await tx.transfer.create({
-      data: { ...input, accountId, actor },
+      data: { ...input, accountId, ...actorStamp(actor) },
     });
     await tx.auditLog.create({
       data: {
-        actor,
+        ...actorStamp(actor),
         action: "TRANSFER_CREATED",
         entityId: transfer.id,
         details: {
@@ -69,7 +70,7 @@ export async function transferFunds(
 export async function reverseFundTransfer(
   transferId: string,
   reason: string,
-  actor: string,
+  actor: Actor,
 ) {
   if (reason.trim().length < 5) throw new Error("Cần ghi lý do đảo");
   return serializable(async (tx) => {
@@ -97,13 +98,13 @@ export async function reverseFundTransfer(
         toFundId: original.fromFundId,
         amount: original.amount,
         reason,
-        actor,
+        ...actorStamp(actor),
         reversalOf: original.id,
       },
     });
     await tx.auditLog.create({
       data: {
-        actor,
+        ...actorStamp(actor),
         action: "TRANSFER_REVERSED",
         entityId: reversal.id,
         details: { originalId: original.id, reason },

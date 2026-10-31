@@ -14,7 +14,10 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "test:integration": "node --conditions=react-server --import tsx tests/integration.mts",
-    "test:excel-integration": "node --conditions=react-server --import tsx tests/excel-import-integration.mts"
+    "test:excel-integration": "node --conditions=react-server --import tsx tests/excel-import-integration.mts",
+    "test:scheduled-sync": "node --conditions=react-server --import tsx tests/scheduled-sync-integration.mts",
+    "test:fund-keywords": "node --conditions=react-server --import tsx tests/fund-keywords-integration.mts",
+    "test:reclassify": "node --conditions=react-server --import tsx tests/reclassify-integration.mts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",

@@ -1,4 +1,5 @@
 import "server-only";
+import { actorStamp, type Actor } from "./actor";
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { localDate, parseSourceTime, startOfVietnamDay } from "./domain";
@@ -6,14 +7,14 @@ import { fetchSourcePage } from "./source";
 import { serializable } from "./ledger";
 import { ingestBankPage } from "./ingest-bank";
 export class SyncBusy extends Error {}
-export async function synchronize(actor: string) {
+export async function synchronize(actor: Actor) {
   const token = randomUUID();
   const acquired = await db.$executeRaw`
     INSERT INTO "SyncLease" (id, token, "expiresAt") VALUES ('bank-sync', ${token}, (NOW() AT TIME ZONE 'UTC') + INTERVAL '120 seconds')
     ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token, "expiresAt" = EXCLUDED."expiresAt"
     WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`;
   if (!acquired) throw new SyncBusy("Một lượt đồng bộ khác đang chạy");
-  const run = await db.syncRun.create({ data: { status: "RUNNING", actor } });
+  const run = await db.syncRun.create({ data: { status: "RUNNING", ...actorStamp(actor) } });
   let pages = 0,
     inserted = 0,
     updated = 0;

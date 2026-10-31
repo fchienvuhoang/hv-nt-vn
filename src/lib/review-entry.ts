@@ -1,4 +1,5 @@
 import "server-only";
+import { actorStamp, updatedStamp, type Actor } from "./actor";
 import { fundUsesAccount } from "./domain";
 import { serializable } from "./ledger";
 export async function reviewEntry(
@@ -9,7 +10,7 @@ export async function reviewEntry(
     fundId?: string;
     reason: string;
   },
-  actor: string,
+  actor: Actor,
 ) {
   if (input.reason.trim().length < 5)
     throw new Error("Cần ghi lý do ít nhất 5 ký tự");
@@ -30,6 +31,7 @@ export async function reviewEntry(
       await tx.bankTransaction.update({
         where: { id: entry.id },
         data: {
+          ...updatedStamp(actor),
           entryStatus: "POSTED",
           ...(fund ? { fundId: fund.id, assignment: "MANUAL" } : {}),
           matchReason: input.reason,
@@ -57,6 +59,7 @@ export async function reviewEntry(
       await tx.bankTransaction.update({
         where: { id: survivor.id },
         data: {
+          ...updatedStamp(actor),
           entryStatus: "POSTED",
           fundId,
           assignment: fundId ? "MANUAL" : "UNASSIGNED",
@@ -66,6 +69,7 @@ export async function reviewEntry(
       await tx.bankTransaction.update({
         where: { id: loser.id },
         data: {
+          ...updatedStamp(actor),
           entryStatus: "MERGED",
           mergedIntoId: survivor.id,
           matchReason: input.reason,
@@ -73,12 +77,12 @@ export async function reviewEntry(
       });
       await tx.bankTransaction.updateMany({
         where: { mergedIntoId: loser.id },
-        data: { mergedIntoId: survivor.id },
+        data: { mergedIntoId: survivor.id, ...updatedStamp(actor) },
       });
     }
     await tx.auditLog.create({
       data: {
-        actor,
+        ...actorStamp(actor),
         action: "DUPLICATE_REVIEWED",
         entityId: entry.id,
         details: {

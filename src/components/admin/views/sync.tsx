@@ -1,7 +1,13 @@
+import { RecordAuthor } from "@/components/admin/record-author";
+import { ScheduledSyncHistory } from "@/components/admin/scheduled-sync-history";
 import { Cable, RefreshCw, Settings2 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Heading, Section, Empty } from "@/components/ui";
+import Link from "next/link";
+import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
+import { SyncRecency } from "@/components/admin/sync-recency";
+import { syncAccountStatus } from "@/lib/sync-status";
+import { Empty } from "@/components/ui";
 import { ActionForm } from "@/components/action-form";
 import { Modal } from "@/components/modal";
 import { syncNow, configureSyncStart } from "@/app/admin/actions";
@@ -10,6 +16,11 @@ const actionNames: Record<string, string> = {
   FUND_CREATED: "Tạo thiện pháp",
   FUND_UPDATED: "Sửa thiện pháp",
   TRANSACTION_ASSIGNED: "Phân loại tay",
+  TAB_RECLASSIFICATION_STARTED: "Bắt đầu kiểm tra tab giao dịch",
+  TAB_RECLASSIFICATION_CHECKED: "Đã kiểm tra phân loại tab",
+  TAB_RECLASSIFICATION_FINISHED: "Hoàn tất phân loại tab",
+  TAB_RECLASSIFICATION_STALE: "Dừng phân loại vì cấu hình thay đổi",
+  TRANSACTION_RECLASSIFICATION_RUN: "Chạy phân loại trang giao dịch",
   TRANSACTION_RECLASSIFIED: "Phân loại lại",
   OPENING_ACCOUNT_SAVED: "Lưu đầu kỳ tài khoản",
   OPENING_FUND_SAVED: "Lưu đầu kỳ thiện pháp",
@@ -19,15 +30,18 @@ const actionNames: Record<string, string> = {
   TRANSFER_REVERSED: "Đảo điều chuyển",
   SOURCE_UPDATED: "Nguồn sửa giao dịch",
   SYNC_START_UPDATED: "Đổi ngày bắt đầu sao kê",
+  FUND_EXCEL_STAGED: "Tải lên và đọc Excel",
   FUND_EXCEL_IMPORTED: "Nhập Excel vào thiện pháp",
   EXCEL_ALLOCATION_APPLIED: "Phân bổ từ file Excel",
   EXCEL_BANK_MATCHED: "Đối chiếu Excel và sao kê",
   DUPLICATE_REVIEWED: "Kiểm tra giao dịch nghi trùng",
   LEGACY_SUMMARY_REPLACED: "Thay tổng cũ bằng chi tiết Excel",
 };
-export default async function Sync() {
+export default async function Sync({ params = {} }: { params?: AdminParams }) {
+  const auditTab = params.log === "audit";
+  const scheduleTab = !auditTab && params.log !== "runs";
   await requireAdmin();
-  const [runs, states, audits, accounts] = await Promise.all([
+  const [runs, states, audits, accounts, recency] = await Promise.all([
     db.syncRun.findMany({ orderBy: { startedAt: "desc" }, take: 30 }),
     db.syncState.findMany({
       include: { account: true },
@@ -43,14 +57,14 @@ export default async function Sync() {
       },
       orderBy: { number: "asc" },
     }),
+    syncAccountStatus(),
   ]);
   return (
-    <>
-      <Heading
-        eyebrow="VẬN HÀNH & TRUY VẾT"
-        title="Đồng bộ & lịch sử"
-        description="Theo dõi tiến độ lấy sao kê và lịch sử thao tác của ban quản trị."
-      >
+    <div className="sync-workspace">
+      <div className="sync-toolbar">
+        <h1>Đồng bộ & lịch sử</h1>
+        <SyncRecency initial={recency} initialNow={recency[0]?.checkedAt ?? 0} />
+        <div className="sync-toolbar-actions">
         <Modal
           wide
           title="Ngày bắt đầu sao kê"
@@ -86,7 +100,7 @@ export default async function Sync() {
           ))}
         </Modal>
         <Modal
-          title="Kết nối đồng bộ mỗi 20 phút"
+          title="Kết nối đồng bộ mỗi phút"
           trigger={
             <>
               <Cable size={16} />
@@ -95,6 +109,7 @@ export default async function Sync() {
           }
           description="Cấu hình tại cron-job.org và biến môi trường của ứng dụng."
         >
+          <p className="modal-help">Cron-job.org: timeout 30 giây. Trên Vercel đặt SYNC_BUDGET_MS=20000; mặc định mới đã là 20 giây. Lịch quét ngày nằm ở mục Xem lịch.</p>
           <dl className="connection-details">
             <dt>Phương thức</dt>
             <dd>POST</dd>
@@ -104,7 +119,7 @@ export default async function Sync() {
             </dd>
             <dt>Lịch gọi</dt>
             <dd>
-              <code>*/20 * * * *</code> · Mỗi 20 phút
+              <code>* * * * *</code> · Mỗi phút
             </dd>
             <dt>Header xác thực</dt>
             <dd>
@@ -135,19 +150,14 @@ export default async function Sync() {
             tránh cộng hai lần.
           </p>
         </Modal>
-      </Heading>
-      <div className="sync-grid">
-        <Section
-          title="Tiến độ theo tài khoản"
-          note="Mốc thành công chỉ tiến lên khi đã lấy đủ các trang của cửa sổ dữ liệu."
-        >
+        <Modal wide title="Tiến độ theo tài khoản" description="Mốc thành công chỉ cập nhật sau khi lấy đủ thu hoặc chi trong cửa sổ dữ liệu." trigger="Tiến độ" triggerClassName="button subtle small">
           {!states.length ? (
             <Empty title="Chưa khởi tạo đồng bộ">
               Chọn Đồng bộ ngay để bắt đầu. Có thể đổi ngày lấy lịch sử tại Cấu
               hình sao kê.
             </Empty>
           ) : (
-            <div className="table-scroll">
+            <div className="table-scroll table-card">
               <table>
                 <thead>
                   <tr>
@@ -184,21 +194,30 @@ export default async function Sync() {
               </table>
             </div>
           )}
-        </Section>
-        <Section
-          title="Nhật ký đồng bộ"
-          note="30 lượt gần nhất. PARTIAL: đã lưu một phần, sẽ tiếp tục."
-        >
+        </Modal>
+        </div>
+      </div>
+      <nav className="sync-log-tabs fund-status-tabs" aria-label="Loại nhật ký">
+        <Link href={adminUrl("sync")} scroll={false} className={scheduleTab && params.log !== "full" ? "selected" : ""} aria-current={scheduleTab && params.log !== "full" ? "page" : undefined}>Webhook mỗi phút</Link>
+        <Link href={adminUrl("sync", { log: "full" })} scroll={false} className={params.log === "full" ? "selected" : ""} aria-current={params.log === "full" ? "page" : undefined}>Quét toàn ngày</Link>
+        <Link href={adminUrl("sync", { log: "runs" })} scroll={false} className={params.log === "runs" ? "selected" : ""} aria-current={params.log === "runs" ? "page" : undefined}>Đồng bộ thủ công</Link>
+        <Link href={adminUrl("sync", { log: "audit" })} scroll={false} className={auditTab ? "selected" : ""} aria-current={auditTab ? "page" : undefined}>Lịch sử thao tác</Link>
+      </nav>
+      <section className="sync-log-panel" aria-label={scheduleTab ? (params.log === "full" ? "Quét toàn ngày" : "Webhook mỗi phút") : auditTab ? "Lịch sử thao tác" : "Đồng bộ thủ công"}>
+      {scheduleTab ? <ScheduledSyncHistory full={params.log === "full"} /> : !auditTab ? (
+        <>
           {!runs.length ? (
             <Empty />
           ) : (
-            <div className="table-scroll log-table">
+            <div className="table-scroll table-card sync-log-scroll" tabIndex={0} role="region" aria-label="Bảng nhật ký đồng bộ">
               <table>
                 <thead>
                   <tr>
                     <th>Bắt đầu</th>
                     <th>Trạng thái</th>
-                    <th>Trang / mới / sửa</th>
+                    <th className="align-right">Trang</th>
+                    <th className="align-right">Mới</th>
+                    <th className="align-right">Sửa</th>
                     <th>Người chạy / lỗi</th>
                   </tr>
                 </thead>
@@ -210,16 +229,16 @@ export default async function Sync() {
                         <span
                           className={`badge ${r.status === "SUCCESS" ? "active" : r.status === "FAILED" ? "error" : "pending"}`}
                         >
-                          {r.status}
+                          {{ SUCCESS: "Hoàn tất", FAILED: "Thất bại", PARTIAL: "Chưa hoàn tất", RUNNING: "Đang chạy" }[r.status] ?? r.status}
                         </span>
                       </td>
+                      <td className="money align-right">{r.pages}</td>
+                      <td className="money align-right">{r.inserted}</td>
+                      <td className="money align-right">{r.updated}</td>
                       <td>
-                        {r.pages} / {r.inserted} / {r.updated}
-                      </td>
-                      <td>
-                        {r.actor}
+                        <RecordAuthor name={r.actorName} id={r.actorId} fallback={r.actor} at={r.startedAt} />
                         {r.error && (
-                          <small className="warning-text">{r.error}</small>
+                          <Modal title="Lỗi đồng bộ" description={dateTime(r.startedAt)} trigger="Xem lỗi" triggerClassName="button subtle small"><p className="sync-error-detail">{r.error}</p></Modal>
                         )}
                       </td>
                     </tr>
@@ -228,26 +247,26 @@ export default async function Sync() {
               </table>
             </div>
           )}
-        </Section>
-        <Section
-          title="Lịch sử thao tác"
-          note="100 thao tác gần nhất. Mở chi tiết để kiểm tra thay đổi."
-        >
+        </>
+      ) : (
+        <>
           {!audits.length ? (
             <Empty />
           ) : (
-            <div className="audit-list log-table">
+            <div className="table-scroll table-card sync-log-scroll" tabIndex={0} role="region" aria-label="Bảng lịch sử thao tác">
+              <table>
+                <thead><tr><th>Thời gian</th><th>Thao tác</th><th>Người thực hiện</th><th>Mã bản ghi</th><th>Chi tiết</th></tr></thead>
+                <tbody>
               {audits.map((a) => (
-                <div className="audit-entry" key={a.id}>
-                  <div>
-                    <strong>{actionNames[a.action] ?? a.action}</strong>
-                    <small>
-                      {dateTime(a.createdAt)} · {a.actor}
-                    </small>
-                  </div>
+                <tr key={a.id}>
+                  <td className="nowrap">{dateTime(a.createdAt)}</td>
+                  <td><strong>{actionNames[a.action] ?? a.action}</strong></td>
+                  <td><span className="sync-log-clip" title={`${a.actor} · ID: ${a.actorId ?? "Dữ liệu cũ"}`}>{a.actorName || a.actor}</span></td>
+                  <td><span className="sync-log-clip" title={a.entityId}>{a.entityId}</span></td>
+                  <td>
                   <Modal
                     title={actionNames[a.action] ?? a.action}
-                    description={`${dateTime(a.createdAt)} · ${a.actor}`}
+                    description={`${dateTime(a.createdAt)} · ${a.actorName || a.actor} · ID: ${a.actorId ?? "Dữ liệu cũ"}`}
                     trigger="Chi tiết"
                     triggerClassName="button subtle small"
                   >
@@ -256,12 +275,16 @@ export default async function Sync() {
                     </pre>
                     <small>Mã bản ghi: {a.entityId}</small>
                   </Modal>
-                </div>
+                  </td>
+                </tr>
               ))}
+                </tbody>
+              </table>
             </div>
           )}
-        </Section>
-      </div>
-    </>
+        </>
+      )}
+      </section>
+    </div>
   );
 }

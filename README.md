@@ -43,34 +43,31 @@ Không có tài khoản mặc định hoặc cơ chế bỏ qua đăng nhập. K
 
 Google SSO cần cấu hình thật và kiểm thử tài khoản được cấp quyền/không được cấp quyền trước khi mở cho team. Chưa có credentials nên chưa thể xác minh luồng OAuth với Google thật trong mã nguồn này.
 
-## Đồng bộ mỗi 20 phút từ cron-job.org
-
-Tạo HTTP job:
+## Đồng bộ mỗi phút từ cron-job.org
 
 ```text
 URL: https://your-app.vercel.app/api/sync/transactions
 Method: POST
-Schedule: */20 * * * *
+Schedule: * * * * *
+Timeout: 30 seconds
 Header: Authorization: Bearer <SYNC_SECRET>
 ```
 
-Không ghi secret vào query string. Scheduler chỉ có quyền yêu cầu đồng bộ, không có quyền sửa thiện pháp hay chuyển tiền.
+Đặt `SYNC_BUDGET_MS=20000` trên Vercel; mặc định webhook mới là 20 giây. Không ghi secret vào URL. Endpoint chỉ có quyền đồng bộ. `SYNC_MAX_PAGES` mặc định 8, giới hạn 4–30 trang cho mỗi webhook; thu/chi của hai tài khoản dùng chung ngân sách. Nút Đồng bộ ngay vẫn dùng cơ chế quét lịch sử thủ công, mặc định ngân sách 45 giây.
 
-- Mỗi request tối đa 8 trang, ngân sách xử lý 45 giây, timeout request nguồn 12 giây; `maxDuration=60` trên Vercel. Bắt đầu request nguồn mới chỉ khi còn đủ ngân sách; request dài/cắt đột ngột tiếp tục từ trang đã commit ở lượt sau.
-- `SYNC_MAX_PAGES` (1–30), `SYNC_BUDGET_MS` (15.000–45.000) cho phép giảm tải theo timeout của scheduler. Nếu scheduler timeout sớm hơn, đặt ngân sách thấp hơn timeout đó. Công việc bị ngắt chưa commit có thể chạy lại an toàn.
-- Lưu tiến độ riêng từng tài khoản và chiều CREDIT/DEBIT. Cửa sổ ngày cố định cho mỗi lượt quét. Sau khi xong, quét chồng lại hai ngày để bắt giao dịch về trễ. Giao dịch nguồn sửa/về trễ quá khoảng chồng lặp cần đối soát và quét lại cửa sổ cũ bằng quy trình vận hành; không khẳng định API là bất biến.
-- Khóa lease 120 giây ngăn chạy chồng; tự hết hạn nếu function bị dừng. Cursor chỉ tiến cùng transaction lưu dữ liệu thành công.
-- ID nguồn lưu dạng chuỗi, unique `(accountId, sourceId)`; nhập theo lô, loại trùng kể cả nguồn trả `pageSize + 1` phần tử.
-- Khi nguồn sửa giao dịch đã có: cập nhật sao kê, giữ nguyên phân loại và ghi lịch sử `SOURCE_UPDATED` để quản trị kiểm tra. Dữ liệu nguồn có thể làm thay đổi tổng thu/chi của thiện pháp đó.
-- HTTP 200 `pending: true` nghĩa là đã lưu một phần và còn dữ liệu, không phải đã đồng bộ đầy đủ. HTTP 500 nghĩa là cần kiểm tra nhật ký; các trang đã commit vẫn được giữ.
-- Nếu tiến trình bị platform hủy, SyncRun có thể còn RUNNING; kiểm tra thời gian và lease trước khi đánh giá tình trạng. Theo dõi lỗi scheduler và mốc hoàn thành của cả 4 luồng.
-- API nguồn `api-pilot.thiennguyen.app` chưa có hợp đồng SLA trong dự án. Cấu trúc, bankAccountId và phân trang cần kiểm tra khi nguồn thay đổi.
+- Lấy mới: trang 20 giao dịch trong ngày; tiếp tục qua các lượt nếu chưa hết. Dừng khi hết nguồn hoặc một trang đều đã có ID. Giao dịch cũ về trễ/sửa được bắt lại bằng đợt quét toàn ngày, không dựa vào lượt lấy mới để khẳng định ngày đã đối chiếu xong.
+- Quét toàn ngày hiện tại 10 mốc giờ Việt Nam: 02:00, 04:00, 06:00, 08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 22:00. Quét ngày hôm trước lúc 00:01 và 06:01. Mỗi trang 100 bản ghi, không dừng ở ID cũ.
+- Lịch chỉ được kích hoạt khi webhook gọi vào. Mốc trễ chạy ở lượt tiếp theo; sau thời gian ngừng dài chỉ bù mốc gần nhất cho cùng ngày, không quét lại mọi mốc đã lỡ. Không có scheduler nội bộ độc lập.
+- Một đợt quét là một SyncJob có khóa mốc duy nhất; cursor, dữ liệu và bộ đếm trang commit cùng transaction. Nếu chưa xong/nguồn lỗi thì lượt webhook sau tiếp tục. Quét ngày và lấy mới được luân phiên ưu tiên để không bỏ đói nhau khi ngân sách thấp. Lịch sử từ ngày cấu hình cũ được xử lý bằng job HISTORY khi chưa được phủ bởi đồng bộ cũ.
+- Lease database 120 giây, gia hạn khi commit, dùng chung với đồng bộ thủ công và cấu hình. Lượt gọi chồng trả 200 skipped và vẫn ghi thống kê. IDs nguồn unique theo tài khoản; dữ liệu nguồn sửa giữ phân loại và ghi audit.
+- Tab Đồng bộ & lịch sử có Webhook mỗi phút, Quét toàn ngày, Đồng bộ thủ công và Lịch sử thao tác. Thống kê webhook hợp lệ bao gồm cả bị bỏ qua/lỗi. Thống kê đợt quét đếm riêng mốc, số lượt xử lý, giờ đến hạn/bắt đầu/gọi gần nhất/hoàn tất. Thống kê mới bắt đầu từ bản cập nhật này; không suy đoán lượt gọi trong quá khứ. Request sai secret bị từ chối, không ghi thành lượt sync hợp lệ.
+- Không xóa record nguồn hay đặt lại số tiền. REVIEW và MERGED vẫn tuân thủ quy tắc sổ cái. Không cập nhật công khai bằng polling toàn trang; chỉ API trạng thái nhỏ mỗi phút khi tab được mở.
 
 ## Nhập dữ liệu Google Sheets / Excel
 
 Trang mặc định sau đăng nhập là danh sách thiện pháp tại `/admin`. Tạo thiện pháp, chọn **Nhập Excel**, tải file `.xlsx` xuất từ Google Sheets (File → Download → Microsoft Excel). Hệ thống đọc từng tab, nhận diện TK Mỹ / TK Trâm, xem trước tổng và yêu cầu xác nhận trước khi ghi dữ liệu. Giới hạn 5 MB / 10.000 giao dịch mỗi file.
 
-Một thiện pháp có thể nhận ở cả hai tài khoản; số dư và điều chuyển luôn được theo dõi riêng theo tài khoản. Nhập từng tab, xem tài khoản được nhận diện, tổng thu/chi và lỗi. Không nhập dòng tổng hoặc dòng phụ m²/số vị thành giao dịch. Tổng không khớp cần kiểm tra và xác nhận rõ. File có dòng lỗi phải sửa rồi tải lại.
+Mọi thiện pháp mặc định nhận và chi ở cả hai tài khoản; phần tài khoản trong biểu mẫu là chỉ đọc, không thể giới hạn bằng dữ liệu gửi lên. Mã thiện pháp là duy nhất toàn hệ thống; số dư và điều chuyển luôn được theo dõi riêng theo tài khoản. Nhập từng tab, xem tài khoản được nhận diện, tổng thu/chi và lỗi. Không nhập dòng tổng hoặc dòng phụ m²/số vị thành giao dịch. Tổng không khớp cần kiểm tra và xác nhận rõ. File có dòng lỗi phải sửa rồi tải lại.
 
 Nhập chạy từng lô, có thể tiếp tục khi gián đoạn; cùng file/tab không ghi lại lần hai. Giao dịch khớp duy nhất theo mã tham chiếu đầy đủ hoặc thời gian/nội dung/số tiền được ghép với sao kê. Trường hợp nghi trùng đưa vào kiểm tra, chưa cộng tiền cho tới khi quản trị xác nhận. Phân bổ tay ở thiện pháp khác được bảo vệ. Xem [hướng dẫn chuyển đổi](docs/MIGRATION.md).
 
@@ -79,10 +76,11 @@ Không còn chức năng chốt sổ hay điều kiện khóa đồng bộ. Các
 ## Quy tắc nghiệp vụ
 
 - Một giao dịch gán vào tối đa một thiện pháp có liên kết tài khoản nguồn.
-- Mã có ranh giới, không nhầm TP01 với TP010. Chuẩn hóa dấu, chữ hoa/thường, khoảng trắng.
+- Mã có ranh giới, không nhầm TP01 với TP010. Nhận TP112 / tp 112 / T P 112 và từ khóa viết liền hoặc cách. Chuẩn hóa dấu và chữ hoa/thường.
+- Tạo/sửa thiện pháp kiểm tra mã và toàn bộ từ khóa với mọi thiện pháp, kể cả tạm dừng/hoàn thành. Khóa so sánh bỏ dấu, hoa/thường và mọi khoảng trắng; báo rõ dòng nhập, từ khóa/mã trùng và mã/tên thiện pháp đang sử dụng. Các lần lưu đồng thời dùng transaction serializable để không nhận trùng từ khóa.
 - Mã chính ưu tiên từ khóa mở rộng. Nhiều mã/thiện pháp khớp → chờ kiểm tra. Mã khớp thiện pháp tạm dừng/hoàn thành → chờ tay, không rơi sang từ khóa thiện pháp khác.
 - Chỉ ACTIVE nhận tự động. Gán tay có thể chọn PAUSED/COMPLETED, bắt buộc lý do và giữ qua các lượt đồng bộ.
-- Thay trạng thái/từ khóa không tự sửa giao dịch cũ. Nút chạy lại chỉ xử lý tối đa 500 giao dịch UNASSIGNED mới nhất. Có thể lọc và gán tay các giao dịch còn lại.
+- Thay trạng thái/từ khóa không tự sửa giao dịch cũ. Bảng giao dịch mặc định lọc hôm nay theo giờ Việt Nam; có Từ ngày / Đến ngày. Không có nút phân loại ở tab Tất cả. Trong tab Chưa phân loại hoặc từng thiện pháp có Kiểm tra phân loại tab: chụp danh sách toàn bộ giao dịch của tab trong khoảng ngày/tài khoản/thu chi/tìm kiếm đang lọc, xử lý theo lô 100 dòng có lưu tiến độ, không giới hạn ở trang đang hiển thị. Bước kiểm tra chỉ lập đề xuất; quản trị xác nhận rồi mới áp dụng. AUTO có thể chuyển sang mã phù hợp hoặc về Chưa phân loại; MANUAL (kể cả Excel), REVIEW và MERGED được giữ nguyên. Giao dịch vừa bị sửa hoặc gán tay trong lúc chạy được bỏ qua. Cấu hình thay đổi làm lượt cũ hết hiệu lực và phải kiểm tra lại. Phân bổ lịch sử đúng mã của thiện pháp tạm dừng/hoàn thành vẫn được giữ, không gán thêm tự động. Mọi thay đổi có audit và tác giả; đóng modal dừng sau lô đang chạy và có thể tiếp tục khi mở lại cùng phạm vi.
 - Điều chuyển phải cùng tài khoản, số tiền dương, đủ số dư. Transaction serializable, thử lại khi xung đột; requestId chống gửi trùng. Không làm tăng tổng hùn/chi. Hủy bằng bút toán đảo duy nhất, có lý do và kiểm tra số dư.
 - Tiền dùng BigInt VND, không tính bằng số thực. Giờ nguồn không có offset được hiểu là giờ Việt Nam.
 - Số dư dự kiến = tổng số dư thiện pháp + tiền chưa phân bổ theo tài khoản. Thu và chi chỉ tính giao dịch POSTED; REVIEW và MERGED không cộng vào tổng. Số tổng hợp cũ được giữ tương thích cho tới khi thay bằng chi tiết.
@@ -147,3 +145,11 @@ DATABASE_URL="postgresql://USER@localhost:5432/hvntvn_test" npm run test:excel-i
 ```
 
 Script chỉ chấp nhận database test localhost và dọn dữ liệu test. Kiểm tra nhập nhiều tab/tài khoản, tiếp tục sau gián đoạn, hai yêu cầu đồng thời, chống nhập lại, ghép sao kê hai chiều, bảo vệ phân bổ tay, điều chuyển và thay tổng cũ.
+
+## Thông báo và lịch sử người thao tác
+
+Các mutation quản trị dùng toast thành công/lỗi. Lỗi validation thiện pháp vẫn hiện đỏ tại ô nhập và giữ nguyên dữ liệu. Form bị khóa khi pending; tạo/sửa thiện pháp thành công đóng modal. Toast dùng top layer để không bị modal che.
+
+Danh tính lấy từ phiên Google SSO đã kiểm tra quyền ở server, không nhận ID/tên từ form. AuditLog ghi email, ID đăng nhập, tên tại thời điểm thao tác, hành động, mã bản ghi, chi tiết và createdAt. Fund giữ người tạo/cập nhật cùng createdAt/updatedAt; giao dịch giữ người nhập/cập nhật và timestamp, điều chuyển và batch Excel giữ danh tính tác giả. Đồng bộ tự động được đánh dấu system:cron. Trường danh tính cũ chưa từng lưu để NULL và hiển thị chưa có thông tin, không suy đoán tác giả lịch sử.
+
+Tab Giao dịch có Tất cả / Chưa phân loại với số lượng theo phạm vi bộ lọc (không giới hạn ở trang 100 dòng). Xem thêm mở modal tìm mã/tên thiện pháp và số giao dịch trên toàn lịch sử đáp ứng các bộ lọc ngoài ngày. Chọn thiện pháp tạo tab riêng, mở khoảng ngày từ giao dịch cũ nhất tới hôm nay; vẫn giữ tài khoản, thu/chi, tìm kiếm và đối chiếu. Lọc lại ngày vẫn giữ tab đang chọn; đổi tab đặt lại phân trang. Bộ đếm dùng groupBy chung, không truy vấn riêng từng thiện pháp.

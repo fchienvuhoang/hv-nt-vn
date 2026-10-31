@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LogIn, ShieldCheck, Clock } from "lucide-react";
+import { ShieldCheck, Clock, Search } from "lucide-react";
 import {
   Brand,
   Status,
@@ -10,7 +10,7 @@ import {
   Pagination,
   pageNumber,
 } from "@/components/ui";
-import { publicFund } from "@/lib/public-data";
+import { publicFund, PUBLIC_PAGE_SIZE } from "@/lib/public-data";
 import { dateTime, vnd } from "@/lib/domain";
 export const dynamic = "force-dynamic";
 export default async function FundPage({
@@ -18,26 +18,23 @@ export default async function FundPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string; type?: string }>;
+  searchParams: Promise<{ page?: string; type?: string; q?: string }>;
 }) {
   const { slug } = await params;
   const query = await searchParams;
   const page = pageNumber(query.page),
     direction = query.type === "DEBIT" ? "DEBIT" : "CREDIT";
   if (!/^[a-z0-9-]{1,100}$/.test(slug)) notFound();
-  const fund = await publicFund(slug, page, direction);
+  const search = (typeof query.q === "string" ? query.q : "").trim().slice(0,100);
+  const fund = await publicFund(slug, page, direction, search);
   if (!fund) notFound();
   const base = `/t/${slug}`;
   return (
     <div className="public-site">
       <header className="public-header">
-        <Brand />
-        <Link href="/login" className="text-link">
-          <LogIn size={16} />
-          Đăng nhập quản trị
-        </Link>
+        <Brand href={base} />
       </header>
-      <main className="public-detail">
+      <main className="public-detail public-compact">
         <div className="fund-intro">
           <div className="eyebrow">HÀNH TRÌNH THIỆN LÀNH · {fund.code}</div>
           <h1>{fund.name}</h1>
@@ -90,23 +87,36 @@ export default async function FundPage({
             <strong>{vnd(fund.openingTransferNet)}</strong>
           </span>
         </div>
+        <div className="public-ledger-card">
         <Section
           title="Danh sách hùn phước & khoản chi"
           note="Số điện thoại được che, giữ 3 số cuối để đối chiếu."
         >
+          <div className="public-ledger-tools">
           <div className="tabs">
             <Link
               className={direction === "CREDIT" ? "selected" : ""}
-              href={`${base}?type=CREDIT`}
+              href={`${base}?${new URLSearchParams({type:"CREDIT",...(search?{q:search}:{})})}`}
             >
               Khoản hùn phước
             </Link>
             <Link
               className={direction === "DEBIT" ? "selected" : ""}
-              href={`${base}?type=DEBIT`}
+              href={`${base}?${new URLSearchParams({type:"DEBIT",...(search?{q:search}:{})})}`}
             >
               Khoản chi
             </Link>
+          </div>
+          <form action={base} method="get" className="public-search" role="search">
+            <input type="hidden" name="type" value={direction} />
+            <label htmlFor="public-transaction-search">Tìm khoản hùn phước / khoản chi</label>
+            <div className="public-search-controls">
+              <input id="public-transaction-search" type="search" name="q" defaultValue={search} maxLength={100} placeholder="Nội dung, tên thí chủ, số tiền hoặc 3 số cuối điện thoại…" />
+              <button className="button primary" type="submit"><Search size={15} />Tìm kiếm</button>
+              {search&&<Link className="button subtle" href={`${base}?type=${direction}`}>Xóa tìm kiếm</Link>}
+            </div>
+            <small>{fund.count.toLocaleString("vi-VN")} giao dịch{search?` khớp “${search}”`:""} · 100 dòng/trang</small>
+          </form>
           </div>
           {(BigInt(fund.openingIncome) !== 0n ||
             BigInt(fund.openingExpense) !== 0n) && (
@@ -119,15 +129,15 @@ export default async function FundPage({
           {!fund.rows.length ? (
             <Empty
               title={
-                direction === "CREDIT"
+                search ? "Không tìm thấy giao dịch phù hợp" : direction === "CREDIT"
                   ? "Chưa có khoản hùn phước mới"
                   : "Chưa có khoản chi mới"
               }
             >
-              Số liệu lịch sử đã được tính trong các tổng ở trên.
+              {search?"Hãy thử tên, nội dung hoặc 3 số cuối điện thoại. Các tổng thu chi phía trên luôn là tổng toàn thiện pháp.":"Số liệu lịch sử đã được tính trong các tổng ở trên."}
             </Empty>
           ) : (
-            <div className="table-scroll">
+            <div className="table-scroll table-card">
               <table>
                 <thead>
                   <tr>
@@ -161,11 +171,13 @@ export default async function FundPage({
             </div>
           )}
           <Pagination
-            page={page}
+            page={fund.page}
             total={fund.count}
-            base={`${base}?type=${direction}`}
+            base={`${base}?${new URLSearchParams({type:direction,...(search?{q:search}:{})})}`}
+            pageSize={PUBLIC_PAGE_SIZE}
           />
         </Section>
+        </div>
         <Section
           title="Điều chuyển nội bộ"
           note="50 bút toán gần nhất; bao gồm bút toán đảo, không tính thành hùn phước hoặc chi mới."
@@ -175,7 +187,7 @@ export default async function FundPage({
               Chưa có điều chuyển kể từ ngày chuyển đổi.
             </p>
           ) : (
-            <div className="table-scroll">
+            <div className="table-scroll table-card">
               <table>
                 <thead>
                   <tr>
@@ -213,7 +225,7 @@ export default async function FundPage({
         </div>
       </main>
       <footer className="public-footer">
-        <Brand />
+        <Brand href={base} />
         <span>Tri ân mọi thiện duyên được trao gửi.</span>
       </footer>
     </div>
