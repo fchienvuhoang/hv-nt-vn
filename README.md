@@ -1,0 +1,140 @@
+# Hùn phước — quản lý thiện pháp
+
+Next.js App Router + TypeScript + PostgreSQL + Prisma ORM. Quản trị bằng Google SSO theo danh sách email được cấp quyền. Hai tài khoản nguồn: `0572` và `0856`.
+
+## Chạy cục bộ
+
+Yêu cầu Node.js 22.18+ và PostgreSQL 14+.
+
+```sh
+npm ci
+cp .env.example .env
+# Điền DATABASE_URL và cấu hình SSO trong .env
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+Mở http://localhost:3000. Trang công khai `/`; quản trị `/admin`; đăng nhập `/login`.
+
+- `DATABASE_URL`: URL kết nối PostgreSQL có pool (`postgresql://...`) của Prisma Postgres hoặc PostgreSQL khác. Không dùng URL `prisma://` với adapter hiện tại.
+- `AUTH_SECRET`: chuỗi ngẫu nhiên tối thiểu 32 ký tự (`openssl rand -base64 32`).
+- `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`: OAuth client của Google.
+- `ADMIN_EMAILS`: danh sách email quản trị, phân cách dấu phẩy. Bỏ trống sẽ từ chối tất cả đăng nhập. Chỉ chấp nhận Google email đã xác minh; quyền được kiểm tra lại trên từng trang/thao tác, không chỉ lúc đăng nhập.
+- `AUTH_URL`: origin chính thức, ví dụ `https://your-app.vercel.app`.
+- `SYNC_SECRET`: chuỗi ngẫu nhiên riêng, tối thiểu 32 ký tự.
+
+Google OAuth authorized redirect URI:
+
+```text
+http://localhost:3000/api/auth/callback/google
+https://your-app.vercel.app/api/auth/callback/google
+```
+
+Không có tài khoản mặc định hoặc cơ chế bỏ qua đăng nhập. Không đưa `.env` lên Git. Seed chỉ tạo hai tài khoản, không tạo thiện pháp hoặc số liệu giả.
+
+## Triển khai Vercel
+
+1. Đẩy repository lên Git và import vào Vercel, chọn Next.js, Node.js 22.x.
+2. Tạo Prisma Postgres, cấu hình các biến trên trong Vercel Production. Đặt vùng functions gần database.
+3. Chạy `npm run db:migrate` và `npm run db:seed` từ máy/công việc CI có kết nối tới database Production, trước khi mở ứng dụng. Seed có thể chạy lại, không ghi đè tài khoản có sẵn. Nếu database có yêu cầu dùng URL trực tiếp để migration, chạy lệnh với `DATABASE_URL` trực tiếp ở riêng môi trường migration.
+4. Build command `npm run build` (bao gồm `prisma generate`). Không chạy migration tự động trong mọi preview deployment. Preview phải dùng database riêng, không dùng chung Production.
+5. Hoàn tất chốt sổ rồi mới tạo lịch đồng bộ. Không cần `vercel.json` cron.
+
+Google SSO cần cấu hình thật và kiểm thử tài khoản được cấp quyền/không được cấp quyền trước khi mở cho team. Chưa có credentials nên chưa thể xác minh luồng OAuth với Google thật trong mã nguồn này.
+
+## Đồng bộ mỗi 20 phút từ cron-job.org
+
+Tạo HTTP job:
+
+```text
+URL: https://your-app.vercel.app/api/sync/transactions
+Method: POST
+Schedule: */20 * * * *
+Header: Authorization: Bearer <SYNC_SECRET>
+```
+
+Không ghi secret vào query string. Scheduler chỉ có quyền yêu cầu đồng bộ, không có quyền sửa thiện pháp hay chuyển tiền.
+
+- Mỗi request tối đa 8 trang, ngân sách xử lý 45 giây, timeout request nguồn 12 giây; `maxDuration=60` trên Vercel. Bắt đầu request nguồn mới chỉ khi còn đủ ngân sách; request dài/cắt đột ngột tiếp tục từ trang đã commit ở lượt sau.
+- `SYNC_MAX_PAGES` (1–30), `SYNC_BUDGET_MS` (15.000–45.000) cho phép giảm tải theo timeout của scheduler. Nếu scheduler timeout sớm hơn, đặt ngân sách thấp hơn timeout đó. Công việc bị ngắt chưa commit có thể chạy lại an toàn.
+- Lưu tiến độ riêng từng tài khoản và chiều CREDIT/DEBIT. Cửa sổ ngày cố định cho mỗi lượt quét. Sau khi xong, quét chồng lại hai ngày để bắt giao dịch về trễ. Giao dịch nguồn sửa/về trễ quá khoảng chồng lặp cần đối soát và quét lại cửa sổ cũ bằng quy trình vận hành; không khẳng định API là bất biến.
+- Khóa lease 120 giây ngăn chạy chồng; tự hết hạn nếu function bị dừng. Cursor chỉ tiến cùng transaction lưu dữ liệu thành công.
+- ID nguồn lưu dạng chuỗi, unique `(accountId, sourceId)`; nhập theo lô, loại trùng kể cả nguồn trả `pageSize + 1` phần tử.
+- Khi nguồn sửa giao dịch đã có: cập nhật sao kê, giữ nguyên phân loại và ghi lịch sử `SOURCE_UPDATED` để quản trị kiểm tra. Dữ liệu nguồn có thể làm thay đổi tổng thu/chi của thiện pháp đó.
+- HTTP 200 `pending: true` nghĩa là đã lưu một phần và còn dữ liệu, không phải đã đồng bộ đầy đủ. HTTP 500 nghĩa là cần kiểm tra nhật ký; các trang đã commit vẫn được giữ.
+- Nếu tiến trình bị platform hủy, SyncRun có thể còn RUNNING; kiểm tra thời gian và lease trước khi đánh giá tình trạng. Theo dõi lỗi scheduler và mốc hoàn thành của cả 4 luồng.
+- API nguồn `api-pilot.thiennguyen.app` chưa có hợp đồng SLA trong dự án. Cấu trúc, bankAccountId và phân trang cần kiểm tra khi nguồn thay đổi.
+
+## Chuyển đổi từ Google Sheets
+
+Chi tiết trong [docs/MIGRATION.md](docs/MIGRATION.md).
+
+1. Chọn ngày bắt đầu, ví dụ `2026-11-01` tương ứng 00:00 giờ Việt Nam. Chốt Sheets và số dư ngân hàng ngay trước thời điểm này. Giao dịch từ mốc này trở đi thuộc hệ thống mới.
+2. Tạo thiện pháp hoặc xuất bảng tổng hợp sang CSV theo `/templates/so-du-dau-ky.csv`. Dùng số nguyên VND không dấu phân cách. Không nhập từng giao dịch vào file này.
+3. Nhập tổng hùn, tổng chi, điều chuyển ròng lịch sử của từng thiện pháp; nhập số dư ngân hàng và tiền chưa phân bổ của tài khoản.
+4. Chênh lệch = ngân hàng − tổng số dư thiện pháp − chưa phân bổ. Chênh lệch khác 0 bắt buộc có lý do, được lưu riêng.
+5. Kiểm tra bản nháp và khóa sổ. Số đầu kỳ bất biến trên giao diện sau khi khóa. Chỉ tài khoản đã khóa mới đồng bộ và công khai thiện pháp.
+6. Chạy song song và đối chiếu ít nhất một chu kỳ vận hành trước khi ngừng Sheets.
+
+CSV cùng mã cập nhật số tổng hợp, không cộng dồn; không xóa các mã khác. Không nhập danh sách giao dịch lịch sử đã được tính trong số dư đầu kỳ vào giao dịch mới. Bản hiện tại công khai tổng lịch sử + chi tiết sau mốc chuyển đổi; chưa nhập chi tiết lịch sử từng dòng hoặc đọc trực tiếp Google Sheets.
+
+## Quy tắc nghiệp vụ
+
+- Một giao dịch gán vào tối đa một thiện pháp, cùng tài khoản nguồn.
+- Mã có ranh giới, không nhầm TP01 với TP010. Chuẩn hóa dấu, chữ hoa/thường, khoảng trắng.
+- Mã chính ưu tiên từ khóa mở rộng. Nhiều mã/thiện pháp khớp → chờ kiểm tra. Mã khớp thiện pháp tạm dừng/hoàn thành → chờ tay, không rơi sang từ khóa thiện pháp khác.
+- Chỉ ACTIVE nhận tự động. Gán tay có thể chọn PAUSED/COMPLETED, bắt buộc lý do và giữ qua các lượt đồng bộ.
+- Thay trạng thái/từ khóa không tự sửa giao dịch cũ. Nút chạy lại chỉ xử lý tối đa 500 giao dịch UNASSIGNED mới nhất. Có thể lọc và gán tay các giao dịch còn lại.
+- Điều chuyển phải cùng tài khoản, số tiền dương, đủ số dư. Transaction serializable, thử lại khi xung đột; requestId chống gửi trùng. Không làm tăng tổng hùn/chi. Hủy bằng bút toán đảo duy nhất, có lý do và kiểm tra số dư.
+- Tiền dùng BigInt VND, không tính bằng số thực. Giờ nguồn không có offset được hiểu là giờ Việt Nam.
+- Tổng lịch sử nằm trong Fund; tổng số dư tính từ đầu kỳ + sao kê mới + điều chuyển. Tiền chưa phân bổ và chênh lệch đầu kỳ được giữ ở cấp tài khoản.
+- Đây là sổ phân bổ nội bộ, không có chức năng thực hiện chuyển khoản ngân hàng.
+
+## Trang công khai và cache
+
+Dùng Next Data Cache (`unstable_cache`) cho danh sách, thống kê và từng trang/chiều giao dịch, TTL 1.200 giây. Không chỉ cache trong RAM nên có thể chia sẻ giữa các instance Vercel. Các mutation và endpoint đồng bộ làm hết hạn tag `public-ledger`; lượt xem tiếp theo đọc DB và tạo cache mới. Không hứa mọi lượt xem đều không truy vấn.
+
+Chỉ DTO công khai đã lọc mới vào cache. Không đưa email quản trị, JSON nguồn hoặc thông tin tài khoản đối tác vào public DTO. Nội dung và tên được che mẫu số điện thoại Việt Nam và dạng quốc tế có tiền tố +/00: `0912345678` → `*******678`. Số đã bị nguồn che không thể khôi phục ba số cuối. Tôn trọng `hiddenNarrative` của nguồn. Nhận diện theo mẫu không đảm bảo phát hiện mọi số điện thoại quốc tế hoặc số được viết bằng chữ; cần bổ sung mẫu nếu thực tế có các dạng đó.
+
+Mốc đồng bộ đầy đủ hiển thị thời điểm nhỏ hơn trong hai luồng thu/chi; thời điểm bản cache được tạo hiển thị riêng.
+
+## Kiểm tra
+
+```sh
+npm test
+npm run typecheck
+npm run build
+```
+
+Các kiểm tra nghiệp vụ bao gồm: mã trùng tiền tố, từ khóa mơ hồ, mã không hoạt động, tài khoản khác nhau, che điện thoại, BigInt, múi giờ và CSV từ Excel.
+
+Không có secrets hoặc tài khoản Vercel/Google/Prisma Production được đưa vào repository. Việc cấu hình và triển khai Production cần thực hiện với tài khoản của chủ dự án.
+
+### Kiểm thử tích hợp trên PostgreSQL riêng
+
+Tạo database cục bộ có tên bắt đầu bằng `hvntvn_test`, chạy migration với DATABASE_URL trỏ vào database đó, sau đó:
+
+```sh
+DATABASE_URL="postgresql://USER@localhost:5432/hvntvn_test" npm run test:integration
+```
+
+Script từ chối database không phải test trên localhost; xóa dữ liệu trong database test trước/sau khi chạy. Kiểm tra thu/chi, trang chồng lặp, tiếp tục sau lỗi, thay đổi nguồn, giữ gán tay, lease, điều chuyển lặp, đảo và hai yêu cầu chi cạnh tranh.
+
+`tests/qa-fixtures.mts` và `tests/http-qa.mts` dùng để kiểm tra HTTP/form/cache trên server QA riêng. Fixtures phải được nạp vào database test trống; server QA dùng `NEXT_DIST_DIR=.next-qa`, `AUTH_URL=http://localhost:3001`, ADMIN_EMAILS chứa `qa-admin@example.test` và AUTH_SECRET chỉ dùng thử. HTTP script dùng cùng AUTH_SECRET để tạo session thử, không đăng nhập Google thật. Không chạy server QA với dữ liệu Production.
+
+## Khắc phục Google OAuth redirect_uri_mismatch
+
+Mở Google Cloud → Google Auth Platform → Clients → đúng Web OAuth client tương ứng AUTH_GOOGLE_ID. Trong **Authorized redirect URIs**, thêm chính xác callback ứng dụng đang dùng:
+
+```text
+http://localhost:3000/api/auth/callback/google
+```
+
+Điền vào Redirect URIs, không phải chỉ Authorized JavaScript origins. Google so khớp chính xác giao thức, hostname, port, đường dẫn và dấu gạch chéo cuối. localhost và 127.0.0.1 là hai hostname khác nhau. Nếu chạy port khác, cập nhật AUTH_URL và URI cùng port. Production cần callback HTTPS theo tên miền thật và AUTH_URL tương ứng, sau đó redeploy.
+
+Để kiểm tra callback thực tế, mở `/api/auth/providers` và xem `google.callbackUrl`. Trên màn hình lỗi Google, phần chi tiết yêu cầu cũng có redirect_uri để đối chiếu. Sau khi lưu Google Cloud, bắt đầu lại đăng nhập từ `/login`. AUTH_SECRET là khóa ngẫu nhiên riêng cho phiên đăng nhập; OAuth client secret thuộc AUTH_GOOGLE_SECRET. Không đặt khóa thật trong .env.example.
+
+### Google trả invalid_client / Client Secret không hợp lệ
+
+Nếu log ghi `invalid_client` và `The provided client secret is invalid`, lỗi xảy ra trước bước kiểm tra ADMIN_EMAILS. Mở đúng OAuth Web client trong Google Cloud, sao chép Client Secret tương ứng vào AUTH_GOOGLE_SECRET trong .env (hoặc Vercel Environment Variables). AUTH_GOOGLE_ID và AUTH_GOOGLE_SECRET phải thuộc cùng client. AUTH_SECRET là khóa phiên ngẫu nhiên riêng, không dùng thay cho Google Client Secret. Không gửi secret qua chat hoặc commit vào Git. Khởi động lại dev server / redeploy rồi bắt đầu một phiên đăng nhập mới.

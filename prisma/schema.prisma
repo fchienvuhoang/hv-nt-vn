@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum FundStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+enum Direction {
+  CREDIT
+  DEBIT
+}
+enum Assignment {
+  UNASSIGNED
+  AUTO
+  MANUAL
+}
+model BankAccount {
+  id                 String   @id @default(cuid())
+  number             String   @unique
+  owner              String
+  label              String
+  cutoverAt          DateTime?
+  openingBankBalance BigInt   @default(0)
+  openingUnallocated BigInt   @default(0)
+  openingDifference  BigInt   @default(0)
+  differenceReason   String   @default("")
+  finalizedAt        DateTime?
+  funds              Fund[]
+  transactions       BankTransaction[]
+  syncStates         SyncState[]
+  createdAt          DateTime @default(now())
+}
+model Fund {
+  id                 String     @id @default(cuid())
+  accountId          String
+  account            BankAccount @relation(fields: [accountId], references: [id])
+  code               String
+  name               String
+  slug               String     @unique
+  description        String     @default("")
+  keywords           String[]
+  status             FundStatus @default(ACTIVE)
+  openingIncome      BigInt     @default(0)
+  openingExpense     BigInt     @default(0)
+  openingTransferNet BigInt     @default(0)
+  transactions       BankTransaction[]
+  transfersOut       Transfer[] @relation("TransferFrom")
+  transfersIn        Transfer[] @relation("TransferTo")
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  @@unique([accountId, code])
+  @@index([accountId, status])
+}
+model BankTransaction {
+  id             String      @id @default(cuid())
+  accountId      String
+  account        BankAccount @relation(fields: [accountId], references: [id])
+  sourceId       String
+  refId          String
+  amount         BigInt
+  direction      Direction
+  narrative      String
+  displayName    String
+  hiddenNarrative Boolean    @default(false)
+  hiddenNote     Boolean     @default(false)
+  occurredAt     DateTime
+  sourceHash     String
+  source         Json
+  fundId         String?
+  fund           Fund?       @relation(fields: [fundId], references: [id])
+  assignment     Assignment  @default(UNASSIGNED)
+  matchReason    String      @default("")
+  importedAt     DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  @@unique([accountId, sourceId])
+  @@index([accountId, occurredAt])
+  @@index([fundId, direction, occurredAt])
+  @@index([assignment, occurredAt])
+}
+model Transfer {
+  id          String   @id @default(cuid())
+  requestId   String   @unique
+  fromFundId  String
+  toFundId    String
+  fromFund    Fund     @relation("TransferFrom", fields: [fromFundId], references: [id])
+  toFund      Fund     @relation("TransferTo", fields: [toFundId], references: [id])
+  amount      BigInt
+  reason      String
+  actor       String
+  reversalOf  String?  @unique
+  original    Transfer? @relation("Reversal", fields: [reversalOf], references: [id])
+  reversal    Transfer? @relation("Reversal")
+  createdAt   DateTime @default(now())
+  @@index([fromFundId, createdAt])
+  @@index([toFundId, createdAt])
+}
+model SyncState {
+  id            String      @id @default(cuid())
+  accountId     String
+  account       BankAccount @relation(fields: [accountId], references: [id])
+  direction     Direction
+  completedTo   DateTime?
+  windowFrom    String?
+  windowTo      String?
+  nextPage      Int         @default(1)
+  lastSuccessAt DateTime?
+  @@unique([accountId, direction])
+}
+model SyncLease {
+  id        String   @id
+  token     String
+  expiresAt DateTime
+}
+model SyncRun {
+  id         String   @id @default(cuid())
+  status     String
+  actor      String
+  pages      Int      @default(0)
+  inserted   Int      @default(0)
+  updated    Int      @default(0)
+  error      String?
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+}
+model AuditLog {
+  id         String   @id @default(cuid())
+  actor      String
+  action     String
+  entityId   String
+  details    Json
+  createdAt  DateTime @default(now())
+  @@index([createdAt])
+}

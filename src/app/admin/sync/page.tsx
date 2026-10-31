@@ -1,0 +1,17 @@
+import { requireAdmin } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { Heading, Section, Empty } from "@/components/ui";
+import { ActionForm } from "@/components/action-form";
+import { syncNow } from "../actions";
+import { dateTime } from "@/lib/domain";
+const actionNames: Record<string,string> = { FUND_CREATED: "Tạo thiện pháp", FUND_UPDATED: "Sửa thiện pháp", TRANSACTION_ASSIGNED: "Phân loại tay", TRANSACTION_RECLASSIFIED: "Phân loại lại", OPENING_ACCOUNT_SAVED: "Lưu đầu kỳ tài khoản", OPENING_FUND_SAVED: "Lưu đầu kỳ thiện pháp", OPENING_CSV_IMPORTED: "Nhập CSV đầu kỳ", OPENING_FINALIZED: "Khóa sổ đầu kỳ", TRANSFER_CREATED: "Điều chuyển", TRANSFER_REVERSED: "Đảo điều chuyển", SOURCE_UPDATED: "Nguồn sửa giao dịch" };
+export default async function Sync() {
+  await requireAdmin();
+  const [runs, states, audits] = await Promise.all([db.syncRun.findMany({ orderBy: { startedAt: "desc" }, take: 30 }), db.syncState.findMany({ include: { account: true }, orderBy: [{ accountId: "asc" }, { direction: "asc" }] }), db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 100 })]);
+  return <><Heading eyebrow="VẬN HÀNH & TRUY VẾT" title="Đồng bộ & lịch sử" description="Mỗi lượt xử lý có giới hạn thời gian; dữ liệu còn lại được tiếp tục ở lượt sau."><ActionForm action={syncNow} label="Đồng bộ ngay" className="compact"/></Heading>
+    <div className="notice"><strong>Lịch gọi từ bên ngoài: mỗi 20 phút</strong><p>Cấu hình cron-job.org gọi POST <code>/api/sync/transactions</code> với header <code>Authorization: Bearer &lt;SYNC_SECRET&gt;</code>. Endpoint từ chối request không có mã hợp lệ. Không đặt secret trong URL.</p></div>
+    <Section title="Tiến độ theo tài khoản" note="Mốc thành công chỉ tiến lên khi đã lấy hết các trang của một cửa sổ dữ liệu.">{!states.length ? <Empty title="Chưa khởi tạo đồng bộ">Hoàn tất chốt sổ đầu kỳ rồi chọn Đồng bộ ngay.</Empty> : <div className="table-scroll"><table><thead><tr><th>Tài khoản</th><th>Thu / chi</th><th>Hoàn thành gần nhất</th><th>Cửa sổ đang xử lý</th><th>Trang tiếp theo</th></tr></thead><tbody>{states.map(s => <tr key={s.id}><td>{s.account.number}</td><td>{s.direction === "CREDIT" ? "Thu" : "Chi"}</td><td>{s.lastSuccessAt ? dateTime(s.lastSuccessAt) : "Chưa hoàn tất"}</td><td>{s.windowFrom ? `${s.windowFrom} → ${s.windowTo}` : "Đã xong"}</td><td>{s.windowFrom ? s.nextPage : "—"}</td></tr>)}</tbody></table></div>}</Section>
+    <Section title="Nhật ký đồng bộ" note="30 lượt gần nhất. PARTIAL: đã lưu một phần, sẽ tiếp tục.">{!runs.length ? <Empty/> : <div className="table-scroll"><table><thead><tr><th>Bắt đầu</th><th>Trạng thái</th><th>Trang / mới / sửa</th><th>Người chạy / lỗi</th></tr></thead><tbody>{runs.map(r => <tr key={r.id}><td className="nowrap">{dateTime(r.startedAt)}</td><td><span className={`badge ${r.status === "SUCCESS" ? "active" : r.status === "FAILED" ? "error" : "pending"}`}>{r.status}</span></td><td>{r.pages} / {r.inserted} / {r.updated}</td><td>{r.actor}{r.error && <small className="warning-text">{r.error}</small>}</td></tr>)}</tbody></table></div>}</Section>
+    <Section title="Lịch sử thao tác" note="100 thao tác gần nhất; chỉ quản trị viên có thể xem chi tiết.">{!audits.length ? <Empty/> : <div className="audit-list">{audits.map(a => <details key={a.id}><summary><span>{actionNames[a.action] ?? a.action}</span><small>{dateTime(a.createdAt)} · {a.actor}</small></summary><pre>{JSON.stringify(a.details, null, 2)}</pre><small>Mã bản ghi: {a.entityId}</small></details>)}</div>}</Section>
+  </>;
+}

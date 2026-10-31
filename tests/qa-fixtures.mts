@@ -1,0 +1,12 @@
+const testUrl = new URL(process.env.DATABASE_URL ?? "postgresql://invalid/invalid");
+if (!["localhost", "127.0.0.1"].includes(testUrl.hostname) || !testUrl.pathname.startsWith("/hvntvn_test")) throw new Error("Require isolated localhost hvntvn_test database");
+const { db } = await import("../src/lib/db");
+const { startOfVietnamDay, localDate } = await import("../src/lib/domain");
+const today = localDate();
+const a = await db.bankAccount.create({ data: { number: "0572", owner: "TEST ONLY", label: "Tài khoản kiểm thử", cutoverAt: startOfVietnamDay(today), openingBankBalance: 10000000n, finalizedAt: new Date() } });
+await db.bankAccount.create({ data: { number: "0856", owner: "TEST ONLY", label: "Tài khoản kiểm thử" } });
+const f = await db.fund.create({ data: { accountId: a.id, code: "TPTEST", name: "Thiện pháp kiểm thử — không phải số liệu thật", description: "Chỉ dùng kiểm tra giao diện và số liệu. Liên hệ thử 0912345678.", slug: "0572-tptest", keywords: ["TU KHOA TEST"], openingIncome: 10000000n } });
+await db.fund.create({ data: { accountId: a.id, code: "TPOTHER", name: "Thiện pháp kiểm thử thứ hai", slug: "0572-tpother", keywords: [], status: "PAUSED" } });
+for (let i=0;i<3;i++) await db.bankTransaction.create({ data: { accountId:a.id, sourceId:`TEST-${i}`, refId:`TEST-${i}`, amount:BigInt([200000,100000,50000][i]), direction:i===2?"DEBIT":"CREDIT", narrative:`TEST ONLY ${i===1?"KHONG RO MA":"TPTEST"} 0912 345 678`, displayName:"THI CHU TEST 0987654321", occurredAt:new Date(), sourceHash:"test", source:{test:true}, fundId:i===1?null:f.id, assignment:i===1?"UNASSIGNED":"AUTO" } });
+await db.$disconnect();
+console.log("Test-only fixtures ready");
