@@ -58,6 +58,7 @@ model Fund {
   description        String     @default("")
   keywords           String[]
   status             FundStatus @default(ACTIVE)
+  publicListed       Boolean    @default(false)
   pinnedAt           DateTime?
   openingIncome      BigInt     @default(0)
   openingExpense     BigInt     @default(0)

@@ -16,12 +16,12 @@ export function PublicDirectory({initial}:{initial:PublicDirectoryDTO}){
   return()=>{alive=false;controller.abort()};
  },[key,q,page,initial,retry]);
  const {data,error}=state,loading=state.loading||state.key!==key;
- return <div className="public-site"><header className="public-header"><Brand href="/t"/><span className="public-directory-header-note">Cùng gieo duyên lành</span></header>
+ return <div className="public-site"><header className="public-header"><Brand href="/minh-bach"/><span className="public-directory-header-note">“Lấy thí thắng xan tham.” — Kinh Pháp Cú, kệ 223 (HT. Thích Minh Châu dịch)</span></header>
  <main className="public-detail public-compact public-directory">
-  <div className="directory-intro"><span className="eyebrow">HỌC VIỆN NGUYÊN THỦY VIỆT NAM</span><h1>Các thiện pháp đang hoạt động</h1><p>Tra cứu khoản hùn phước và cùng theo dõi hành trình trao gửi.</p></div>
-  <form className="directory-search" role="search" action="/t" method="get" key={q} onSubmit={event=>{event.preventDefault();const form=new FormData(event.currentTarget);window.history.pushState(null,"",`/t?${new URLSearchParams({q:String(form.get("q")??"").trim()})}`)}}>
-   <label htmlFor="directory-search">Tìm thiện pháp hoặc nội dung giao dịch</label><div><Search size={18}/><input id="directory-search" name="q" type="search" defaultValue={q} maxLength={100} placeholder="Mã thiện pháp, nội dung, tên thí chủ, số tiền hoặc 3 số cuối điện thoại…"/><button className="button primary" type="submit">Tìm kiếm</button>{q&&<Link href="/t" className="button subtle">Xóa</Link>}</div>
-   <small>Chỉ tra cứu các thiện pháp đang hoạt động. Số điện thoại được che, chỉ giữ 3 số cuối.</small>
+  <div className="directory-intro"><span className="eyebrow">HỌC VIỆN NGUYÊN THỦY VIỆT NAM</span><h1>Minh bạch thiện pháp</h1><p>Tra cứu khoản hùn phước và cùng theo dõi hành trình trao gửi.</p></div>
+  <form className="directory-search" role="search" action="/minh-bach" method="get" key={q} onSubmit={event=>{event.preventDefault();const form=new FormData(event.currentTarget);window.history.pushState(null,"",`/minh-bach?${new URLSearchParams({q:String(form.get("q")??"").trim()})}`)}}>
+   <label htmlFor="directory-search">Tìm thiện pháp hoặc nội dung giao dịch</label><div><Search size={18}/><input id="directory-search" name="q" type="search" defaultValue={q} maxLength={100} placeholder="Mã thiện pháp, nội dung, tên thí chủ, số tiền hoặc 3 số cuối điện thoại…"/><button className="button primary" type="submit">Tìm kiếm</button>{q&&<Link href="/minh-bach" className="button subtle">Xóa</Link>}</div>
+   <small>Chỉ tra cứu các thiện pháp đang hoạt động được ban quản trị cho phép hiển thị. Số điện thoại được che, chỉ giữ 3 số cuối.</small>
   </form>
   {error?<div role="alert" className="notice danger">{error} <button className="button subtle small" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:loading?<p role="status">Đang tìm thiện pháp và giao dịch…</p>:<>
    <div className="directory-result-label"><strong>{data.count} thiện pháp{q?` khớp “${q}”`:" đang hoạt động"}</strong>{q&&<span>{data.transactionCount.toLocaleString("vi-VN")} giao dịch phù hợp</span>}</div>
@@ -33,7 +33,7 @@ export function PublicDirectory({initial}:{initial:PublicDirectoryDTO}){
      <Link className="button primary directory-detail-link" href={resultLink}>Xem thiện pháp <ArrowUpRight size={15}/></Link>
     </article>
    })}</div>}
-   <Pagination itemLabel="thiện pháp" page={data.page} total={data.count} pageSize={data.pageSize} base={`/t?${new URLSearchParams({q})}`}/>
+   <Pagination itemLabel="thiện pháp" page={data.page} total={data.count} pageSize={data.pageSize} base={`/minh-bach?${new URLSearchParams({q})}`}/>
   </>}
- </main><footer className="public-footer"><Brand href="/t"/><span>Tri ân mọi thiện duyên được trao gửi.</span></footer></div>;
+ </main><footer className="public-footer"><Brand href="/minh-bach"/><span>“Lấy thí thắng xan tham.” — Kinh Pháp Cú, kệ 223 (HT. Thích Minh Châu dịch)</span></footer></div>;
 }

@@ -3,8 +3,8 @@ import "./globals.css";
 import { ToastProvider } from "@/components/toasts";
 export const metadata: Metadata = {
   title: {
-    default: "Hùn phước · Học Viện Nguyên Thủy Việt Nam",
-    template: "%s · Hùn phước",
+    default: "Học viện nguyên thủy Việt Nam",
+    template: "%s · Học viện nguyên thủy Việt Nam",
   },
   description:
     "Theo dõi hùn phước, thu chi và điều chuyển thiện pháp của Học Viện Nguyên Thủy Việt Nam.",

@@ -42,6 +42,7 @@ const code = z
       ),
   );
 const fundSchema = z.object({
+  publicListed: z.enum(["1","0"]).optional().transform(v=>v===undefined?undefined:v==="1"),
   code,
   name: z.string().trim().min(3).max(200),
   description: z.string().trim().max(3000),
@@ -94,6 +95,18 @@ async function audit(
 ) {
   await tx.auditLog.create({ data: { ...actorStamp(actor), action, entityId, details } });
 }
+export async function setFundVisibility(_state: ActionState, form: FormData) {
+  return execute(async actor=>{
+    const data=z.object({fundId:id,visible:z.enum(["1","0"])}).parse(Object.fromEntries(form));
+    await serializable(async tx=>{
+      const fund=await tx.fund.findUniqueOrThrow({where:{id:data.fundId}}),publicListed=data.visible==="1";
+      if(fund.publicListed===publicListed)return;
+      await tx.fund.update({where:{id:fund.id},data:{publicListed,...updatedStamp(actor)}});
+      await audit(tx,actor,publicListed?"Hiển thị trên trang Minh bạch":"Ẩn khỏi trang Minh bạch",fund.id,{code:fund.code,name:fund.name,before:fund.publicListed,after:publicListed});
+    });
+    return data.visible==="1"?"Đã bật hiển thị trên trang Minh bạch. Thiện pháp cần đang hoạt động để xuất hiện.":"Đã ẩn thiện pháp khỏi trang Minh bạch.";
+  });
+}
 export async function pinFund(_state: ActionState, form: FormData) {
   return execute(async actor=>{
     const data=z.object({fundId:id,pinned:z.enum(["1","0"])}).parse(Object.fromEntries(form));
@@ -123,7 +136,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
       // concurrent creates/edits claiming the same normalized keyword.
       const rules = await tx.fund.findMany({ select: { id: true, code: true, name: true, keywords: true } });
       const fields = {
-        ...data, accountId,
+        ...data, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
         accountIds: accounts.filter(a => a.id !== accountId).map(a => a.id),
         keywords: validateFundKeywords(data.code, data.keywords, rules, fundId),
       };

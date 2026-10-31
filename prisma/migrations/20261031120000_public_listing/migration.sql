@@ -1,0 +1,1 @@
+ALTER TABLE "Fund" ADD COLUMN "publicListed" BOOLEAN NOT NULL DEFAULT false;

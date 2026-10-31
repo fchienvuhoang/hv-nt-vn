@@ -50,6 +50,7 @@ async function write<T>(path:string,method:string,body:FormData|object,notify=tr
   } catch(cause) { return {error:cause instanceof Error?cause.message:"Kết nối bị gián đoạn, vui lòng thử lại."} as T; }
 }
 type Result<K extends keyof typeof Actions>=Awaited<ReturnType<(typeof Actions)[K]>>;
+export const setFundVisibility=(_s:Actions.ActionState,f:FormData)=>write<Result<"setFundVisibility">>("funds/visibility","PATCH",f);
 export const pinFund=(_s:Actions.ActionState,f:FormData)=>write<Result<"pinFund">>("funds/pin","PATCH",f);
 export const saveFund=(_s:Actions.ActionState,f:FormData)=>write<Result<"saveFund">>("funds",f.get("id")?"PUT":"POST",f);
 export const assignTransaction=(_s:Actions.ActionState,f:FormData)=>write<Result<"assignTransaction">>("transactions/assignment","POST",f);

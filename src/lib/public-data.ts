@@ -109,6 +109,13 @@ export async function publicFund(slug: string, page: number, direction: "CREDIT"
 }
 
 export type PublicFundDTO=Omit<NonNullable<Awaited<ReturnType<typeof publicFund>>>,"id"|"cutover">;
+export async function publicFundTitle(slug:string){
+  const fund=await publicFundSummary(slug,"CREDIT");
+  if(!fund)return null;
+  const name=fund.name.trim();
+  const hasCode=new RegExp(`^${fund.code}(?=$|[\\s:–—-])`,"i").test(name);
+  return `${hasCode?name:`${fund.code} ${name}`} - Học viện nguyên thủy Việt Nam`;
+}
 export function publicFundDTO(fund:NonNullable<Awaited<ReturnType<typeof publicFund>>>):PublicFundDTO {
   const {id,cutover,...result}=fund;void id;void cutover;return result;
 }
@@ -116,13 +123,13 @@ export function publicFundDTO(fund:NonNullable<Awaited<ReturnType<typeof publicF
 const DIRECTORY_PAGE_SIZE=12,SEARCH_BLOCK_SIZE=250;
 const directoryFunds=unstable_cache(async()=>{
   const totals=await fundTotals();
-  return totals.filter(f=>f.status==="ACTIVE").map(f=>({id:f.id,slug:f.slug,code:f.code,name:maskPhones(f.name),description:maskPhones(f.description),income:f.income.toString(),expense:f.expense.toString(),balance:f.balance.toString(),count:f.count}));
-},["public-directory-funds-v1"],options);
+  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,name:maskPhones(f.name),description:maskPhones(f.description),income:f.income.toString(),expense:f.expense.toString(),balance:f.balance.toString(),count:f.count}));
+},["public-directory-funds-v2"],options);
 // Cache stable masked blocks, not arbitrary visitor search strings.
 const directoryTransactionBlock=unstable_cache(async(page:number)=>{
- const rows=await db.bankTransaction.findMany({where:{entryStatus:"POSTED",fund:{status:"ACTIVE"}},select:{fundId:true,amount:true,direction:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{text:true}}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*SEARCH_BLOCK_SIZE,take:SEARCH_BLOCK_SIZE});
+ const rows=await db.bankTransaction.findMany({where:{entryStatus:"POSTED",fund:{status:"ACTIVE",publicListed:true}},select:{fundId:true,amount:true,direction:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{text:true}}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*SEARCH_BLOCK_SIZE,take:SEARCH_BLOCK_SIZE});
  return rows.map(r=>({fundId:r.fundId!,direction:r.direction,amount:r.amount.toString(),at:r.occurredAt.toISOString(),narrative:r.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(r.narrative),name:maskPhones(r.displayName),account:r.account.number,notes:r.notes.map(n=>({text:maskPhones(n.text)}))}));
-},["public-directory-transactions-v1"],options);
+},["public-directory-transactions-v2"],options);
 export async function publicDirectory(search="",requestedPage=1){
  const funds=await directoryFunds(),query=search.trim().slice(0,100);
  type Preview=Omit<Awaited<ReturnType<typeof directoryTransactionBlock>>[number],"fundId">;

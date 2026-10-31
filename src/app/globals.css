@@ -4074,3 +4074,23 @@ tfoot td {
 .fund-pin-button:disabled { opacity: .55; cursor: wait; }
 .fund-pin-button:focus-visible { outline: 2px solid #7b3040; outline-offset: 2px; }
 .fund-list-scroll.table-card tbody tr.fund-pinned-row { background: #fffbef; }
+
+/* Transparency directory is a single vertical list on every screen size. */
+.public-directory .public-fund-grid { grid-template-columns: minmax(0,1fr); gap: 10px; }
+.public-directory .directory-fund-totals { max-width: 640px; }
+.public-directory .directory-matches { max-width: 1000px; }
+.fund-public-toggle { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; text-align: left; background: #f8f5f0; border: 1px solid #ddcdbc; border-radius: 7px; color: #856e5b; cursor: pointer; }
+.fund-public-toggle.enabled { background: #fff4da; border-color: #d6ad59; color: #7b3040; }
+.fund-public-toggle > svg { flex-shrink: 0; }
+.fund-public-toggle strong { display: block; font-size: 13px; }
+.fund-public-toggle small { display: block; margin-top: 3px; font-size: 11px; line-height: 1.5; }
+.fund-public-toggle:disabled { cursor: wait; opacity: .6; }
+.fund-public-toggle:focus-visible { outline: 2px solid #7b3040; outline-offset: 2px; }
+
+.fund-list-scroll .fund-public-cell { width: 172px; min-width: 172px; }
+.fund-public-controls { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.fund-visibility-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 30px; height: 30px; padding: 0; border: 1px solid #d8c5b2; border-radius: 5px; color: #9a8370; background: #fff; cursor: pointer; }
+.fund-visibility-button.visible { color: #7b3040; border-color: #d4a858; background: #fff0bf; }
+.fund-visibility-button:hover { border-color: #a9693b; background: #fff4da; }
+.fund-visibility-button:disabled { cursor: wait; opacity: .55; }
+.fund-visibility-button:focus-visible { outline: 2px solid #7b3040; outline-offset: 2px; }

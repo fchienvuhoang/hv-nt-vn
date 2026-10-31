@@ -11,7 +11,7 @@ export function Brand({
   href?: string;
   featured?: boolean;
 }) {
-  const BrandLink=href.startsWith("/admin")?AdminLink:(href==="/t"||href.startsWith("/t/"))?PublicLink:Link;
+  const BrandLink=href.startsWith("/admin")?AdminLink:(href==="/minh-bach"||href==="/t"||href.startsWith("/t/"))?PublicLink:Link;
   return (
     <BrandLink href={href} className={`brand${featured ? " brand-featured" : ""}`}>
       <Image
@@ -24,7 +24,7 @@ export function Brand({
         priority={featured}
       />
       <span>
-        Hùn phước<small>Học Viện Nguyên Thủy Việt Nam</small>
+        Học viện nguyên thủy Việt Nam<small>Minh bạch thiện pháp</small>
       </span>
     </BrandLink>
   );
@@ -145,7 +145,7 @@ export function Pagination({
   itemLabel?: string;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const PageLink=base.startsWith("/admin")?AdminLink:(base.startsWith("/t?")||base==="/t"||base.startsWith("/t/"))?PublicLink:Link;
+  const PageLink=base.startsWith("/admin")?AdminLink:(base.startsWith("/minh-bach")||base.startsWith("/t?")||base==="/t"||base.startsWith("/t/"))?PublicLink:Link;
   return (
     <div className="pagination">
       <span>

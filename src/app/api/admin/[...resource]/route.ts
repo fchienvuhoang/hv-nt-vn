@@ -32,6 +32,7 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
     let result:unknown;
     const form=()=>request.formData();
     switch(`${request.method} ${resource}`){
+      case "PATCH funds/visibility":result=await actions.setFundVisibility({},await form());break;
       case "PATCH funds/pin":result=await actions.pinFund({},await form());break;
       case "POST funds":case "PUT funds":result=await actions.saveFund({},await form());break;
       case "POST transactions/assignment":result=await actions.assignTransaction({},await form());break;

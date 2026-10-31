@@ -1,5 +1,6 @@
 "use client";
 import { FundBalanceComparison } from "@/components/admin/fund-balance-comparison";
+import { FundVisibilityButton } from "@/components/admin/fund-visibility-button";
 import { FundPinButton } from "@/components/admin/fund-pin-button";
 import { AdminDialogButton } from "@/components/admin/dialog-workspace";
 import { RecordAuthor } from "@/components/admin/record-author";
@@ -48,7 +49,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
     <div className="fund-workspace">
       <div className="fund-topline">
         <h1>Thiện pháp</h1>
-        <a href="/t" target="_blank" rel="noopener noreferrer" className="button subtle small"><ExternalLink size={14}/>Trang tổng hợp công khai</a>
+        <a href="/minh-bach" target="_blank" rel="noopener noreferrer" className="button subtle small"><ExternalLink size={14}/>Trang tổng hợp công khai</a>
         <AdminDialogButton kind="create-fund" className="button primary small">
           <Plus size={14} />Tạo thiện pháp
         </AdminDialogButton>
@@ -131,8 +132,9 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                         <h3 className="table-fund-name" title={`Từ khóa: ${f.keywords.join(" · ") || f.code}`}>{f.name}</h3>
                       </div>
                     </td>
-                    <td className="fund-public-cell">
+                    <td className="fund-public-cell"><div className="fund-public-controls">
                       <Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={15} /><span>Trang công khai</span></Link>
+                      <FundVisibilityButton fundId={f.id} code={f.code} visible={f.publicListed}/></div>
                     </td>
                     <td className="nowrap">
                       <span className="account-number">

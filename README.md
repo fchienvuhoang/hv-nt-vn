@@ -182,12 +182,14 @@ Webhook mỗi phút giữ lease chung, gọi song song API `bank-account-transac
 
 ## Link tổng hợp công khai
 
-Gửi `/t` để thí chủ xem danh sách thiện pháp `ACTIVE`, tổng hùn phước/chi/số dư và mở trang chi tiết. Nút mở link này có trong tab Thiện pháp; trang chi tiết có đường quay về danh sách. Trang chủ `/` vẫn dẫn tới đăng nhập.
+Gửi `/minh-bach` để thí chủ xem danh sách thiện pháp `ACTIVE`, tổng hùn phước/chi/số dư và mở trang chi tiết. Nút mở link này có trong tab Thiện pháp; trang chi tiết có đường quay về danh sách. Trang chủ `/` vẫn dẫn tới đăng nhập.
 
-Tìm kiếm trên `/t` gọi REST `/api/public/funds?q=...&page=...`, giữ URL và Back/Forward bằng History API. Tìm theo mã/tên thiện pháp hoặc nội dung/người chuyển/số tiền/ghi chú công khai ở cả hai chiều thu chi. Mỗi thiện pháp trả tối đa ba khoản xem trước và số kết quả đầy đủ; nút chi tiết giữ từ khóa và chiều giao dịch. Khoản chưa phân loại, nghi trùng, bản gộp và thiện pháp tạm dừng/hoàn thành không nằm trong kết quả tổng hợp.
+Tìm kiếm trên `/minh-bach` gọi REST `/api/public/funds?q=...&page=...`, giữ URL và Back/Forward bằng History API. Tìm theo mã/tên thiện pháp hoặc nội dung/người chuyển/số tiền/ghi chú công khai ở cả hai chiều thu chi. Mỗi thiện pháp trả tối đa ba khoản xem trước và số kết quả đầy đủ; nút chi tiết giữ từ khóa và chiều giao dịch. Khoản chưa phân loại, nghi trùng, bản gộp và thiện pháp tạm dừng/hoàn thành không nằm trong kết quả tổng hợp.
 
 Cache server dùng chung tag `public-ledger`, TTL 20 phút, được vô hiệu hóa sau thay đổi. Danh sách và các khối giao dịch được cache theo trang cố định, không theo từ khóa của khách. Chỉ tìm trên DTO đã che số điện thoại; không gửi source thô hoặc danh tính quản trị viên. Kiểm thử `npm run test:public-directory` cần database test localhost trống và QA server dùng cùng database.
 
 ## Ghim thiện pháp trong quản trị
 
 Nút ghim cạnh mã thiện pháp lưu `Fund.pinnedAt`; các mục được ghim xếp đầu danh sách quản trị, mục ghim gần nhất đứng trước. Bỏ ghim trả về thứ tự mặc định. Bộ lọc/trạng thái vẫn được giữ; ghim không thay đổi trang công khai hoặc số liệu tài chính. REST `PATCH /api/admin/funds/pin` có kiểm tra quyền/nguồn yêu cầu, lưu người sửa và nhật ký thao tác. Áp dụng migration `20261031110000_fund_pins`.
+
+Trang tổng hợp `/minh-bach` hiển thị dạng danh sách dọc, chỉ lấy thiện pháp `ACTIVE` và `publicListed=true`. Nút con mắt ngay cột Công khai trong bảng quản trị bật/tắt và lưu ngay qua REST `PATCH /api/admin/funds/visibility`, có toast, ghi người sửa và lịch sử thao tác. Mặc định false (kể cả dữ liệu cũ); quản trị cần chủ động bật từng thiện pháp. `/t` chuyển hướng sang `/minh-bach` và giữ từ khóa/phân trang; URL chi tiết `/t/[slug]` được giữ nguyên. Tùy chọn chỉ kiểm soát danh sách/tìm kiếm tổng hợp, không khóa link chi tiết đã chia sẻ. Áp dụng migration `20261031120000_public_listing`.
