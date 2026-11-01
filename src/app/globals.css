@@ -4156,13 +4156,15 @@ tfoot td {
 .fund-income-note { min-width:160px; max-width:260px; margin-top:6px; padding:6px 8px; border-left:2px solid #c9a46a; border-radius:3px; background:#fff6e7; color:#654c34; text-align:left; white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; font-size:11px; font-weight:400; line-height:1.5; }
 .fund-income-note strong { font-weight:700; }
 .fund-goal-note b { font-weight:600; font-variant-numeric:tabular-nums; }
-.fund-list-scroll.table-card thead th:first-child,
-.fund-list-scroll.table-card tbody td:first-child { position:sticky; left:0; box-shadow:3px 0 5px -3px #806b59; }
-.fund-list-scroll.table-card thead th:first-child { z-index:3; background:#f3ebdf; }
-.fund-list-scroll.table-card tbody td:first-child { z-index:2; background:#fff; }
-.fund-list-scroll.table-card tbody tr:nth-child(even) td:first-child { background:#fdfbf8; }
-.fund-list-scroll.table-card tbody tr.fund-pinned-row td:first-child { background:#fffbef; }
-.fund-list-scroll.table-card tbody tr:hover td:first-child { background:#fff0d6; }
+@media (min-width: 601px) {
+ .fund-list-scroll.table-card thead th:first-child,
+ .fund-list-scroll.table-card tbody td:first-child { position:sticky; left:0; box-shadow:3px 0 5px -3px #806b59; }
+ .fund-list-scroll.table-card thead th:first-child { z-index:3; background:#f3ebdf; }
+ .fund-list-scroll.table-card tbody td:first-child { z-index:2; background:#fff; }
+ .fund-list-scroll.table-card tbody tr:nth-child(even) td:first-child { background:#fdfbf8; }
+ .fund-list-scroll.table-card tbody tr.fund-pinned-row td:first-child { background:#fffbef; }
+ .fund-list-scroll.table-card tbody tr:hover td:first-child { background:#fff0d6; }
+}
 .fund-transaction-account-tabs { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
 .fund-transaction-account-tabs > button { flex:1; min-width:180px; display:flex; flex-direction:column; gap:3px; padding:8px 10px; text-align:left; border:1px solid #ded3c5; border-radius:8px; background:#fcfaf7; color:#685547; cursor:pointer; font-size:12px; }
 .fund-transaction-account-tabs > button[aria-selected="true"] { border-color:#7b3040; background:#f7eceb; color:#7b3040; }
