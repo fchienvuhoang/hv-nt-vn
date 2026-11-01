@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { ToastProvider } from "@/components/toasts";
 import { SiteAnalytics } from "@/components/site-analytics";
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 export const metadata: Metadata = {
   title: {
     default: "Học viện nguyên thủy Việt Nam",

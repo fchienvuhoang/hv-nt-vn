@@ -1012,6 +1012,8 @@ details .action-form {
 .public-site {
   background: #fbf9f7;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 .public-header {
   max-width: 1200px;
@@ -1021,6 +1023,7 @@ details .action-form {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #ebe5e0;
+  box-sizing: border-box;
 }
 .public-header nav {
   display: flex;
@@ -3806,7 +3809,7 @@ tfoot td {
 .public-compact .metric-label { font-size: 11px; }
 .public-compact .metric-label svg, .public-compact .metric-note { display: none; }
 .public-compact .metric-value { font-size: 20px; margin: 0; line-height: 1.2; letter-spacing: -.5px; }
-.public-compact .public-transfers-summary { margin: 0 0 7px; gap: 4px 16px; font-size: 10px; line-height: 1.4; flex-direction: row; }
+.public-compact .public-transfers-summary { margin: 0 0 7px; gap: 4px 16px; font-size: 10px; line-height: 1.4; flex-direction: row; flex-wrap: wrap; }
 .public-compact .panel { padding: 10px 12px; margin-bottom: 8px; }
 .public-compact .section-heading { margin-bottom: 6px; gap: 8px; }
 .public-compact .section-heading > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 12px; }
@@ -3847,7 +3850,12 @@ tfoot td {
   .public-search { flex-basis: 100%; }
 }
 @media (max-width:680px) {
-  .public-site:has(.public-compact) .public-header { padding: 5px 10px; }
+  .public-header { padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); gap: 8px; flex-wrap: wrap; }
+  .public-header .brand { font-size: 15px; gap: 7px; }
+  .public-header .brand small { font-size: 8px; letter-spacing: 0.5px; }
+  .public-header .academy-logo { width: 32px; height: 32px; }
+  .public-site:has(.public-compact) .public-header { padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); }
+  .public-directory-header-note { display: none; }
   .public-site > main.public-compact { padding: 0 10px 10px; }
   .public-compact .fund-intro h1 { font-size: 17px; }
   .public-compact .metrics { gap: 5px; }
@@ -3859,7 +3867,7 @@ tfoot td {
   .public-search-controls input { flex-basis: 100%; min-height: 40px; height: 40px; font-size: 16px; }
   .public-search-controls .button { min-height: 36px; }
   .public-compact .tabs a { min-height: 36px; }
-  .public-compact table { min-width: 520px; }
+  .public-compact table { min-width: 0; }
 }
 
 /* Shared white card and crisp grid for every ledger, log and modal table. */
@@ -4026,6 +4034,21 @@ tfoot td {
 .public-compact .public-ledger-table td.money.positive { color: #346a4d; }
 .public-compact .public-ledger-table td.money.negative { color: #a3313b; }
 .public-ledger-table .transaction-public-note { border-left: 2px solid #d5a441; border-radius: 0 4px 4px 0; padding: 4px 7px; margin-top: 5px; background: #fff8e9; font-size: 11px; }
+@media (max-width: 680px) {
+  .public-compact .public-ledger-table { min-width: 0; width: 100%; table-layout: auto; }
+  .public-compact .table-card .public-ledger-table th { padding: 6px 5px; font-size: 10px; }
+  .public-compact .public-ledger-table th:first-child { width: 26px; padding: 6px 2px; font-size: 9px; }
+  .public-compact .public-ledger-table th:nth-child(2) { width: 74px; padding: 6px 4px; font-size: 10px; }
+  .public-compact .public-ledger-table th:last-child { width: 84px; padding: 6px 4px; font-size: 10px; }
+  .public-compact .table-card .public-ledger-table td { padding: 5px 5px; font-size: 11px; }
+  .public-compact .table-card .public-ledger-table td:first-child { padding: 5px 2px; font-size: 9px; }
+  .public-compact .public-ledger-table td.nowrap { white-space: normal; }
+  .public-compact .public-ledger-table td.money { font-size: 11px; white-space: nowrap; }
+  .public-compact .public-ledger-table .narrative { font-size: 11px; line-height: 1.35; }
+  .public-compact .public-ledger-table td small { font-size: 10px; }
+  .public-compact .public-ledger-table .transaction-public-note { font-size: 10px; padding: 3px 5px; margin-top: 3px; }
+  .public-compact .sheet-source { font-size: 9px; }
+}
 .public-directory-header-note { color: #94744e; font-size: 12px; }
 .directory-intro { margin-bottom: 14px; }
 .directory-intro h1 { margin: 5px 0; font-size: 26px; color: #65303b; }
