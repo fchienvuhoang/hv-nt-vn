@@ -1,4 +1,5 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import {summarizeBalances} from "@/lib/balance-summary";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
@@ -87,7 +88,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
               <option value="">Tất cả tài khoản</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.number} · {a.label}
+                  {accountLabel(a.number)} · {a.label}
                 </option>
               ))}
             </select>
@@ -118,6 +119,8 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                   <th>Tài khoản</th>
                   <th>Trạng thái</th>
                   <th className="align-right">Hùn phước</th>
+                  <th>Ghi chú</th>
+                  <th className="align-right">Mục tiêu thành tựu</th>
                   <th className="align-right">Đã chi</th>
                   <th className="align-right">Số dư khả dụng</th>
                   <th className="align-right">Chi vượt quỹ</th>
@@ -136,6 +139,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                         <span className="code">{f.code}</span>
                         <h3 className="table-fund-name" title={`Từ khóa: ${f.keywords.join(" · ") || f.code}`}>{f.name}</h3>
                       </div>
+                      {f.keywords.length > 0 && <div className="fund-aliases" aria-label="Mã phụ và từ khóa">{f.keywords.map(keyword=><span key={keyword}>{keyword}</span>)}</div>}
                     </td>
                     <td className="fund-public-cell"><div className="fund-public-controls">
                       <Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={15} /><span>Trang công khai</span></Link>
@@ -147,10 +151,11 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                           .map(
                             (id) => balances.find((a) => a.id === id)?.number,
                           )
-                          .filter(Boolean)
+                          .filter((number): number is string => !!number)
+                          .map(accountLabel)
                           .join(" · ")}
                       </span>
-                      {new Set([f.accountId, ...f.accountIds]).size === 1 && <small className="fund-account-restriction">Chỉ TK {balances.find(a=>a.id===f.accountId)?.number === "0572" ? "Mỹ 0572" : balances.find(a=>a.id===f.accountId)?.number === "0856" ? "Trâm 0856" : balances.find(a=>a.id===f.accountId)?.number ?? "đã cấu hình"}</small>}
+                      {new Set([f.accountId, ...f.accountIds]).size === 1 && <small className="fund-account-restriction">Chỉ TK {accountLabel(balances.find(a=>a.id===f.accountId)?.number ?? "đã cấu hình")}</small>}
                     </td>
                     <td>
                       <Status status={f.status} />
@@ -158,6 +163,8 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     <td className="money align-right nowrap">
                       {vnd(f.income)}
                     </td>
+                    <td className="fund-admin-note">{f.adminNote || "—"}</td>
+                    <td className="money align-right nowrap">{f.goalAmount == null ? "—" : vnd(f.goalAmount)}</td>
                     <td className="money align-right nowrap">
                       {vnd(f.expense)}
                     </td>
@@ -191,6 +198,8 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                   <td className="money align-right nowrap">
                     {vnd(scoped.reduce((n, f) => n + f.income, 0n))}
                   </td>
+                  <td />
+                  <td />
                   <td className="money align-right nowrap">
                     {vnd(scoped.reduce((n, f) => n + f.expense, 0n))}
                   </td>
@@ -200,7 +209,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                   <td className={`money align-right nowrap${totals.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(totals.excessExpense)}</td>
                   <td colSpan={4} />
                 </tr>
-                <tr><td colSpan={12} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
+                <tr><td colSpan={14} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
               </tfoot>
             </table>
           </div>

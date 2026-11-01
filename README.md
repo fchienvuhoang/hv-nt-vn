@@ -354,3 +354,20 @@ Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản tr
 - Gán tay từng dòng/hàng loạt, gán trong Xem giao dịch, đối soát và điều chuyển phần phân bổ đều kiểm tra tài khoản của giao dịch thuộc phạm vi thiện pháp nhận. Danh sách chọn gán tay chỉ hiện thiện pháp hỗ trợ toàn bộ tài khoản của các dòng đang chọn; backend tiếp tục chặn nếu gửi yêu cầu không hợp lệ. Không sửa tài khoản hay số tiền nguồn khi phân loại.
 - Đồng bộ đọc quy tắc của mọi thiện pháp để phát hiện mã/từ khóa đúng nhưng chuyển vào tài khoản ngoài phạm vi. Trường hợp này giữ UNASSIGNED, reason bắt đầu `Sai tài khoản nhận:`, hiển thị cảnh báo ở cột Phân loại để quản trị gán vào thiện pháp cùng tài khoản. Không tự chuyển sang thiện pháp khác qua từ khóa dự phòng khi nội dung có mã sai tài khoản.
 - Chạy lại phân loại cũng lưu cảnh báo cho giao dịch vốn chưa phân loại; các khoản đã gán MANUAL vẫn được bảo vệ. Kiểm thử domain và integration trên database localhost riêng: nhận diện sai tài khoản ở luồng ingest, chặn gán tay khác tài khoản, giữ nguyên tiền và tài khoản khi gán hợp lệ, regression phân loại lại/hàng loạt. Không mở khóa đồng bộ production.
+
+### TP122 — nhập chi tiết ngày 01/11/2026
+
+- Nguồn https://docs.google.com/spreadsheets/d/170UnDEIqZxiD0-W7D0YdA8Nt1hKHZoQG3kAg3xotLR0/edit?gid=0 ; nhập 165 giao dịch POSTED/MANUAL, đều là thu: tab TP122- TK Trâm có 163 dòng/97.695.148₫, tab TK My có 2 dòng/600.000₫. Tổng thu/số dư 98.295.148₫, chi 0₫. Tên tab TK My xác định tài khoản 0572 dù tiêu đề mẫu sao chép ghi TK Trâm.
+- Đối chiếu khớp tổng từng tab, không có dòng lỗi/thiếu ngày, giữ 6 ghi chú nguồn và kiểm tra trùng chính xác trước nhập. Gắn sourceUrl, giữ cấu hình/quyền công khai và danh tính người cập nhật của thiện pháp.
+- Backup XLSX và trước/sau riêng tư, audit TP122_FULL_DETAIL_IMPORTED; nhập atomic Serializable, xác nhận hash mọi giao dịch trước đó và tổng các quỹ khác không đổi. Không thay khóa đồng bộ ngân hàng.
+
+### Mục tiêu thành tựu của thiện pháp
+
+- Trường `goalAmount` tùy chọn, nhập trong Cấu hình bằng số nguyên VND lớn hơn 0, tối đa 15 chữ số; để trống để bỏ mục tiêu. Lưu qua REST API hiện có, kiểm tra quyền và nguồn yêu cầu như các cấu hình khác. Cột Mục tiêu thành tựu trong danh sách hiển thị số tiền hoặc dấu — khi chưa đặt; số này độc lập với tiền và trạng thái hoạt động của quỹ.
+- Thay đổi mục tiêu được ghi lịch sử cấu hình, biểu diễn số tiền chính xác bằng BigInt và audit bằng chuỗi VND. Form cũ không gửi trường này vẫn giữ mục tiêu hiện tại. Các quỹ hiện có mặc định chưa có mục tiêu, không suy đoán từ mô tả hoặc file Excel.
+- `tests/fund-goal-http.mts` kiểm tra REST tạo/sửa/xóa, số lớn, dữ liệu sai, tương thích form cũ, audit và ledger giữ nguyên trên database QA riêng.
+
+### Ghi chú nội bộ theo thiện pháp
+
+- `adminNote` là ghi chú riêng trong quản trị, tối đa 3.000 ký tự, chỉnh ở Cấu hình và hiển thị cột Ghi chú ngay sau Hùn phước. Giữ xuống dòng, nội dung được render như văn bản; không đưa vào trang hoặc REST API công khai. Độc lập với mô tả công khai và các ghi chú giao dịch.
+- Lưu qua REST hiện có, ghi FUND_UPDATED/FUND_CREATED; form cũ không gửi adminNote vẫn giữ ghi chú hiện tại, gửi chuỗi trống để xóa. Quỹ cũ mặc định trống. Kiểm thử HTTP trên database QA riêng gồm lưu nhiều dòng, giới hạn độ dài, giữ ghi chú qua form cũ, xóa và kiểm tra không lộ ở API công khai.

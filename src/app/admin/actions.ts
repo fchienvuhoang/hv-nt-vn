@@ -45,6 +45,8 @@ const fundSchema = z.object({
   code,
   name: z.string().trim().min(3).max(200),
   description: z.string().trim().max(3000),
+  adminNote: z.string().trim().transform(value=>value.replace(/\r\n?/g,"\n")).pipe(z.string().max(3000,"Ghi chú tối đa 3.000 ký tự")).optional(),
+  goalAmount: z.union([z.literal("").transform(()=>null),money.refine(value=>value>0n,"Mục tiêu phải lớn hơn 0")]).optional(),
   sourceUrl: z.string().trim().max(2000).refine(value => !value || (URL.canParse(value) && ["https:", "http:"].includes(new URL(value).protocol)), "Link phải bắt đầu bằng https:// hoặc http://").optional(),
   keywords: z.string().max(3000),
   status,
@@ -138,6 +140,8 @@ export async function saveFund(_state: ActionState, form: FormData) {
       const fields = {
         ...data, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
         sourceUrl: data.sourceUrl ?? existing?.sourceUrl ?? "",
+        adminNote: data.adminNote ?? existing?.adminNote ?? "",
+        goalAmount: data.goalAmount === undefined ? existing?.goalAmount ?? null : data.goalAmount,
         accountIds: [...new Set(existing?.accountIds ?? accounts.map(a => a.id))].filter(id => id !== accountId),
         keywords: validateFundKeywords(data.code, data.keywords, rules, fundId),
       };
@@ -154,9 +158,11 @@ export async function saveFund(_state: ActionState, form: FormData) {
             status: before.status,
             description: before.description,
             sourceUrl: before.sourceUrl,
+            adminNote: before.adminNote,
+            goalAmount: before.goalAmount?.toString() ?? null,
             publicListed: before.publicListed,
           },
-          after: fields,
+          after: { ...fields, goalAmount: fields.goalAmount?.toString() ?? null },
         });
       } else {
         const created = await tx.fund.create({
@@ -165,7 +171,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
             slug: `${account.number}-${data.code.toLowerCase()}`,
           },
         });
-        await audit(tx, actor, "FUND_CREATED", created.id, fields);
+        await audit(tx, actor, "FUND_CREATED", created.id, { ...fields, goalAmount: fields.goalAmount?.toString() ?? null });
       }
     });
     return "Đã lưu thiện pháp. Giao dịch cũ không bị tự động phân loại lại.";

@@ -1,4 +1,5 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
 import { TransferDetailsModal } from "@/components/admin/transfer-details";
@@ -55,7 +56,7 @@ export default function Transfers() {
               <tbody>
                 {transfers.map((t) => (
                   <tr key={t.id}>
-                    <td className="nowrap">{t.account?.number ?? (t.mode==="ALLOCATION"?"Nhiều tài khoản":t.fromFund.account.number)}</td>
+                    <td className="nowrap">{accountLabel(t.account?.number ?? (t.mode==="ALLOCATION"?"Nhiều tài khoản":t.fromFund.account.number))}</td>
 
                     <td>
                       <span className="code">{t.fromFund.code}</span>

@@ -1,11 +1,12 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import { LoadingSpinner } from "@/components/loading-indicator";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import type { ActionState } from "@/app/admin/actions";
 import { useActionToast } from "@/components/toasts";
 import { useCloseModal } from "@/components/modal";
 import { saveFund } from "@/lib/admin-api";
-import { dateTime, fundUsesAccount } from "@/lib/domain";
+import { dateTime, fundUsesAccount, vnd } from "@/lib/domain";
 import type { BankAccount, Fund } from "@/generated/prisma/client";
 export function FundForm({
   accounts,
@@ -24,6 +25,8 @@ export function FundForm({
     code: fund?.code ?? "", name: fund?.name ?? "", status: fund?.status ?? "ACTIVE",
     keywords: fund?.keywords.join("\n") ?? "", description: fund?.description ?? "",
     sourceUrl: fund?.sourceUrl ?? "",
+    goalAmount: fund?.goalAmount?.toString() ?? "",
+    adminNote: fund?.adminNote ?? "",
   });
   const [edited, setEdited] = useState<Record<string, boolean>>({});
   function change(field: keyof typeof values, value: string) {
@@ -49,7 +52,7 @@ export function FundForm({
       {fund && <input type="hidden" name="id" value={fund.id} />}
       <div className="fund-accounts-readonly" role="group" aria-label="Tài khoản thu chi được phép">
         <span>Tài khoản thu / chi</span>
-        <div>{accounts.filter(a=>!fund||fundUsesAccount(fund,a.id)).map((a) => <strong key={a.id}>{a.number} · {a.label}</strong>)}</div>
+        <div>{accounts.filter(a=>!fund||fundUsesAccount(fund,a.id)).map((a) => <strong key={a.id}>{accountLabel(a.number)} · {a.label}</strong>)}</div>
         <small>Chỉ ghi nhận thu và chi từ các tài khoản hiển thị ở trên. Tài khoản thực tế của giao dịch không thay đổi khi gán thiện pháp.</small>
       </div>
       <div className="form-row">
@@ -90,6 +93,18 @@ export function FundForm({
           required
         />
         {errorMessage("name")}
+      </label>
+      <label>
+        Mục tiêu thành tựu (₫)
+        <input name="goalAmount" inputMode="numeric" pattern="[0-9]{1,15}" maxLength={15} placeholder="Ví dụ: 100000000" value={values.goalAmount} onChange={event=>change("goalAmount",event.target.value)} {...errorProps("goalAmount")} />
+        {errorMessage("goalAmount")}
+        <small>{/^\d{1,15}$/.test(values.goalAmount) ? vnd(values.goalAmount) : "Để trống nếu chưa có mục tiêu. Nhập số nguyên VND, không có dấu phân cách."}</small>
+      </label>
+      <label>
+        Ghi chú nội bộ
+        <textarea name="adminNote" rows={3} maxLength={3000} placeholder="Ghi chú theo dõi thiện pháp…" value={values.adminNote} onChange={event=>change("adminNote",event.target.value)} {...errorProps("adminNote")} />
+        {errorMessage("adminNote")}
+        <small>Hiển thị cạnh Hùn phước trong danh sách quản trị.</small>
       </label>
       <label>
         Từ khóa mở rộng

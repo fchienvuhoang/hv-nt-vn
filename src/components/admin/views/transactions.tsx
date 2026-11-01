@@ -1,4 +1,5 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import { useRef, useState } from "react";
 import { useToast } from "@/components/toasts";
 import { bulkAssignTransactions } from "@/lib/admin-api";
@@ -82,7 +83,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
       <div className="transaction-filter-summary"><span>Đang hiển thị <strong>{data?(`${count.toLocaleString("vi-VN")}/${data.selectedTotal.toLocaleString("vi-VN")}`):"…"}</strong> giao dịch · {range.allTime?"Toàn bộ thời gian":range.from===range.to?`Ngày ${range.from.split("-").reverse().join("/")}`:`${range.from.split("-").reverse().join("/")} → ${range.to.split("-").reverse().join("/")}`}</span><div><Link className={`button subtle small${range.allTime?" selected":""}`} href={(()=>{const p=new URLSearchParams(baseParams);p.delete("from");p.delete("to");return `/admin?${p}`})()}>Toàn bộ thời gian</Link><Link className="button subtle small" href={(()=>{const p=new URLSearchParams(baseParams);p.set("from",today);p.set("to",today);return `/admin?${p}`})()}>Hôm nay</Link><Link className="button subtle small" href={`/admin?${new URLSearchParams({view:"transactions",...(params.pending?{pending:"1"}:params.fund?{fund:params.fund}:{})})}`}>Xóa bộ lọc</Link></div></div>
       {tabScope && <div className="transaction-tab-actions" aria-label={`Thao tác tab ${tabLabel}`}>
         <span>Tab <strong>{tabLabel}</strong> · {count.toLocaleString("vi-VN")} giao dịch theo bộ lọc</span>
-        {canReclassify ? <TabReclassification key={JSON.stringify(tabScope)} scope={tabScope} initial={null} label={tabLabel} count={count} filterLabel={`${params.account ? "TK " + (accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Chỉ kiểm tra phân loại trong chế độ Đang ghi nhận.</small>}
+        {canReclassify ? <TabReclassification key={JSON.stringify(tabScope)} scope={tabScope} initial={null} label={tabLabel} count={count} filterLabel={`${params.account ? "TK " + accountLabel(accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Chỉ kiểm tra phân loại trong chế độ Đang ghi nhận.</small>}
       </div>}
       <section className="sheet-panel" aria-label="Danh sách giao dịch">
         <form key={apiParams.toString()} className="filter-bar" action="/admin" method="get">
@@ -104,7 +105,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
               <option value="">Tất cả tài khoản</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.number} · {a.label}
+                  {accountLabel(a.number)} · {a.label}
                 </option>
               ))}
             </select>
@@ -158,7 +159,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                     <td className="nowrap">
                       {r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.occurredAt)}
                     </td>
-                    <td className="nowrap" title={r.account.owner}>{r.account.number}</td>
+                    <td className="nowrap" title={r.account.owner}>{accountLabel(r.account.number)}</td>
                     <td><span className="sheet-clip sheet-ref" title={r.refId}>{r.refId || "—"}</span></td>
                     <td className="sheet-content-cell">
                       <p className="sheet-narrative">{r.narrative || "Không có nội dung"}</p>
@@ -204,7 +205,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                             <strong>{vnd(r.amount)}</strong>
                             <small>
                               {r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.occurredAt)} · Tài khoản{" "}
-                              {r.account.number}
+                              {accountLabel(r.account.number)}
                             </small>
                             <p>{r.narrative}</p>
                           </div>

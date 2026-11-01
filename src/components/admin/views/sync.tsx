@@ -1,4 +1,5 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
 import { RecordAuthor } from "@/components/admin/record-author";
@@ -104,7 +105,7 @@ export default function Sync({params={},bootstrap}:{params?:AdminParams;bootstra
                     <tr key={s.id}>
                       <td>
                         <span className="account-number">
-                          {s.account.number}
+                          {accountLabel(s.account.number)}
                         </span>
                       </td>
                       <td>{s.direction === "CREDIT" ? "Thu" : "Chi"}</td>

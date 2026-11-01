@@ -1,4 +1,5 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import { LoadingSpinner } from "@/components/loading-indicator";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/toasts";
@@ -115,8 +116,8 @@ export function FundExcelImport({
       >
         <input type="hidden" name="fundId" value={fundId} />
         <input type="hidden" name="latestMonthOnly" value={latestMonthOnly?"1":"0"}/>
-        <label className="checkbox-label"><input type="checkbox" checked={latestMonthOnly} onChange={e=>setLatestMonthOnly(e.target.checked)} disabled={pending||running}/>Chỉ đọc tháng mới nhất trong tên các tab (cả TK Mỹ và TK Trâm)</label>
-        <small>Ví dụ: có THÁNG 10 và THÁNG 11 thì chỉ đọc các tab THÁNG 11. Nếu tài khoản còn lại chỉ có tab TK Mỹ/TK Trâm không ghi tháng, hệ thống đối chiếu tổng và chuyển số dư lịch sử của tab đó sang đầu tháng mới nhất. File hoàn toàn không chia tháng vẫn đọc toàn bộ; kiểm tra phần xem trước trước khi nhập.</small>
+        <label className="checkbox-label"><input type="checkbox" checked={latestMonthOnly} onChange={e=>setLatestMonthOnly(e.target.checked)} disabled={pending||running}/>Chỉ đọc tháng mới nhất trong tên các tab (cả TK My và TK Trâm)</label>
+        <small>Ví dụ: có THÁNG 10 và THÁNG 11 thì chỉ đọc các tab THÁNG 11. Nếu tài khoản còn lại chỉ có tab TK My/TK Trâm không ghi tháng, hệ thống đối chiếu tổng và chuyển số dư lịch sử của tab đó sang đầu tháng mới nhất. File hoàn toàn không chia tháng vẫn đọc toàn bộ; kiểm tra phần xem trước trước khi nhập.</small>
         <label>
           File từ Excel hoặc Google Sheets
           <input
@@ -159,7 +160,7 @@ export function FundExcelImport({
             >
               {batches.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.fileName} · {b.sheetName} · TK {b.account?.number ?? ""} ·{" "}
+                  {b.fileName} · {b.sheetName} · TK {accountLabel(b.account?.number ?? "")} ·{" "}
                   {b.status === "COMPLETE"
                     ? "Đã nhập"
                     : `${b.cursor}/${b.rowCount} dòng`}
@@ -171,7 +172,7 @@ export function FundExcelImport({
             <>
               <div className="notice">
                 Bảng này được nhập vào tài khoản{" "}
-                {batch.account?.number ?? "chính"} của thiện pháp.
+                {accountLabel(batch.account?.number ?? "chính")} của thiện pháp.
               </div>
               {opening!==0n&&<div className="notice"><strong>Số dư chuyển sang đầu tháng: {vnd(opening)}</strong><p>Được tính vào Hùn phước/Đã chi của đúng tài khoản. Số dư = Hùn phước − Đã chi, không cộng thêm lần nữa. Không tính vào thống kê giao dịch mới trong ngày.</p></div>}
               <div className="import-summary">

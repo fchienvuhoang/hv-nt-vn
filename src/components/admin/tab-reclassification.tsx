@@ -1,4 +1,5 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import { LoadingSpinner, LoadingIndicator } from "@/components/loading-indicator";
 
 import { useEffect, useRef, useState } from "react";
@@ -71,7 +72,7 @@ export function TabReclassification({scope,initial,label,filterLabel,count}:{sco
       <p className="muted">Không khớp: {run.noMatch} · Mã tạm dừng/hoàn thành: {run.inactive} · Khớp nhiều thiện pháp: {run.ambiguous}. Khoản đã gán đúng cho thiện pháp tạm dừng/hoàn thành được giữ, không tự gán thêm.</p>
       {run.changeDetails.length>0&&<div className="reclassify-change-list"><p className="reclassify-list-count"><strong>Toàn bộ {run.changeDetails.length} thay đổi</strong> · Đối chiếu nội dung và thiện pháp trước khi xác nhận.</p><div className="table-scroll table-card reclassify-preview"><table><thead><tr><th>STT</th><th>Nội dung chuyển khoản / giao dịch</th><th>Số tiền</th><th>Trước phân loại</th><th>Sau phân loại</th><th>Lý do / trạng thái</th></tr></thead><tbody>{run.changeDetails.map((row,index)=><tr key={row.id}>
         <td>{index+1}</td>
-        <td>{row.transaction?<><div className="reclassify-narrative">{row.transaction.narrative||"Không có nội dung chuyển khoản"}</div>{row.transaction.displayName&&<div className="reclassify-sender">{row.transaction.displayName}</div>}<small>{dateTime(row.transaction.occurredAt)} · TK {row.transaction.accountNumber}{row.transaction.refId&&` · Mã GD: ${row.transaction.refId}`}</small></>:<span>Giao dịch không còn tồn tại</span>}</td>
+        <td>{row.transaction?<><div className="reclassify-narrative">{row.transaction.narrative||"Không có nội dung chuyển khoản"}</div>{row.transaction.displayName&&<div className="reclassify-sender">{row.transaction.displayName}</div>}<small>{dateTime(row.transaction.occurredAt)} · TK {accountLabel(row.transaction.accountNumber)}{row.transaction.refId&&` · Mã GD: ${row.transaction.refId}`}</small></>:<span>Giao dịch không còn tồn tại</span>}</td>
         <td className="reclassify-amount">{row.transaction&&<><small>{row.transaction.direction==="CREDIT"?"Thu":"Chi"}</small><strong>{vnd(row.transaction.amount)}</strong></>}</td><td>{row.from}</td><td>{row.to}</td><td>{row.reason}<small className={`reclassify-row-status ${row.status.toLowerCase()}`}>{row.status==="APPLIED"?"Đã áp dụng":row.status==="CONFLICT"?"Bỏ qua: giao dịch vừa được sửa, giữ nguyên":"Chờ xác nhận áp dụng"}</small></td>
       </tr>)}</tbody></table></div><small>Hiển thị đầy đủ {run.changeDetails.length} thay đổi; các thay đổi đã áp dụng được ghi lịch sử.</small></div>}
       {run.status==="COMPLETE"&&<div className="notice">Đã hoàn tất lượt này. Các giao dịch đến sau lúc bắt đầu sẽ được kiểm tra ở lượt mới.</div>}

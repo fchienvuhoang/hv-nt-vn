@@ -1,4 +1,5 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
 
 import { useEffect,useRef,useState } from "react";
@@ -46,7 +47,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
           <h1>{fund.name}</h1>
           <div className="intro-meta">
             <Status status={fund.status} />
-            <span>Tài khoản {fund.account}</span>
+            <span>Tài khoản {accountLabel(fund.account)}</span>
           </div>
           {fund.description && <p>{fund.description}</p>}
           <div className="public-update">
@@ -83,7 +84,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
           <Metric label="Chi vượt quỹ" value={fund.excessExpense} note="Phần chi vượt khoản hùn phước đã ghi nhận" />
         </div>
         {BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
-        {BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={a.account}>TK {a.account}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
+        {BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
         <div className="public-transfers-summary">
           <span>
             Điều chuyển vào: <strong>{vnd(fund.transferIn)}</strong>
@@ -163,7 +164,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
                   {fund.rows.map((r,index) => (
                     <tr key={r.id}>
                       <td className="public-row-number">{(fund.page-1)*PUBLIC_PAGE_SIZE+index+1}</td>
-                      <td className="nowrap">{r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.at)}<small>TK {r.account}</small></td>
+                      <td className="nowrap">{r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.at)}<small>TK {accountLabel(r.account)}</small></td>
                       <td>
                         <p className="narrative">
                           {r.narrative || "Không có nội dung chuyển khoản"}

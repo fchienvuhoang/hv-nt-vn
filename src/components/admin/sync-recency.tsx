@@ -1,4 +1,5 @@
 "use client";
+import { accountLabel } from "@/lib/account-label";
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { SyncAccountStatus } from "@/lib/sync-status";
@@ -41,7 +42,7 @@ export function SyncRecency({ initial, initialNow }: { initial: SyncAccountStatu
       <RefreshCw size={12} aria-hidden="true" />
       {displayedAccounts.map((account) => (
         <span key={account.id} title={`${account.label} · ${account.syncedAt ? `Kiểm tra giao dịch mới cả thu và chi: ${dateTime(account.syncedAt)}` : "Chưa hoàn tất cả thu và chi"}${account.pending ? " · Còn dữ liệu đang chờ đồng bộ" : ""}`}>
-          TK {account.number}: <strong>{account.syncedAt ? <time dateTime={account.syncedAt}>{relativeTime(account.syncedAt, displayedNow)}</time> : "Chưa đồng bộ đủ"}</strong>
+          TK {accountLabel(account.number)}: <strong>{account.syncedAt ? <time dateTime={account.syncedAt}>{relativeTime(account.syncedAt, displayedNow)}</time> : "Chưa đồng bộ đủ"}</strong>
           {account.pending && <span className="sync-recency-pending"> · chưa quét xong</span>}
         </span>
       ))}

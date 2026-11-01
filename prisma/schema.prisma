@@ -58,6 +58,8 @@ model Fund {
   slug               String     @unique
   description        String     @default("")
   sourceUrl          String     @default("")
+  goalAmount         BigInt?
+  adminNote          String     @default("")
   keywords           String[]
   status             FundStatus @default(ACTIVE)
   publicListed       Boolean    @default(false)
