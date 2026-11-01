@@ -19,14 +19,14 @@ async function bootstrap(){
   return {funds,balances,accounts:balances.map(a=>({id:a.id,number:a.number,label:a.label,syncFrom:a.syncFrom})),states,recency};
 }
 export type AdminBootstrap=Awaited<ReturnType<typeof bootstrap>>;
-const cachedBootstrap=unstable_cache(async()=>encodeAdmin(await bootstrap()),["admin-bootstrap-rest-v2"],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG]});
+const cachedBootstrap=unstable_cache(async()=>encodeAdmin(await bootstrap()),["admin-bootstrap-rest-v5"],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG]});
 export async function loadAdminBootstrap(){return decodeAdmin<AdminBootstrap>(await cachedBootstrap())}
 export async function loadAdminTransactions(params:AdminParams){
   const range=transactionDates(params.from,params.to),page=Math.min(100000,Math.max(1,Math.floor(Number(params.page)||1))),pageSize=100;
   const filter={from:range.from,to:range.to,account:params.account??"",q:(params.q??"").slice(0,100),type:params.type??"",review:params.review??""};
   const scope=transactionWhere(filter),where={AND:[scope,...(params.pending==="1"?[fundMembership(null)]:params.fund?[fundMembership(params.fund)]:[])]};
   const [rawRows,navigation]=await Promise.all([db.bankTransaction.findMany({where,omit:{source:true,sourceHash:true},include:{allocations:{include:{fund:true}},fund:true,account:true,notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*pageSize,take:pageSize}),transactionNavigationData()]);
-  const rows=rawRows.map(row=>({...row,amount:params.fund?fundShare(row,params.fund):row.amount,fund:params.fund&&row.allocations.length?row.allocations.find(a=>a.fundId===params.fund)?.fund??null:row.fund}));
+  const rows=rawRows.map(row=>({...row,dateUnknown:row.notes.some(n=>n.kind==="SOURCE_DATE_MISSING"),amount:params.fund?fundShare(row,params.fund):row.amount,fund:params.fund&&row.allocations.length?row.allocations.find(a=>a.fundId===params.fund)?.fund??null:row.fund}));
   const total=navigation.total,pending=navigation.groups.find(g=>g.fundId===null)?._count??0;
   const selectedTotal=params.pending==="1"?pending:params.fund?navigation.groups.find(g=>g.fundId===params.fund)?._count??0:total;
   const filtered=!range.allTime||!!filter.account||!!filter.q||!!filter.type||!!filter.review;

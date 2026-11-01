@@ -4194,3 +4194,14 @@ tfoot td {
 .public-opening-balance { background:#fff6df; border:1px solid #e1cda0; border-radius:6px; padding:8px 10px; font-size:12px; margin:6px 0; color:#6e443c; }
 .public-opening-balance > div { display:flex; flex-wrap:wrap; gap:4px 16px; margin:4px 0; }
 .public-opening-balance small { display:block; font-size:11px; color:#806653; }
+
+.fund-overdrawn { color:#ac303d !important; font-weight:700; background:#fff1ed; }
+.fund-book-balance { font-size:12px; padding:8px 10px !important; }
+.fund-book-balance small { color:#806653; font-size:11px; }
+.fund-balance-parts { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; margin:5px 0; }
+.fund-balance-parts > span { padding:3px 6px; background:#fff7e6; border-radius:4px; }
+.fund-balance-parts > small { width:100%; font-size:10px; color:#806653; }
+.public-compact .metrics { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.directory-fund-totals { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.public-deficit-note { background:#fff1ed; border:1px solid #edc2bb; color:#8d3040; border-radius:5px; padding:7px 10px; font-size:12px; }
+@media(max-width:680px) { .public-compact .metrics, .directory-fund-totals { grid-template-columns:repeat(2,minmax(0,1fr)); } }

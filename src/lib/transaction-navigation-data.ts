@@ -10,7 +10,7 @@ import type { Prisma } from "@/generated/prisma/client";
 export type TransactionFilter = {from:string;to:string;account:string;q:string;type:string;review:string};
 export function transactionWhere(filter:TransactionFilter):Prisma.BankTransactionWhereInput {
   const range=transactionDates(filter.from,filter.to);
-  return {...(!range.allTime?{occurredAt:{gte:range.start,lt:range.end}}:{}),entryStatus:filter.review==="1"?"REVIEW":filter.review==="merged"?"MERGED":{not:"MERGED"},
+  return {...(!range.allTime?{occurredAt:{gte:range.start,lt:range.end},notes:{none:{kind:"SOURCE_DATE_MISSING"}}}:{}),entryStatus:filter.review==="1"?"REVIEW":filter.review==="merged"?"MERGED":{not:"MERGED"},
     ...(filter.account?{accountId:filter.account}:{}),
     ...(filter.type==="CREDIT"||filter.type==="DEBIT"?{direction:filter.type}:{}),
     ...(filter.q?{OR:[{narrative:{contains:filter.q,mode:"insensitive"}},{refId:{contains:filter.q,mode:"insensitive"}}]}:{})};

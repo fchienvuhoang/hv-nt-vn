@@ -1,4 +1,5 @@
 import "server-only";
+import {splitBalance,summarizeBalances} from "./balance-summary";
 import { db } from "./db";
 import type { Prisma } from "@/generated/prisma/client";
 export type LedgerClient = Prisma.TransactionClient;
@@ -27,10 +28,10 @@ export async function fundTotals(client: LedgerClient = db) {
     }),
     client.fundAllocation.groupBy({by:["fundId","accountId"],where:{transaction:{entryStatus:"POSTED",direction:"CREDIT"}},_sum:{amount:true},_count:true}),
   ]);
-  const grouped=new Map<string,{fundId:string|null;accountId:string;direction:"CREDIT"|"DEBIT";entryStatus:string;openingAt:Date|null;_openingCount:number;_sum:{amount:bigint};_count:number}>();
+  const grouped=new Map<string,{fundId:string|null;accountId:string;direction:"CREDIT"|"DEBIT";entryStatus:string;openingAt:Date|null;_sum:{amount:bigint};_count:number}>();
   for(const row of [...baseMovements,...allocations.map(a=>({...a,direction:"CREDIT" as const,entryStatus:"POSTED",_min:{occurredAt:null}}))]){
     const key=JSON.stringify([row.fundId,row.accountId,row.direction,row.entryStatus]),old=grouped.get(key);
-    grouped.set(key,{fundId:row.fundId,accountId:row.accountId,direction:row.direction,entryStatus:row.entryStatus,openingAt:row.entryStatus==="OPENING"?row._min.occurredAt:null,_openingCount:row.entryStatus==="OPENING"?row._count:0,_sum:{amount:(old?._sum.amount??0n)+(row._sum.amount??0n)},_count:row.entryStatus==="OPENING"?0:(old?._count??0)+row._count});
+    grouped.set(key,{fundId:row.fundId,accountId:row.accountId,direction:row.direction,entryStatus:row.entryStatus,openingAt:row.entryStatus==="OPENING"?row._min.occurredAt:null,_sum:{amount:(old?._sum.amount??0n)+(row._sum.amount??0n)},_count:(old?._count??0)+row._count});
   }
   const movements=[...grouped.values()];
   return funds.map((fund) => {
@@ -50,10 +51,10 @@ export async function fundTotals(client: LedgerClient = db) {
       const primary = accountId === fund.accountId,
         own = txs.filter((t) => t.accountId === accountId);
       const income =
-        (own.find((t) => t.direction === "CREDIT"&&t.entryStatus==="POSTED")?._sum.amount ?? 0n) +
+        own.filter(t=>t.direction==="CREDIT").reduce((n,t)=>n+t._sum.amount,0n) +
         (primary ? fund.openingIncome : 0n);
       const expense =
-        (own.find((t) => t.direction === "DEBIT"&&t.entryStatus==="POSTED")?._sum.amount ?? 0n) +
+        own.filter(t=>t.direction==="DEBIT").reduce((n,t)=>n+t._sum.amount,0n) +
         (primary ? fund.openingExpense : 0n);
       const transferOut = out
         .filter((t) => (t.accountId ?? fund.accountId) === accountId)
@@ -62,20 +63,17 @@ export async function fundTotals(client: LedgerClient = db) {
         .filter((t) => (t.accountId ?? fund.accountId) === accountId)
         .reduce((n, t) => n + (t._sum.amount ?? 0n), 0n);
       const openingBalance=own.filter(t=>t.entryStatus==="OPENING").reduce((sum,t)=>sum+(t.direction==="CREDIT"?1n:-1n)*t._sum.amount,0n);
+      const balance=income-expense+transferIn-transferOut+(primary?fund.openingTransferNet:0n);
       return {
         accountId,
+        ...splitBalance(balance),
         openingBalance,
         openingAt:own.find(t=>t.entryStatus==="OPENING")?.openingAt??null,
         income,
         expense,
         transferIn,
         transferOut,
-        balance:
-          openingBalance + income -
-          expense +
-          transferIn -
-          transferOut +
-          (primary ? fund.openingTransferNet : 0n),
+        balance,
         count: own.reduce((n, t) => n + t._count, 0),
       };
     });
@@ -86,12 +84,13 @@ export async function fundTotals(client: LedgerClient = db) {
       income: byAccount.reduce((n, a) => n + a.income, 0n),
       expense: byAccount.reduce((n, a) => n + a.expense, 0n),
       balance: byAccount.reduce((n, a) => n + a.balance, 0n),
+      ...splitBalance(byAccount.reduce((n,a)=>n+a.balance,0n)),
       transferIn: byAccount.reduce((n, a) => n + a.transferIn, 0n),
       transferOut: byAccount.reduce((n, a) => n + a.transferOut, 0n),
       count: byAccount.reduce((n, a) => n + a.count, 0),
-      statementCount:txs.reduce((n,t)=>n+t._count+t._openingCount,0),
-      statementIncomeCount:txs.filter(t=>t.direction==="CREDIT").reduce((n,t)=>n+t._count+t._openingCount,0),
-      statementExpenseCount:txs.filter(t=>t.direction==="DEBIT").reduce((n,t)=>n+t._count+t._openingCount,0),
+      statementCount:txs.reduce((n,t)=>n+t._count,0),
+      statementIncomeCount:txs.filter(t=>t.direction==="CREDIT").reduce((n,t)=>n+t._count,0),
+      statementExpenseCount:txs.filter(t=>t.direction==="DEBIT").reduce((n,t)=>n+t._count,0),
       incomeCount:txs.filter(t=>t.direction==="CREDIT").reduce((n,t)=>n+t._count,0),
       expenseCount:txs.filter(t=>t.direction==="DEBIT").reduce((n,t)=>n+t._count,0),
     };
@@ -103,7 +102,7 @@ export async function accountTotals(preloadedFunds?: Awaited<ReturnType<typeof f
     preloadedFunds ? Promise.resolve(preloadedFunds) : fundTotals(),
     db.bankTransaction.groupBy({
       by: ["accountId", "direction", "fundId"],
-      where: { entryStatus: "POSTED" },
+      where: { entryStatus: {in:["POSTED","OPENING"]} },
       _sum: { amount: true },
       _count: true,
     }),
@@ -141,8 +140,11 @@ export async function accountTotals(preloadedFunds?: Awaited<ReturnType<typeof f
         (f.byAccount.find((a) => a.accountId === account.id)?.balance ?? 0n),
       0n,
     );
+    const fundParts=summarizeBalances(funds.map(f=>({balance:f.byAccount.find(a=>a.accountId===account.id)?.balance??0n})));
     return {
       ...account,
+      fundAvailableBalance:fundParts.availableBalance,
+      fundExcessExpense:fundParts.excessExpense,
       income,
       expense,
       unallocated,

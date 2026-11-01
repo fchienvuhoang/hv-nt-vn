@@ -70,6 +70,6 @@ export async function fundTransactionList(input:{fundId:string;page?:number;q?:s
     db.bankTransaction.findMany({where,include:{allocations:true,account:{select:{number:true}},notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*100,take:100}),
     db.bankTransaction.count({where}),
   ]);
-  return {page,count,rows:rows.map(r=>({id:r.id,opening:r.entryStatus==="OPENING",amount:fundShare(r,fundId).toString(),direction:r.direction,narrative:r.narrative,displayName:r.displayName,refId:r.refId,at:r.occurredAt.toISOString(),account:r.account.number,accountId:r.accountId,updatedAt:r.updatedAt.toISOString(),notes:r.notes.map(n=>({id:n.id,text:n.text,actor:n.actorName??n.actor,at:n.createdAt.toISOString()}))}))};
+  return {page,count,rows:rows.map(r=>({id:r.id,dateUnknown:r.notes.some(n=>n.kind==="SOURCE_DATE_MISSING"),opening:r.entryStatus==="OPENING",amount:fundShare(r,fundId).toString(),direction:r.direction,narrative:r.narrative,displayName:r.displayName,refId:r.refId,at:r.occurredAt.toISOString(),account:r.account.number,accountId:r.accountId,updatedAt:r.updatedAt.toISOString(),notes:r.notes.map(n=>({id:n.id,text:n.text,actor:n.actorName??n.actor,at:n.createdAt.toISOString()}))}))};
 }
 export type FundTransactionList = Awaited<ReturnType<typeof fundTransactionList>>;

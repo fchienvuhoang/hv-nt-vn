@@ -62,7 +62,7 @@ export function FundExcelImport({
       (n) => BigInt(n) !== 0n,
     );
   const opening=BigInt(batch?.openingBalance??"0");
-  const mismatch = !!batch&&((batch.sourceIncome!==null&&BigInt(batch.sourceIncome)!==BigInt(batch.income)+(opening>0n?opening:0n))||(batch.sourceExpense!==null&&BigInt(batch.sourceExpense)!==BigInt(batch.expense)+(opening<0n?-opening:0n)));
+  const mismatch = !!batch&&((batch.sourceIncome!==null&&BigInt(batch.sourceIncome)!==BigInt(batch.income)+BigInt(batch.openingSourceIncome))||(batch.sourceExpense!==null&&BigInt(batch.sourceExpense)!==BigInt(batch.expense)+BigInt(batch.openingSourceExpense)));
   async function start() {
     if (!batch) return;
     const currentGeneration=generation.current;
@@ -116,7 +116,7 @@ export function FundExcelImport({
         <input type="hidden" name="fundId" value={fundId} />
         <input type="hidden" name="latestMonthOnly" value={latestMonthOnly?"1":"0"}/>
         <label className="checkbox-label"><input type="checkbox" checked={latestMonthOnly} onChange={e=>setLatestMonthOnly(e.target.checked)} disabled={pending||running}/>Chỉ đọc tháng mới nhất trong tên các tab (cả TK Mỹ và TK Trâm)</label>
-        <small>Ví dụ: có THÁNG 10 và THÁNG 11 thì chỉ đọc các tab THÁNG 11. File không chia tab theo tháng sẽ được đọc toàn bộ; kiểm tra phần xem trước trước khi nhập.</small>
+        <small>Ví dụ: có THÁNG 10 và THÁNG 11 thì chỉ đọc các tab THÁNG 11. Nếu tài khoản còn lại chỉ có tab TK Mỹ/TK Trâm không ghi tháng, hệ thống đối chiếu tổng và chuyển số dư lịch sử của tab đó sang đầu tháng mới nhất. File hoàn toàn không chia tháng vẫn đọc toàn bộ; kiểm tra phần xem trước trước khi nhập.</small>
         <label>
           File từ Excel hoặc Google Sheets
           <input
@@ -173,19 +173,19 @@ export function FundExcelImport({
                 Bảng này được nhập vào tài khoản{" "}
                 {batch.account?.number ?? "chính"} của thiện pháp.
               </div>
-              {opening!==0n&&<div className="notice"><strong>Số dư chuyển sang đầu tháng: {vnd(opening)}</strong><p>Được cộng vào số dư đúng tài khoản, không tính là hùn phước mới hoặc giao dịch trong ngày. Không nhập lại số dư này ở tháng khác.</p></div>}
+              {opening!==0n&&<div className="notice"><strong>Số dư chuyển sang đầu tháng: {vnd(opening)}</strong><p>Được tính vào Hùn phước/Đã chi của đúng tài khoản. Số dư = Hùn phước − Đã chi, không cộng thêm lần nữa. Không tính vào thống kê giao dịch mới trong ngày.</p></div>}
               <div className="import-summary">
                 <div>
                   <small>Dòng hợp lệ (gồm số dư nếu có)</small>
                   <strong>{batch.rowCount.toLocaleString("vi-VN")}</strong>
                 </div>
                 <div>
-                  <small>Tổng thu từ các dòng</small>
-                  <strong>{vnd(batch.income)}</strong>
+                  <small>Hùn phước từ bảng này</small>
+                  <strong>{vnd(BigInt(batch.income)+(opening>0n?opening:0n))}</strong>
                 </div>
                 <div>
                   <small>Tổng chi từ các dòng</small>
-                  <strong>{vnd(batch.expense)}</strong>
+                  <strong>{vnd(BigInt(batch.expense)+(opening<0n?-opening:0n))}</strong>
                 </div>
               </div>
               <p className="muted">
@@ -262,7 +262,7 @@ export function FundExcelImport({
                         <td className="narrative">{row.narrative}</td>
                         <td>{row.kind==="OPENING"?"Số dư đầu tháng":row.direction === "CREDIT" ? "Thu" : "Chi"}</td>
                         <td className="money align-right nowrap">
-                          {vnd(row.amount)}
+                          {row.kind==="OPENING"&&row.direction==="DEBIT"?"−":""}{vnd(row.amount)}
                         </td>
                       </tr>
                     ))}

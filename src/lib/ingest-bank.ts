@@ -34,6 +34,7 @@ export async function ingestBankPage(
           accountId,
           origin: "EXCEL",
           entryStatus: "POSTED",
+          notes:{none:{kind:"SOURCE_DATE_MISSING"}},
           occurredAt: {
             gte: startOfVietnamDay(localDate(new Date(Math.min(...dates)))),
             lt: new Date(

@@ -46,3 +46,25 @@ test("monthly carry-forward is an opening snapshot, not a new receipt, while arb
  const bad=parseFundGrid("Data",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Unknown gift","","1000"]])!;assert.equal(bad.errors.length,1);
  const duplicate=parseFundGrid("THÁNG 11.2026",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Số dư đầu tháng","","1000"],["","Số dư chuyển sang","","1000"]])!;assert.equal(duplicate.errors.length,1);
 });
+
+test("negative balances in the credit column retain their sign as debit opening snapshots, never new expenses",async()=>{
+ const {importedOpeningBalance,importedOpeningSourceTotals}=await import("../src/lib/fund-excel");
+ const sheet=parseFundGrid("THÁNG 11.2026 - TK My",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","","","-11579561"],["","Điều chuyển số dư từ tháng 10 sang","","-11579561"]])!;
+ assert.deepEqual(sheet.errors,[]);assert.equal(sheet.rows[0].kind,"OPENING");assert.equal(sheet.rows[0].direction,"DEBIT");assert.equal(sheet.rows[0].amount,"11579561");assert.equal(sheet.income,"0");assert.equal(sheet.expense,"0");assert.equal(sheet.sourceIncome,"-11579561");assert.equal(sheet.sourceExpense,"0");assert.equal(importedOpeningBalance(sheet.rows),-11579561n);assert.deepEqual(importedOpeningSourceTotals(sheet.rows),{income:-11579561n,expense:0n});
+ const ordinary=parseFundGrid("Data",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["01/11/2026 09:00","Not a balance","","-11579561"]])!;assert.equal(ordinary.errors.length,1);
+});
+
+test("latest month retains a missing account's standalone ledger and converts verified pre-period activity into one balance",async()=>{
+ const {latestMonthSheetNames,includeStandaloneAccountBalance}=await import("../src/lib/fund-excel");
+ assert.deepEqual(latestMonthSheetNames(["TK My- THÁNG 11","TK My- THÁNG 10","TK Trâm"],2026),["TK My- THÁNG 11","TK Trâm"]);
+ assert.deepEqual(latestMonthSheetNames(["THÁNG 11 TK My","THÁNG 11 TK Trâm","TK Trâm"],2026),["THÁNG 11 TK My","THÁNG 11 TK Trâm"]);
+ const parsed=parseFundGrid("TK Trâm",[["TRAI TANG TK MY"],["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","","50","200"],["30/10/2026 09:00","Gift","","200"],["30/10/2026 10:00","Expense","50",""]])!;
+ assert.equal(parsed.accountHint,"0856");const snapshot=includeStandaloneAccountBalance(parsed,2026*12+10);assert.deepEqual(snapshot.errors,[]);assert.equal(snapshot.rows.length,1);assert.equal(snapshot.rows[0].kind,"OPENING");assert.equal(snapshot.rows[0].amount,"150");assert.equal(snapshot.rows[0].direction,"CREDIT");assert.equal(snapshot.income,"0");assert.equal(snapshot.expense,"0");assert.equal(snapshot.sourceIncome,"150");
+ const current=parseFundGrid("TK Trâm",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","","","200"],["01/11/2026 09:00","Gift","","200"]])!;assert.equal(includeStandaloneAccountBalance(current,2026*12+10).errors.length,1);
+ const mismatch=parseFundGrid("TK Trâm",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","","","201"],["30/10/2026 09:00","Gift","","200"]])!;assert.equal(includeStandaloneAccountBalance(mismatch,2026*12+10).errors.length,1);
+});
+
+test("explicit undated internal fund transfers are preserved, while missing dates on ordinary gifts remain errors",()=>{
+ const parsed=parseFundGrid("TP97- TK My",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Chuyển số dư từ TP100 về","","175611"],["","Chuyển số dư từ TP73 sang","","27161812"],["","Unknown gift","","100"]])!;
+ assert.equal(parsed.rows.length,2);assert.ok(parsed.rows.every(r=>r.dateUnknown));assert.equal(parsed.income,"27337423");assert.equal(parsed.errors.length,1);
+});

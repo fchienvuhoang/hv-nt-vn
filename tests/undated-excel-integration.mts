@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';import ExcelJS from 'exceljs';
+const url=new URL(process.env.DATABASE_URL??'postgresql://invalid/invalid');if(url.hostname!=='localhost'||!url.pathname.startsWith('/hvntvn_test'))throw new Error('QA database only');
+const {db}=await import('../src/lib/db'),{stageFundImport,processFundImport}=await import('../src/lib/fund-imports'),{transactionSummary}=await import('../src/lib/transaction-summary'),{transactionWhere}=await import('../src/lib/transaction-navigation-data'),{fundTransactionList}=await import('../src/lib/transaction-management'),{fundTotals,serializable}=await import('../src/lib/ledger'),{ingestBankPage}=await import('../src/lib/ingest-bank');
+if(await db.bankAccount.count())throw new Error('Empty QA DB required');
+try{
+ const account=await db.bankAccount.create({data:{number:'0572',owner:'TEST',label:'TEST'}}),fund=await db.fund.create({data:{accountId:account.id,code:'TP97',slug:'qa-undated',name:'TEST',keywords:['TP97']}});
+ const book=new ExcelJS.Workbook(),sheet=book.addWorksheet('TP97- TK My');sheet.addRows([['TP97'],['Thời gian','Nội dung','Tiền ra','Tiền vào','Ghi chú'],['','',200,27337523],['2026-10-31 10:00','Gift','',100,'Ghi chú nguồn Excel'],['','Chuyển số dư từ TP100 về','',175611,''],['','Chuyển số dư từ TP73 sang','',27161812,''],['2026-10-31 11:00','Expense',200,'','']]);
+ const file=new File([new Uint8Array(await book.xlsx.writeBuffer())],'undated.xlsx');const [batch]=await stageFundImport(fund.id,file,'QA');assert.deepEqual(batch.errors,[]);assert.equal(batch.rowCount,4);const result=await processFundImport({batchId:batch.id,replaceLegacy:false,acceptMismatch:false},'QA');assert.equal(result.status,'COMPLETE');
+ assert.equal(await db.transactionNote.count({where:{kind:'SOURCE_DATE_MISSING'}}),2);assert.equal(await db.transactionNote.count({where:{kind:'EXCEL_SOURCE_NOTE',text:'Ghi chú nguồn Excel'}}),1);
+ const rows=await fundTransactionList({fundId:fund.id});assert.equal(rows.count,4);assert.equal(rows.rows.filter(r=>r.dateUnknown).length,2);
+ const totals=(await fundTotals())[0];assert.equal(totals.income,27337523n);assert.equal(totals.expense,200n);assert.equal(totals.balance,27337323n);
+ const dates=rows.rows.filter(r=>r.dateUnknown).map(r=>r.at);const technicalDate=(await import('../src/lib/domain')).localDate(new Date(dates[0]));
+ const where=transactionWhere({from:technicalDate,to:technicalDate,account:'',q:'',type:'',review:''});assert.equal(await db.bankTransaction.count({where:{AND:[where,{notes:{some:{kind:'SOURCE_DATE_MISSING'}}}]}}),0);
+ const stats=await transactionSummary(new Date(`${technicalDate}T12:00:00+07:00`));assert.ok(stats.days[0].income<27337423n,'undated transfers must not be counted on their technical date');
+ const unknown=await db.bankTransaction.findFirstOrThrow({where:{notes:{some:{kind:'SOURCE_DATE_MISSING'}}}});const {localDate}=await import('../src/lib/domain');
+ await serializable(tx=>ingestBankPage(tx,account.id,[{id:'QA-SAME-UNDATED',refId:'QA-SAME-UNDATED',bankAccountId:'QA',transactionAmount:Number(unknown.amount),type:'CREDIT',transactionTime:`${localDate(unknown.occurredAt)} 00:00:00`,narrative:unknown.narrative,displayName:'TEST',hiddenNarrative:false,hiddenNote:false}], 'QA'));
+ assert.equal((await db.bankTransaction.findUniqueOrThrow({where:{id:unknown.id}})).entryStatus,'POSTED','unknown dates cannot auto-match a bank receipt');
+ const repeated=await stageFundImport(fund.id,file,'QA');assert.equal(repeated[0].id,batch.id);await processFundImport({batchId:batch.id,replaceLegacy:false,acceptMismatch:false},'QA');assert.equal(await db.transactionNote.count({where:{kind:'SOURCE_DATE_MISSING'}}),2);
+ console.log('PASS: full Excel imports preserve undated internal transfers and original notes, totals reconcile, date filters/day statistics exclude unknown dates, bank matching cannot consume them, repeat uploads stay idempotent');
+}finally{await db.auditLog.deleteMany();await db.bankTransaction.deleteMany();await db.fundImport.deleteMany();await db.fund.deleteMany();await db.bankAccount.deleteMany();await db.$disconnect()}

@@ -5,6 +5,7 @@ import { serializable } from "./ledger";
 import {
   importFileHash,
   importedOpeningBalance,
+  importedOpeningSourceTotals,
   readFundWorkbook,
   type ExcelEntry,
 } from "./fund-excel";
@@ -43,6 +44,8 @@ const dto = (b: Summary) => ({
   createdAt: b.createdAt.toISOString(),
   sample: b.sample as unknown as ExcelEntry[],
   openingBalance: importedOpeningBalance(b.sample as unknown as ExcelEntry[]).toString(),
+  openingSourceIncome:importedOpeningSourceTotals(b.sample as unknown as ExcelEntry[]).income.toString(),
+  openingSourceExpense:importedOpeningSourceTotals(b.sample as unknown as ExcelEntry[]).expense.toString(),
   errors: b.errors as string[],
 });
 export type FundImportSummary = ReturnType<typeof dto>;
@@ -137,10 +140,10 @@ export async function processFundImport(
         "File có dòng lỗi. Sửa các dòng được báo rồi tải lại trước khi nhập",
       );
     if (!batch.rowCount) throw new Error("File không có giao dịch hợp lệ");
-    const opening=importedOpeningBalance(batch.data as unknown as ExcelEntry[]);
+    const openingSource=importedOpeningSourceTotals(batch.data as unknown as ExcelEntry[]);
     const mismatch =
-      (batch.sourceIncome !== null && batch.sourceIncome !== batch.income+(opening>0n?opening:0n)) ||
-      (batch.sourceExpense !== null && batch.sourceExpense !== batch.expense+(opening<0n?-opening:0n));
+      (batch.sourceIncome !== null && batch.sourceIncome !== batch.income+openingSource.income) ||
+      (batch.sourceExpense !== null && batch.sourceExpense !== batch.expense+openingSource.expense);
     if (mismatch && !input.acceptMismatch)
       throw new Error(
         "Tổng tính từ giao dịch khác dòng tổng trong file. Cần xác nhận sau khi kiểm tra",
@@ -243,10 +246,11 @@ export async function processFundImport(
       const at = new Date(row.at),
         amount = BigInt(row.amount),
         start = startOfVietnamDay(localDate(at));
-      const pool = await tx.bankTransaction.findMany({
+      const pool = row.dateUnknown?[]:await tx.bankTransaction.findMany({
         where: {
           accountId,
           entryStatus: "POSTED",
+          notes:{none:{kind:"SOURCE_DATE_MISSING"}},
           OR: [{importId:null},{importId:{not:batch.id}}],
           direction: row.direction,
           amount,
@@ -312,7 +316,7 @@ export async function processFundImport(
         matched++;
       } else if (entryStatus === "REVIEW") review++;
       else added++;
-      await tx.bankTransaction.create({
+      const imported=await tx.bankTransaction.create({
         data: {
           ...createdStamp(actor), ...updatedStamp(actor),
           accountId,
@@ -344,6 +348,9 @@ export async function processFundImport(
               : "Nhập từ Excel theo thiện pháp đã chọn",
         },
       });
+      const noteTransactionId=canMatch?match.exact!.id:imported.id;
+      const notes=[...(row.dateUnknown?[{requestId:`${batch.id}:${row.row}:missing-date`,transactionId:noteTransactionId,kind:"SOURCE_DATE_MISSING",text:"Excel gốc không có ngày cho dòng điều chuyển này. Hiển thị chưa có ngày; không tính vào thống kê theo ngày và không đối chiếu tự động theo ngày."}]:[]),...(row.note?[{requestId:`${batch.id}:${row.row}:excel-note`,transactionId:noteTransactionId,kind:"EXCEL_SOURCE_NOTE",text:row.note}]:[])];
+      if(notes.length)await tx.transactionNote.createMany({data:notes.map(note=>({...note,...actorStamp(actor)}))});
     }
     const cursor = batch.cursor + rows.length;
     const updated = await tx.fundImport.update({

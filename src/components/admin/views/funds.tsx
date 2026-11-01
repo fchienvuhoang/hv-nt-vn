@@ -1,4 +1,5 @@
 "use client";
+import {summarizeBalances} from "@/lib/balance-summary";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
 import { FundBalanceComparison } from "@/components/admin/fund-balance-comparison";
@@ -44,10 +45,11 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
       ? f.byAccount.find((a) => a.accountId === params.account)
       : null;
     return a
-      ? { ...f, openingBalance:a.openingBalance, income: a.income, expense: a.expense, balance: a.balance }
+      ? { ...f, openingBalance:a.openingBalance,availableBalance:a.availableBalance,excessExpense:a.excessExpense, income: a.income, expense: a.expense, balance: a.balance }
       : f;
   });
   const accounts = balances;
+  const totals=summarizeBalances(scoped);
   return (
     <div className="fund-workspace">
       <div className="fund-topline">
@@ -119,7 +121,8 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                   <th>Trạng thái</th>
                   <th className="align-right">Hùn phước</th>
                   <th className="align-right">Đã chi</th>
-                  <th className="align-right">Số dư</th>
+                  <th className="align-right">Số dư khả dụng</th>
+                  <th className="align-right">Chi vượt quỹ</th>
                   <th className="align-right">Thao tác</th>
                   <th>Người tạo</th>
                   <th>Người cập nhật</th>
@@ -159,9 +162,10 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       {vnd(f.expense)}
                     </td>
                     <td className="money align-right nowrap balance-value">
-                      {vnd(f.balance)}
-                      {f.openingBalance!==0n&&<small className="fund-opening-note">Chuyển sang: {vnd(f.openingBalance)}</small>}
+                      {vnd(f.availableBalance)}
+                      {f.openingBalance!==0n&&<small className="fund-opening-note">Trong đó Excel: {vnd(f.openingBalance)}</small>}
                     </td>
+                    <td className={`money align-right nowrap${f.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(f.excessExpense)}</td>
                     <td>
                       <div className="inline-actions table-actions">
                         <AdminDialogButton kind="fund-transactions" fundId={f.id} className="button subtle small"><List size={15}/>Xem giao dịch</AdminDialogButton>
@@ -196,10 +200,12 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     {vnd(scoped.reduce((n, f) => n + f.expense, 0n))}
                   </td>
                   <td className="money align-right nowrap">
-                    {vnd(scoped.reduce((n, f) => n + f.balance, 0n))}
+                    {vnd(totals.availableBalance)}
                   </td>
+                  <td className={`money align-right nowrap${totals.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(totals.excessExpense)}</td>
                   <td colSpan={3} />
                 </tr>
+                <tr><td colSpan={11} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
               </tfoot>
             </table>
           </div>

@@ -4,6 +4,9 @@ import { normalize, localDate, parseSourceTime } from "./domain";
 export type ExcelEntry = {
   row: number;
   kind?: "OPENING";
+  dateUnknown?: boolean;
+  openingCredit?: string;
+  openingDebit?: string;
   at: string;
   amount: string;
   direction: "CREDIT" | "DEBIT";
@@ -38,6 +41,10 @@ export function parseVnd(value: string | number): bigint {
   const parsed = BigInt(clean.replace(/[.,\s]/g, ""));
   if (parsed > 999999999999999n) throw new Error("Số tiền tối đa 15 chữ số");
   return parsed;
+}
+function parseOpeningVnd(value:string|number){
+  if(typeof value==="number")return value<0?-parseVnd(-value):parseVnd(value);
+  const raw=value.trim();return /^[-−]/.test(raw)?-parseVnd(raw.slice(1).trim()):parseVnd(raw);
 }
 export function parseExcelTime(value: string): string {
   const raw = value.trim();
@@ -86,6 +93,14 @@ function cellText(value: ExcelJS.CellValue): string {
   }
   return String(value);
 }
+function accountHint(text:string){
+ const normalized=normalize(text),my=/\bTK MY\b|HO THI TRA MY/.test(normalized),tram=/\bTK TRAM\b|TRAN THU TRAM/.test(normalized);
+ return my&&!tram?"0572":tram&&!my?"0856":null;
+}
+function monthPeriod(name:string,referenceYear=Number(localDate().slice(0,4))){
+ const match=/\bTHANG\s+(\d{1,2})(?:[\s./-]+((?:19|20)\d{2}))?\b/.exec(normalize(name));
+ return match&&Number(match[1])>=1&&Number(match[1])<=12?Number(match[2]??referenceYear)*12+Number(match[1])-1:null;
+}
 export function parseFundGrid(
   name: string,
   grid: string[][],
@@ -123,12 +138,7 @@ export function parseFundGrid(
   const result: ParsedFundSheet = {
     name,
     headerRow: headerIndex + 1,
-    accountHint: (() => {
-      const text = normalize(name + " " + (grid[0] ?? []).join(" "));
-      const my = /\bTK MY\b|HO THI TRA MY/.test(text),
-        tram = /\bTK TRAM\b|TRAN THU TRAM/.test(text);
-      return my && !tram ? "0572" : tram && !my ? "0856" : null;
-    })(),
+    accountHint: accountHint(name)??accountHint((grid[0]??[]).join(" ")),
     rows: [],
     skipped: 0,
     errors: [],
@@ -154,9 +164,9 @@ export function parseFundGrid(
         (amountIn || amountOut)
       ) {
         try {
-          const a = parseVnd(amountIn),
-            b = parseVnd(amountOut);
-          if (a > 0n || b > 0n) {
+          const a = parseOpeningVnd(amountIn),
+            b = parseOpeningVnd(amountOut);
+          if (a !== 0n || b !== 0n) {
             result.sourceIncome = a.toString();
             result.sourceExpense = b.toString();
           }
@@ -170,27 +180,31 @@ export function parseFundGrid(
       continue;
     }
     try {
-      const credit = parseVnd(amountIn),
-        debit = parseVnd(amountOut);
+      const openingRow=!date&&/^(DIEU CHUYEN (SO DU )?(TU|THANG)|SO DU (DAU|CHUYEN))/.test(normalize(text));
+      const credit = openingRow?parseOpeningVnd(amountIn):parseVnd(amountIn),
+        debit = openingRow?parseOpeningVnd(amountOut):parseVnd(amountOut);
       if (!credit && !debit) {
         result.skipped++;
         continue;
       }
       if (credit && debit)
         throw new Error("Một dòng có cả tiền vào và tiền ra");
-      if(!date&&/^(DIEU CHUYEN (SO DU )?(TU|THANG)|SO DU (DAU|CHUYEN))/.test(normalize(text))){
+      if(openingRow){
         const month=/\bTHANG\s+(\d{1,2})(?:[\s./-]+((?:19|20)\d{2}))?\b/.exec(normalize(name));
         if(!month||Number(month[1])<1||Number(month[1])>12)throw new Error("Dòng số dư chuyển sang cần tab có tên THÁNG n để xác định đầu kỳ");
         if(result.rows.some(r=>r.kind==="OPENING"))throw new Error("Một bảng chỉ được có một dòng số dư chuyển sang");
         const year=month[2]??localDate().slice(0,4);
-        result.rows.unshift({row:i+1,kind:"OPENING",at:parseExcelTime(`${year}-${month[1].padStart(2,"0")}-01`),amount:(credit||debit).toString(),direction:credit?"CREDIT":"DEBIT",narrative:text,displayName:"Số dư chuyển sang",refId:"",note:note<0?"":row[note]??""});
+        const signedBalance=credit-debit;
+        result.rows.unshift({row:i+1,kind:"OPENING",openingCredit:credit.toString(),openingDebit:debit.toString(),at:parseExcelTime(`${year}-${month[1].padStart(2,"0")}-01`),amount:(signedBalance<0n?-signedBalance:signedBalance).toString(),direction:signedBalance<0n?"DEBIT":"CREDIT",narrative:text,displayName:"Số dư chuyển sang",refId:"",note:note<0?"":row[note]??""});
         continue;
       }
-      const at = parseExcelTime(date);
+      const dateUnknown=!date&&/^CHUYEN SO DU TU TP\s*\d+\b/.test(normalize(text));
+      const at = dateUnknown?parseExcelTime(localDate()):parseExcelTime(date);
       const direction = credit ? "CREDIT" : "DEBIT";
       if (text.length > 6000) throw new Error("Nội dung quá dài");
       result.rows.push({
         row: i + 1,
+        ...(dateUnknown?{dateUnknown:true}:{}),
         at,
         amount: (credit || debit).toString(),
         direction,
@@ -215,15 +229,24 @@ export function parseFundGrid(
   return result;
 }
 export function latestMonthSheetNames(names:string[],referenceYear=Number(localDate().slice(0,4))){
-  const dated=names.flatMap(name=>{
-    const match=/\bTHANG\s+(\d{1,2})(?:[\s./-]+((?:19|20)\d{2}))?\b/.exec(normalize(name));
-    if(!match||Number(match[1])<1||Number(match[1])>12)return [];
-    return [{name,period:Number(match[2]??referenceYear)*12+Number(match[1])}];
-  });
+  const dated=names.flatMap(name=>{const period=monthPeriod(name,referenceYear);return period===null?[]:[{name,period}]});
   if(!dated.length)return names;
-  const latest=Math.max(...dated.map(s=>s.period));
-  return dated.filter(s=>s.period===latest).map(s=>s.name);
+  const latest=Math.max(...dated.map(s=>s.period)),selected=dated.filter(s=>s.period===latest).map(s=>s.name);
+  const covered=new Set(selected.map(accountHint).filter(Boolean));
+  return [...selected,...names.filter(name=>/^TK (MY|TRAM)$/.test(normalize(name))&&!covered.has(accountHint(name)))];
 }
+export function includeStandaloneAccountBalance(parsed:ParsedFundSheet,period:number){
+ const year=Math.floor(period/12),month=period%12+1,at=parseExcelTime(`${year}-${String(month).padStart(2,"0")}-01`);
+ if(parsed.errors.length)return parsed;
+ if(parsed.rows.some(r=>r.kind==="OPENING"||r.at>=at)){parsed.errors.push(`Tab ${parsed.name} không chia tháng nhưng có giao dịch từ tháng ${month}/${year}; cần chia tháng trước khi nhập số dư.`);return parsed}
+ if(parsed.sourceIncome===null||parsed.sourceExpense===null||parsed.sourceIncome!==parsed.income||parsed.sourceExpense!==parsed.expense){parsed.errors.push(`Tổng trong tab ${parsed.name} chưa khớp các giao dịch; không tự suy ra số dư chuyển sang.`);return parsed}
+ const count=parsed.rows.length,income=parsed.income,expense=parsed.expense,balance=BigInt(income)-BigInt(expense);
+ parsed.skipped+=count;
+ parsed.rows=balance===0n?[]:[{row:parsed.headerRow+1,kind:"OPENING",openingCredit:balance.toString(),openingDebit:"0",at,amount:(balance<0n?-balance:balance).toString(),direction:balance<0n?"DEBIT":"CREDIT",narrative:`Số dư ${parsed.name} chuyển sang tháng ${month}/${year} (tổng hợp từ tab ${parsed.name})`,displayName:"Số dư chuyển sang",refId:"",note:`Từ ${count} giao dịch trước đầu tháng: tổng thu ${income} VND, tổng chi ${expense} VND. Tên tab xác định tài khoản; tiêu đề mẫu không dùng để đổi tài khoản.`}];
+ parsed.income="0";parsed.expense="0";parsed.sourceIncome=balance.toString();parsed.sourceExpense="0";
+ return parsed;
+}
+
 export async function readFundWorkbook(
   bytes: Uint8Array,
   fileName: string,
@@ -236,6 +259,8 @@ export async function readFundWorkbook(
   const sheets: ParsedFundSheet[] = [];
   let totalRows = 0;
   const selectedNames=new Set(options.latestMonthOnly?latestMonthSheetNames(workbook.worksheets.map(s=>s.name)):workbook.worksheets.map(s=>s.name));
+  const selectedPeriods=[...selectedNames].flatMap(name=>{const p=monthPeriod(name);return p===null?[]:[p]});
+  const latestPeriod=selectedPeriods.length?Math.max(...selectedPeriods):null;
   for (const sheet of workbook.worksheets) {
     if(!selectedNames.has(sheet.name))continue;
     const rowCount=sheet.rowCount,columnCount=sheet.columnCount;
@@ -258,6 +283,7 @@ export async function readFundWorkbook(
     }
     const parsed = parseFundGrid(sheet.name, grid);
     if (parsed) {
+      if(options.latestMonthOnly&&latestPeriod!==null&&/^TK (MY|TRAM)$/.test(normalize(sheet.name)))includeStandaloneAccountBalance(parsed,latestPeriod);
       totalRows += parsed.rows.length;
       sheets.push(parsed);
     }
@@ -278,3 +304,7 @@ export function importFileHash(bytes: Uint8Array) {
 
 /** Opening snapshots are balances, never new receipts or expenses. */
 export function importedOpeningBalance(rows:ExcelEntry[]){return rows.filter(r=>r.kind==="OPENING").reduce((sum,r)=>sum+(r.direction==="CREDIT"?1n:-1n)*BigInt(r.amount),0n)}
+
+export function importedOpeningSourceTotals(rows:ExcelEntry[]){
+ return rows.filter(r=>r.kind==="OPENING").reduce((sum,r)=>({income:sum.income+BigInt(r.openingCredit??(r.direction==="CREDIT"?r.amount:"0")),expense:sum.expense+BigInt(r.openingDebit??(r.direction==="DEBIT"?r.amount:"0"))}),{income:0n,expense:0n});
+}

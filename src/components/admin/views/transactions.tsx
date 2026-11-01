@@ -156,7 +156,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                     <td className={selected.has(r.id)?"sheet-selected-check":""}><input type="checkbox" aria-label={`Chọn giao dịch ${r.refId||r.id}`} checked={selected.has(r.id)} disabled={busy||loading||!eligible(r)} title={r.entryStatus==="OPENING"?"Số dư chuyển sang từ Excel":!eligible(r)?"Giao dịch tách: chọn tab thiện pháp để gán phần phân bổ":"Chọn để gán thủ công"} onChange={()=>toggleSelection(r)}/></td>
                     <td className="sheet-index">{(page - 1) * pageSize + index + 1}</td>
                     <td className="nowrap">
-                      {dateTime(r.occurredAt)}
+                      {r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.occurredAt)}
                     </td>
                     <td className="nowrap" title={r.account.owner}>{r.account.number}</td>
                     <td><span className="sheet-clip sheet-ref" title={r.refId}>{r.refId || "—"}</span></td>
@@ -202,7 +202,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                           <div className="modal-context">
                             <strong>{vnd(r.amount)}</strong>
                             <small>
-                              {dateTime(r.occurredAt)} · Tài khoản{" "}
+                              {r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.occurredAt)} · Tài khoản{" "}
                               {r.account.number}
                             </small>
                             <p>{r.narrative}</p>
