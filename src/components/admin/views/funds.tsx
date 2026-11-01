@@ -44,7 +44,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
       ? f.byAccount.find((a) => a.accountId === params.account)
       : null;
     return a
-      ? { ...f, income: a.income, expense: a.expense, balance: a.balance }
+      ? { ...f, openingBalance:a.openingBalance, income: a.income, expense: a.expense, balance: a.balance }
       : f;
   });
   const accounts = balances;
@@ -160,6 +160,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </td>
                     <td className="money align-right nowrap balance-value">
                       {vnd(f.balance)}
+                      {f.openingBalance!==0n&&<small className="fund-opening-note">Chuyển sang: {vnd(f.openingBalance)}</small>}
                     </td>
                     <td>
                       <div className="inline-actions table-actions">

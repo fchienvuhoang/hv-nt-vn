@@ -60,7 +60,7 @@ export async function startTabReclassification(input: ReclassificationScope, act
       ${scope.account?Prisma.sql`AND "accountId" = ${scope.account}`:Prisma.empty}
       ${scope.type?Prisma.sql`AND "direction"::text = ${scope.type}`:Prisma.empty}
       ${scope.q?Prisma.sql`AND (POSITION(LOWER(${scope.q}) IN LOWER(narrative)) > 0 OR POSITION(LOWER(${scope.q}) IN LOWER("refId")) > 0)`:Prisma.empty}`;
-    const counts=await tx.$queryRaw<{manual:bigint;review:bigint}[]>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE assignment::text = 'MANUAL') AS manual, COUNT(*) FILTER (WHERE "entryStatus" = 'REVIEW' AND assignment::text <> 'MANUAL') AS review FROM "BankTransaction" WHERE ${conditions} AND "entryStatus" <> 'MERGED'`);
+    const counts=await tx.$queryRaw<{manual:bigint;review:bigint}[]>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE assignment::text = 'MANUAL') AS manual, COUNT(*) FILTER (WHERE "entryStatus" = 'REVIEW' AND assignment::text <> 'MANUAL') AS review FROM "BankTransaction" WHERE ${conditions} AND "entryStatus" IN ('POSTED','REVIEW')`);
     // Snapshot the full tab inside PostgreSQL, without loading its IDs into JS.
     const total=await tx.$executeRaw(Prisma.sql`INSERT INTO "TabReclassificationItem" ("runId","transactionId","beforeFundId","beforeAssignment","beforeUpdatedAt")
       SELECT ${run.id},id,"fundId",assignment::text,"updatedAt" FROM "BankTransaction"

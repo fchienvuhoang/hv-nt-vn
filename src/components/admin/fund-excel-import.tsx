@@ -35,6 +35,7 @@ export function FundExcelImport({
     if (state.error) toast(state.error, "error");
     else if (state.batches) toast("Đã đọc file Excel. Kiểm tra các bảng trước khi xác nhận nhập.");
   }, [state, toast]);
+  const [latestMonthOnly,setLatestMonthOnly]=useState(true);
   const [selected, setSelected] = useState(""),
     [running, setRunning] = useState(false),
     [error, setError] = useState(""),
@@ -60,10 +61,8 @@ export function FundExcelImport({
     [legacy.income, legacy.expense, legacy.transfer].some(
       (n) => BigInt(n) !== 0n,
     );
-  const mismatch =
-    !!batch &&
-    ((batch.sourceIncome !== null && batch.sourceIncome !== batch.income) ||
-      (batch.sourceExpense !== null && batch.sourceExpense !== batch.expense));
+  const opening=BigInt(batch?.openingBalance??"0");
+  const mismatch = !!batch&&((batch.sourceIncome!==null&&BigInt(batch.sourceIncome)!==BigInt(batch.income)+(opening>0n?opening:0n))||(batch.sourceExpense!==null&&BigInt(batch.sourceExpense)!==BigInt(batch.expense)+(opening<0n?-opening:0n)));
   async function start() {
     if (!batch) return;
     const currentGeneration=generation.current;
@@ -84,7 +83,7 @@ export function FundExcelImport({
         }
         if (!result.batch) break;
         setProgress(result.batch);
-        if (result.batch.status === "COMPLETE") { toast("Đã nhập xong Excel. Kiểm tra các khoản nghi trùng trong Giao dịch."); break; }
+        if (result.batch.status === "COMPLETE") { toast("Đã nhập xong Excel. Số dư và thu/chi đã được cập nhật."); break; }
       }
     } catch {
       if (alive.current) toast("Kết nối bị gián đoạn. Bạn có thể mở lại và tiếp tục nhập.", "error");
@@ -115,6 +114,9 @@ export function FundExcelImport({
         }}
       >
         <input type="hidden" name="fundId" value={fundId} />
+        <input type="hidden" name="latestMonthOnly" value={latestMonthOnly?"1":"0"}/>
+        <label className="checkbox-label"><input type="checkbox" checked={latestMonthOnly} onChange={e=>setLatestMonthOnly(e.target.checked)} disabled={pending||running}/>Chỉ đọc tháng mới nhất trong tên các tab (cả TK Mỹ và TK Trâm)</label>
+        <small>Ví dụ: có THÁNG 10 và THÁNG 11 thì chỉ đọc các tab THÁNG 11. File không chia tab theo tháng sẽ được đọc toàn bộ; kiểm tra phần xem trước trước khi nhập.</small>
         <label>
           File từ Excel hoặc Google Sheets
           <input
@@ -171,9 +173,10 @@ export function FundExcelImport({
                 Bảng này được nhập vào tài khoản{" "}
                 {batch.account?.number ?? "chính"} của thiện pháp.
               </div>
+              {opening!==0n&&<div className="notice"><strong>Số dư chuyển sang đầu tháng: {vnd(opening)}</strong><p>Được cộng vào số dư đúng tài khoản, không tính là hùn phước mới hoặc giao dịch trong ngày. Không nhập lại số dư này ở tháng khác.</p></div>}
               <div className="import-summary">
                 <div>
-                  <small>Giao dịch hợp lệ</small>
+                  <small>Dòng hợp lệ (gồm số dư nếu có)</small>
                   <strong>{batch.rowCount.toLocaleString("vi-VN")}</strong>
                 </div>
                 <div>
@@ -257,7 +260,7 @@ export function FundExcelImport({
                           <small>{dateTime(row.at)}</small>
                         </td>
                         <td className="narrative">{row.narrative}</td>
-                        <td>{row.direction === "CREDIT" ? "Thu" : "Chi"}</td>
+                        <td>{row.kind==="OPENING"?"Số dư đầu tháng":row.direction === "CREDIT" ? "Thu" : "Chi"}</td>
                         <td className="money align-right nowrap">
                           {vnd(row.amount)}
                         </td>

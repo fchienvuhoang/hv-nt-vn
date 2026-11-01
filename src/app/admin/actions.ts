@@ -245,7 +245,7 @@ export async function uploadFundExcel(
     const fundId = id.parse(form.get("fundId"));
     const file = form.get("file");
     if (!(file instanceof File)) throw new Error("Chọn file Excel cần nhập");
-    return { batches: await stageFundImport(fundId, file, actor) };
+    return { batches: await stageFundImport(fundId, file, actor,{latestMonthOnly:form.get("latestMonthOnly")!=="0"}) };
   } catch (error) {
     return { error: importError(error) };
   }

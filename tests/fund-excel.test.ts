@@ -32,3 +32,17 @@ test("only a unique full identity auto-matches; equal date/amount alone needs re
   const uncertain=chooseEntryMatch({at,amount:1000n,direction:"CREDIT",narrative:"different",refId:""},[entry]);assert.equal(uncertain.exact,null);assert.equal(uncertain.suspected.length,1);
   assert.equal(chooseEntryMatch({at,amount:1000n,direction:"CREDIT",narrative:entry.narrative,refId:""},[entry,{...entry,id:"b"}]).exact,null);
 });
+
+test("latest month selection keeps both accounts, handles explicit years and never falls back to older months with more rows",async()=>{
+  const {latestMonthSheetNames}=await import("../src/lib/fund-excel");
+  assert.deepEqual(latestMonthSheetNames(["THÁNG 9- TK Trâm","THÁNG 10- TK My","THÁNG 11- TK Trâm","THÁNG 11- TK My"],2026),["THÁNG 11- TK Trâm","THÁNG 11- TK My"]);
+  assert.deepEqual(latestMonthSheetNames(["THÁNG 12/2025 TK MY","THÁNG 1/2026 TK MY"],2026),["THÁNG 1/2026 TK MY"]);
+  assert.deepEqual(latestMonthSheetNames(["TK MY","TK TRÂM"],2026),["TK MY","TK TRÂM"]);
+});
+
+test("monthly carry-forward is an opening snapshot, not a new receipt, while arbitrary missing dates still fail",()=>{
+ const sheet=parseFundGrid("THÁNG 11.2026 - TK Trâm",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","","","14.885.773"],["","Điều chuyển số dư từ tháng 10 sang","","14.885.773"],["01/11/2026 09:00","New donor","","1000"]])!;
+ assert.equal(sheet.errors.length,0);assert.equal(sheet.income,"1000");assert.equal(sheet.expense,"0");assert.equal(sheet.rows[0].kind,"OPENING");assert.equal(sheet.rows[0].at,"2026-10-31T17:00:00.000Z");assert.equal(sheet.rows[0].amount,"14885773");
+ const bad=parseFundGrid("Data",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Unknown gift","","1000"]])!;assert.equal(bad.errors.length,1);
+ const duplicate=parseFundGrid("THÁNG 11.2026",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Số dư đầu tháng","","1000"],["","Số dư chuyển sang","","1000"]])!;assert.equal(duplicate.errors.length,1);
+});

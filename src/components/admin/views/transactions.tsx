@@ -153,7 +153,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
               <tbody>
                 {rows.map((r, index) => (
                   <tr key={r.id} className={r.entryStatus === "REVIEW" ? "sheet-review" : undefined}>
-                    <td className={selected.has(r.id)?"sheet-selected-check":""}><input type="checkbox" aria-label={`Chọn giao dịch ${r.refId||r.id}`} checked={selected.has(r.id)} disabled={busy||loading||!eligible(r)} title={!eligible(r)?"Giao dịch tách: chọn tab thiện pháp để gán phần phân bổ":"Chọn để gán thủ công"} onChange={()=>toggleSelection(r)}/></td>
+                    <td className={selected.has(r.id)?"sheet-selected-check":""}><input type="checkbox" aria-label={`Chọn giao dịch ${r.refId||r.id}`} checked={selected.has(r.id)} disabled={busy||loading||!eligible(r)} title={r.entryStatus==="OPENING"?"Số dư chuyển sang từ Excel":!eligible(r)?"Giao dịch tách: chọn tab thiện pháp để gán phần phân bổ":"Chọn để gán thủ công"} onChange={()=>toggleSelection(r)}/></td>
                     <td className="sheet-index">{(page - 1) * pageSize + index + 1}</td>
                     <td className="nowrap">
                       {dateTime(r.occurredAt)}
@@ -164,7 +164,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                       <p className="sheet-narrative">{r.narrative || "Không có nội dung"}</p>
                       <div className="sheet-content-meta">
                         {r.displayName && <span className="sheet-sender"><span>Người giao dịch:</span> <strong>{r.displayName}</strong></span>}
-                        <span className="sheet-source">{r.origin === "EXCEL" ? "Nhập Excel" : "Sao kê"}</span>
+                        <span className="sheet-source">{r.entryStatus==="OPENING"?"Số dư chuyển sang đầu tháng":r.origin === "EXCEL" ? "Nhập Excel" : "Sao kê"}</span>
                       </div>
                       {r.notes.map(note=><div key={note.id} className="transaction-admin-note"><strong>Ghi chú quản trị:</strong> {note.text}<small>{note.actorName||note.actor} · {dateTime(note.createdAt)}</small></div>)}
                     </td>
@@ -182,7 +182,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                     </td>
                     <td className="sheet-row-actions">
                       {r.entryStatus==="POSTED"&&<TransactionNoteEditor transactionId={r.id} narrative={r.narrative}/>}
-                      {r.entryStatus === "REVIEW" ? (
+                      {r.entryStatus==="OPENING"?<span className="badge neutral">Số dư chuyển sang</span>:r.entryStatus === "REVIEW" ? (
                         <EntryReview entry={r} funds={funds} />
                       ) : r.entryStatus === "MERGED" ? (
                         <span className="badge neutral">

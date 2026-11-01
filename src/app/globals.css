@@ -4189,3 +4189,8 @@ tfoot td {
 .fund-history-keywords.removed code { color:#a23643; background:#fbecef; }
 .fund-history-entry table { width:100%; table-layout:fixed; font-size:11px; }
 .fund-history-entry th, .fund-history-entry td { padding:5px 7px; white-space:pre-wrap; overflow-wrap:anywhere; vertical-align:top; }
+
+.fund-opening-note { display:block; margin-top:3px; font-size:10px; font-weight:400; color:#806653; white-space:normal; }
+.public-opening-balance { background:#fff6df; border:1px solid #e1cda0; border-radius:6px; padding:8px 10px; font-size:12px; margin:6px 0; color:#6e443c; }
+.public-opening-balance > div { display:flex; flex-wrap:wrap; gap:4px 16px; margin:4px 0; }
+.public-opening-balance small { display:block; font-size:11px; color:#806653; }

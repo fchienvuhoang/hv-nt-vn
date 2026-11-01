@@ -30,7 +30,7 @@ const cachedNavigation=unstable_cache(async()=>{
   const history=new Map(baseHistory.map(h=>[h.fundId!,{fundId:h.fundId,count:h._count,from:h._min.occurredAt?.toISOString()??null,to:h._max.occurredAt?.toISOString()??null}]));
   for(const a of allocatedHistory){const at=a.transaction.occurredAt.toISOString(),old=history.get(a.fundId);history.set(a.fundId,{fundId:a.fundId,count:(old?.count??0)+1,from:old?.from&&old.from<at?old.from:at,to:old?.to&&old.to>at?old.to:at})}
   return {groups:[...counts].map(([fundId,_count])=>({fundId,_count})),accounts,funds,total,history:[...history.values()]};
-},["transaction-navigation-global-v3"],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]});
+},["transaction-navigation-global-v5"],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]});
 // Share navigation metadata within a request and across REST reads for 20 seconds.
 export const transactionNavigationData=cache(cachedNavigation);
 

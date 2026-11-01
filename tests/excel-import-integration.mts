@@ -81,7 +81,9 @@ try{
   await assert.rejects(finish(legacyBatch.id),/tổng lịch sử cũ/);await finish(legacyBatch.id,{replaceLegacy:true,acceptMismatch:false});
   assert.equal((await db.fund.findUniqueOrThrow({where:{id:legacy.id}})).openingIncome,0n);
   assert.equal((await accountTotals()).find(x=>x.id===b.id)?.expected,5999n);
-  console.log("PASS: real XLSX staging, merged cells, resume/concurrent/re-upload idempotency, multi-account funds, Excel-bank matching in both orders, review holds, manual allocation protection, scoped transfers and legacy summary replacement");
+  const monthlyFile=await file([{name:"THÁNG 10 - TK MY",rows:[[1,`${today} 09:00`,"","older month","",999,""]]},{name:"THÁNG 11 - TK MY",rows:[[1,`${today} 10:00`,"","latest primary","",111,""]]},{name:"THÁNG 11 - TK TRÂM",rows:[[1,`${today} 11:00`,"","latest secondary","",222,""]]}]);
+ const monthly=await stageFundImport(target.id,monthlyFile,"test",{latestMonthOnly:true});assert.equal(monthly.length,2);assert.deepEqual(monthly.map(b=>b.sheetName),["THÁNG 11 - TK MY","THÁNG 11 - TK TRÂM"]);assert.equal(monthly[0].income,"111");assert.equal(monthly[1].income,"222");
+ console.log("PASS: real XLSX staging, merged cells, resume/concurrent/re-upload idempotency, multi-account funds, Excel-bank matching in both orders, review holds, manual allocation protection, scoped transfers and legacy summary replacement");
 }finally{
  globalThis.fetch=originalFetch;
  if(seeded){await db.auditLog.deleteMany();await db.syncLease.deleteMany();await db.syncRun.deleteMany();await db.transfer.deleteMany();await db.bankTransaction.deleteMany();await db.syncState.deleteMany();await db.fundImport.deleteMany();await db.fund.deleteMany();await db.bankAccount.deleteMany();}

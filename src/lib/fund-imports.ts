@@ -4,6 +4,7 @@ import { db } from "./db";
 import { serializable } from "./ledger";
 import {
   importFileHash,
+  importedOpeningBalance,
   readFundWorkbook,
   type ExcelEntry,
 } from "./fund-excel";
@@ -41,6 +42,7 @@ const dto = (b: Summary) => ({
   sourceExpense: b.sourceExpense?.toString() ?? null,
   createdAt: b.createdAt.toISOString(),
   sample: b.sample as unknown as ExcelEntry[],
+  openingBalance: importedOpeningBalance(b.sample as unknown as ExcelEntry[]).toString(),
   errors: b.errors as string[],
 });
 export type FundImportSummary = ReturnType<typeof dto>;
@@ -58,6 +60,7 @@ export async function stageFundImport(
   fundId: string,
   file: File,
   actor: Actor,
+  options:{latestMonthOnly?:boolean}={},
 ) {
   if (!/\.xlsx$/i.test(file.name) || file.size === 0 || file.size > 5_000_000)
     throw new Error(
@@ -69,7 +72,7 @@ export async function stageFundImport(
     throw new Error("Không tìm thấy thiện pháp");
   const bytes = new Uint8Array(await file.arrayBuffer()),
     hash = importFileHash(bytes);
-  const sheets = await readFundWorkbook(bytes, file.name);
+  const sheets = await readFundWorkbook(bytes, file.name,options);
   const fund = await db.fund.findUniqueOrThrow({ where: { id: fundId } });
   const accounts = await db.bankAccount.findMany();
   return serializable(async (tx) => {
@@ -134,9 +137,10 @@ export async function processFundImport(
         "File có dòng lỗi. Sửa các dòng được báo rồi tải lại trước khi nhập",
       );
     if (!batch.rowCount) throw new Error("File không có giao dịch hợp lệ");
+    const opening=importedOpeningBalance(batch.data as unknown as ExcelEntry[]);
     const mismatch =
-      (batch.sourceIncome !== null && batch.sourceIncome !== batch.income) ||
-      (batch.sourceExpense !== null && batch.sourceExpense !== batch.expense);
+      (batch.sourceIncome !== null && batch.sourceIncome !== batch.income+(opening>0n?opening:0n)) ||
+      (batch.sourceExpense !== null && batch.sourceExpense !== batch.expense+(opening<0n?-opening:0n));
     if (mismatch && !input.acceptMismatch)
       throw new Error(
         "Tổng tính từ giao dịch khác dòng tổng trong file. Cần xác nhận sau khi kiểm tra",
@@ -165,6 +169,13 @@ export async function processFundImport(
       });
     }
     if (batch.cursor === 0) {
+      const snapshot=(batch.data as unknown as ExcelEntry[]).find(r=>r.kind==="OPENING");
+      if(snapshot){
+        const existingOpening=await tx.bankTransaction.findFirst({where:{fundId:f.id,accountId,entryStatus:"OPENING",importId:{not:batch.id}},select:{id:true}});
+        if(existingOpening)throw new Error("Thiện pháp đã có số dư chuyển sang cho tài khoản này. Không nhập cộng thêm số dư của tháng khác.");
+        const oldHistory=await tx.bankTransaction.findFirst({where:{fundId:f.id,accountId,entryStatus:"POSTED",occurredAt:{lt:new Date(snapshot.at)}},select:{id:true}});
+        if(oldHistory)throw new Error("Đã có giao dịch lịch sử trước mốc số dư chuyển sang; không cộng hai lần.");
+      }
       const hasLegacy =
         accountId === f.accountId &&
         [f.openingIncome, f.openingExpense, f.openingTransferNet].some(
@@ -224,6 +235,11 @@ export async function processFundImport(
         })
       )
         continue;
+      if(row.kind==="OPENING"){
+        const saved=await tx.bankTransaction.create({data:{...createdStamp(actor),...updatedStamp(actor),accountId,sourceId,origin:"EXCEL",entryStatus:"OPENING",importId:batch.id,refId:"",amount:BigInt(row.amount),direction:row.direction,narrative:row.narrative,displayName:"Số dư chuyển sang",occurredAt:new Date(row.at),sourceHash:sourceId,source:row as unknown as Prisma.InputJsonValue,fundId:f.id,assignment:"MANUAL",matchReason:`Số dư đầu tháng từ ${batch.fileName} · ${batch.sheetName}, không phải giao dịch hùn phước mới`}});
+        await tx.auditLog.create({data:{...actorStamp(actor),action:"FUND_OPENING_BALANCE_IMPORTED",entityId:f.id,details:{transactionId:saved.id,importId:batch.id,accountId,amount:row.amount,direction:row.direction,asOf:row.at,file:batch.fileName,sheet:batch.sheetName,sourceRow:row.row}}});
+        added++;continue;
+      }
       const at = new Date(row.at),
         amount = BigInt(row.amount),
         start = startOfVietnamDay(localDate(at));

@@ -81,6 +81,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
             note="Đã tính cả điều chuyển nội bộ"
           />
         </div>
+        {BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Số dư chuyển sang đầu tháng: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={a.account}>TK {a.account}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính trong số dư thiện pháp. Đây là số dư từ các tháng trước, không phải khoản hùn phước mới.</small></div>}
         <div className="public-transfers-summary">
           <span>
             Điều chuyển vào: <strong>{vnd(fund.transferIn)}</strong>
@@ -165,6 +166,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
                         <p className="narrative">
                           {r.narrative || "Không có nội dung chuyển khoản"}
                         </p>
+                        {r.opening&&<span className="sheet-source">Số dư chuyển sang đầu tháng · đã tính trong số dư</span>}
                         <small>{r.name}</small>
                         {r.notes.map(note=><div key={note.id} className="transaction-public-note"><strong>Ghi chú quản trị:</strong> {note.text}<small>{dateTime(note.at)}</small></div>)}
                       </td>

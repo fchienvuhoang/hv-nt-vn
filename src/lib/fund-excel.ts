@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { normalize, localDate, parseSourceTime } from "./domain";
 export type ExcelEntry = {
   row: number;
+  kind?: "OPENING";
   at: string;
   amount: string;
   direction: "CREDIT" | "DEBIT";
@@ -177,6 +178,14 @@ export function parseFundGrid(
       }
       if (credit && debit)
         throw new Error("Một dòng có cả tiền vào và tiền ra");
+      if(!date&&/^(DIEU CHUYEN (SO DU )?(TU|THANG)|SO DU (DAU|CHUYEN))/.test(normalize(text))){
+        const month=/\bTHANG\s+(\d{1,2})(?:[\s./-]+((?:19|20)\d{2}))?\b/.exec(normalize(name));
+        if(!month||Number(month[1])<1||Number(month[1])>12)throw new Error("Dòng số dư chuyển sang cần tab có tên THÁNG n để xác định đầu kỳ");
+        if(result.rows.some(r=>r.kind==="OPENING"))throw new Error("Một bảng chỉ được có một dòng số dư chuyển sang");
+        const year=month[2]??localDate().slice(0,4);
+        result.rows.unshift({row:i+1,kind:"OPENING",at:parseExcelTime(`${year}-${month[1].padStart(2,"0")}-01`),amount:(credit||debit).toString(),direction:credit?"CREDIT":"DEBIT",narrative:text,displayName:"Số dư chuyển sang",refId:"",note:note<0?"":row[note]??""});
+        continue;
+      }
       const at = parseExcelTime(date);
       const direction = credit ? "CREDIT" : "DEBIT";
       if (text.length > 6000) throw new Error("Nội dung quá dài");
@@ -205,9 +214,20 @@ export function parseFundGrid(
   result.expense = expense.toString();
   return result;
 }
+export function latestMonthSheetNames(names:string[],referenceYear=Number(localDate().slice(0,4))){
+  const dated=names.flatMap(name=>{
+    const match=/\bTHANG\s+(\d{1,2})(?:[\s./-]+((?:19|20)\d{2}))?\b/.exec(normalize(name));
+    if(!match||Number(match[1])<1||Number(match[1])>12)return [];
+    return [{name,period:Number(match[2]??referenceYear)*12+Number(match[1])}];
+  });
+  if(!dated.length)return names;
+  const latest=Math.max(...dated.map(s=>s.period));
+  return dated.filter(s=>s.period===latest).map(s=>s.name);
+}
 export async function readFundWorkbook(
   bytes: Uint8Array,
   fileName: string,
+  options:{latestMonthOnly?:boolean}={},
 ): Promise<ParsedFundSheet[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(
@@ -215,13 +235,16 @@ export async function readFundWorkbook(
   );
   const sheets: ParsedFundSheet[] = [];
   let totalRows = 0;
+  const selectedNames=new Set(options.latestMonthOnly?latestMonthSheetNames(workbook.worksheets.map(s=>s.name)):workbook.worksheets.map(s=>s.name));
   for (const sheet of workbook.worksheets) {
-    if (sheet.rowCount > 10030 || sheet.columnCount > 80)
+    if(!selectedNames.has(sheet.name))continue;
+    const rowCount=sheet.rowCount,columnCount=sheet.columnCount;
+    if (rowCount > 10030 || columnCount > 80)
       throw new Error("Mỗi bảng tối đa 10.000 dòng và 80 cột");
     const grid: string[][] = [];
-    for (let i = 1; i <= sheet.rowCount; i++) {
+    for (let i = 1; i <= rowCount; i++) {
       const values: string[] = [];
-      for (let col = 1; col <= sheet.columnCount; col++) {
+      for (let col = 1; col <= columnCount; col++) {
         const cell = sheet.getCell(i, col);
         // ExcelJS repeats the master's value for merged cells. Only the master
         // is a real cell; otherwise a merged narrative can look like a debit.
@@ -252,3 +275,6 @@ export async function readFundWorkbook(
 export function importFileHash(bytes: Uint8Array) {
   return createHash("sha256").update(bytes).digest("hex");
 }
+
+/** Opening snapshots are balances, never new receipts or expenses. */
+export function importedOpeningBalance(rows:ExcelEntry[]){return rows.filter(r=>r.kind==="OPENING").reduce((sum,r)=>sum+(r.direction==="CREDIT"?1n:-1n)*BigInt(r.amount),0n)}

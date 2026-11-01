@@ -65,11 +65,11 @@ export async function appendTransactionNote(input:z.input<typeof noteSchema>,act
 }
 export async function fundTransactionList(input:{fundId:string;page?:number;q?:string;type?:string;account?:string}) {
   const fundId=id.parse(input.fundId),page=Math.max(1,Math.floor(input.page??1)),query=(input.q??"").trim().slice(0,100);
-  const where={...fundMembership(fundId),entryStatus:"POSTED",...(input.type==="CREDIT"||input.type==="DEBIT"?{direction:input.type as "CREDIT"|"DEBIT"}:{}),...(input.account?{accountId:id.parse(input.account)}:{}),...(query?{OR:[{narrative:{contains:query,mode:"insensitive" as const}},{displayName:{contains:query,mode:"insensitive" as const}},{refId:{contains:query,mode:"insensitive" as const}},{notes:{some:{text:{contains:query,mode:"insensitive" as const}}}}]}:{})};
+  const where={...fundMembership(fundId),entryStatus:{in:["POSTED","OPENING"]},...(input.type==="CREDIT"||input.type==="DEBIT"?{direction:input.type as "CREDIT"|"DEBIT"}:{}),...(input.account?{accountId:id.parse(input.account)}:{}),...(query?{OR:[{narrative:{contains:query,mode:"insensitive" as const}},{displayName:{contains:query,mode:"insensitive" as const}},{refId:{contains:query,mode:"insensitive" as const}},{notes:{some:{text:{contains:query,mode:"insensitive" as const}}}}]}:{})};
   const [rows,count]=await Promise.all([
     db.bankTransaction.findMany({where,include:{allocations:true,account:{select:{number:true}},notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*100,take:100}),
     db.bankTransaction.count({where}),
   ]);
-  return {page,count,rows:rows.map(r=>({id:r.id,amount:fundShare(r,fundId).toString(),direction:r.direction,narrative:r.narrative,displayName:r.displayName,refId:r.refId,at:r.occurredAt.toISOString(),account:r.account.number,accountId:r.accountId,updatedAt:r.updatedAt.toISOString(),notes:r.notes.map(n=>({id:n.id,text:n.text,actor:n.actorName??n.actor,at:n.createdAt.toISOString()}))}))};
+  return {page,count,rows:rows.map(r=>({id:r.id,opening:r.entryStatus==="OPENING",amount:fundShare(r,fundId).toString(),direction:r.direction,narrative:r.narrative,displayName:r.displayName,refId:r.refId,at:r.occurredAt.toISOString(),account:r.account.number,accountId:r.accountId,updatedAt:r.updatedAt.toISOString(),notes:r.notes.map(n=>({id:n.id,text:n.text,actor:n.actorName??n.actor,at:n.createdAt.toISOString()}))}))};
 }
 export type FundTransactionList = Awaited<ReturnType<typeof fundTransactionList>>;
