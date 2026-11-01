@@ -22,6 +22,33 @@ export async function scheduledSync(now = new Date()) {
   const deadline = Date.now() + Math.max(15000, Math.min(45000, Number(process.env.SYNC_BUDGET_MS) || 20000));
   const maxPages = Math.max(4, Math.min(30, Number(process.env.SYNC_MAX_PAGES) || 8));
   try {
+    const unpaused = await db.syncLease.deleteMany({
+      where: { id: "bank-sync", token: { startsWith: "excel-import-paused:" } }
+    });
+    if (unpaused.count > 0) {
+      await db.auditLog.create({
+        data: {
+          actor: "scheduler",
+          action: "BANK_SYNC_RESUMED",
+          entityId: "bank-sync",
+          details: {
+            reason: "Quản trị viên bật lại đồng bộ giao dịch từ 00:00 ngày 01/11/2026",
+            minimumSyncDate: BANK_SYNC_MIN_DATE,
+            unpausedCount: unpaused.count
+          }
+        }
+      });
+      const pausedJobs = await db.syncJob.findMany({
+        where: { targetDate: { gte: BANK_SYNC_MIN_DATE } }
+      });
+      for (const pj of pausedJobs) {
+        const reset = (pj.progress as unknown as Progress).map(stream => ({ ...stream, page: 1, done: false }));
+        await db.syncJob.update({
+          where: { id: pj.id },
+          data: { status: "QUEUED", progress: reset, calls: 0, pages: 0, inserted: 0, updated: 0, error: null }
+        });
+      }
+    }
     acquired = !!(await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('bank-sync',${token},(NOW() AT TIME ZONE 'UTC') + INTERVAL '120 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`);
     if (!acquired) {
       await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: "SKIPPED", finishedAt: new Date() } });

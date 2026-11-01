@@ -3673,7 +3673,8 @@ tfoot td {
 .sheet-table { min-width: 1240px; }
 .sheet-col-index { width: 34px; }
 .sheet-col-time { width: 124px; }
-.sheet-col-account { width: 48px; }
+.sheet-col-account { width: 112px; }
+.sheet-table .sheet-account-cell { white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
 .sheet-col-ref { width: 130px; }
 .sheet-col-money { width: 124px; }
 .sheet-col-fund { width: 126px; }

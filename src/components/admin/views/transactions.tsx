@@ -159,7 +159,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                     <td className="nowrap">
                       {r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.occurredAt)}
                     </td>
-                    <td className="nowrap" title={r.account.owner}>{accountLabel(r.account.number)}</td>
+                    <td className="sheet-account-cell" title={r.account.owner}>{accountLabel(r.account.number)}</td>
                     <td><span className="sheet-clip sheet-ref" title={r.refId}>{r.refId || "—"}</span></td>
                     <td className="sheet-content-cell">
                       <p className="sheet-narrative">{r.narrative || "Không có nội dung"}</p>

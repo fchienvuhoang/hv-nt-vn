@@ -376,3 +376,9 @@ Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản tr
 
 - Đã gỡ trang tổng hợp `/minh-bach`, lối vào cũ `/t` và endpoint danh mục `/api/public/funds`; giữ trang công khai từng thiện pháp `/t/[slug]` và REST chi tiết `/api/public/funds/[slug]`. Không còn liên kết quay về danh mục từ trang chi tiết.
 - Danh sách quản trị không còn nút Trang tổng hợp công khai hoặc icon mắt. Nút Trang công khai của từng thiện pháp dùng viền mảnh, nền trong suốt và chữ nhỏ nhẹ. Dữ liệu giao dịch và cấu hình công khai cũ giữ nguyên.
+
+### Mở lại đồng bộ ngân hàng từ 00:00 ngày 01/11/2026
+
+- Theo yêu cầu quản trị, cho phép đồng bộ tự động lấy các giao dịch ngân hàng phát sinh từ 00:00 ngày 01/11/2026 (giờ Việt Nam).
+- Tuyệt đối chặn mọi giao dịch trước mốc 01/11/2026 qua `BANK_SYNC_MIN_DATE`, `allowedBankSyncTime` và kiểm tra mốc ngày tại `fetchSourcePage` cùng `ingestBankPage`.
+- Khi kích hoạt đồng bộ, hệ thống tự động gỡ bỏ khóa bảo trì `excel-import-paused:`, ghi nhận audit `BANK_SYNC_RESUMED`, và đưa các job đồng bộ của ngày 01/11/2026 về hàng đợi `QUEUED` để quét đầy đủ các giao dịch phát sinh từ đầu ngày.
