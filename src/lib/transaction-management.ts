@@ -31,6 +31,7 @@ export async function reassignTransactions(input:BulkReassignment,actor:Actor) {
     for(const row of rows){
       if(row.entryStatus!=="POSTED"||(row.allocations.length?(!values.sourceFundId||fundShare(row,values.sourceFundId)<=0n):values.sourceFundId!==undefined&&row.fundId!==values.sourceFundId)||row.updatedAt.toISOString()!==versions.get(row.id))throw new Error("Có giao dịch vừa được sửa hoặc đổi thiện pháp. Chưa chuyển khoản nào; hãy tải lại và chọn lại.");
       if(!fundUsesAccount(target,row.accountId))throw new Error("Thiện pháp nhận không hỗ trợ tài khoản của giao dịch");
+      if(row.matchReason?.startsWith("Sai tài khoản nhận:")&&target.accountIds.length>0)throw new Error(`Giao dịch bị đánh dấu "Sai tài khoản nhận" chỉ được gán vào thiện pháp nhận đúng 1 tài khoản — thiện pháp "${target.code}" nhận nhiều tài khoản nên không hợp lệ.`);
     }
     const sourceFunds=await tx.fund.findMany({where:{id:{in:[...new Set(rows.flatMap(r=>r.fundId?[r.fundId]:[]))]}},select:{id:true,code:true,name:true}});
     const sourceLabels=new Map(sourceFunds.map(f=>[f.id,`${f.code} (${f.name})`]));

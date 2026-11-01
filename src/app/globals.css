@@ -4210,6 +4210,7 @@ tfoot td {
 .sheet-bulk-totals strong { color:#7b3040; font-size:12px; }
 .sheet-bulk-actions label { display:flex; flex:1; min-width:180px; flex-direction:column; gap:3px; font-size:10px; }
 .sheet-bulk-actions input, .sheet-bulk-actions select { height:30px; min-height:30px; padding:4px 7px; font-size:11px; width:100%; }
+.wrong-account-bulk-notice { width:100%; flex-basis:100%; margin:0; padding:6px 10px; font-size:11px; border-color:#d69d58; background:#fff6e2; color:#7a4110; }
 
 .fund-config-tabs { display:flex; gap:6px; border-bottom:1px solid #ddcbb7; padding-bottom:8px; margin-bottom:12px; }
 .fund-config-tabs button { padding:7px 12px; border:1px solid #ddcbb7; border-radius:5px; background:white; color:#735445; cursor:pointer; font-weight:600; }

@@ -45,12 +45,18 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
     const payload={...(params.pending==="1"?{sourceFundId:null}:params.fund?{sourceFundId:params.fund}:{}),targetFundId:target,reason:reason.trim(),rows:[...selected.values()].map(r=>({id:r.id,updatedAt:r.updatedAt.toISOString()}))};
     const signature=JSON.stringify(payload);if(operation.current?.signature!==signature)operation.current={signature,id:crypto.randomUUID()};
     setBusy(true);
-    try{const result=await bulkAssignTransactions({...payload,requestId:operation.current.id});if(result.error)throw new Error(result.error);toast(result.success??`Đã gán thủ công ${selected.size} giao dịch`);setSelection({scope:selectionScope,rows:new Map()});setReason("");operation.current=null}
+    try{const result=await bulkAssignTransactions({...payload,requestId:operation.current.id});if(result.error)throw new Error(result.error);toast(result.success??`Đã gán thủ công ${selected.size} giao dịch`);setSelection({scope:selectionScope,rows:new Map()});setReason("");setTarget("");operation.current=null}
     catch(error){toast(error instanceof Error?error.message:"Không thể gán giao dịch","error")}
     finally{setBusy(false)}
   }
   const rows=data?.rows??[],accounts=data?.accounts??bootstrap?.recency??[],funds=data?.funds??bootstrap?.funds??[];
   const historyCounts=new Map((data?.history??[]).map(group=>[group.fundId,group]));
+  const isWrongAccount=(r:SelectedRow)=>r.matchReason.startsWith("Sai tài khoản nhận:");
+  const selectedRows=[...selected.values()];
+  const wrongAccountRows=selectedRows.filter(isWrongAccount);
+  const hasWrongAccount=wrongAccountRows.length>0;
+  const eligibleFunds=funds.filter(f=>{const allAccountsOk=selectedRows.every(r=>fundUsesAccount(f,r.accountId));if(!allAccountsOk)return false;if(hasWrongAccount)return!f.accountIds||f.accountIds.length===0;return true;});
+  const effectiveTarget=eligibleFunds.some(f=>f.id===target)?target:"";
   const today=localDate(),totalCount=data?.total??0,pendingCount=data?.pending??0,count=data?.count??0;
   const baseParams = new URLSearchParams({
     view: "transactions",
@@ -126,9 +132,10 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
         </div>
         <fieldset className="sheet-bulk-actions" disabled={busy}>
           <div className="sheet-bulk-totals" aria-live="polite"><strong>Đã chọn {selected.size} giao dịch</strong><span>Thu: <b>{vnd([...selected.values()].filter(r=>r.direction==="CREDIT").reduce((sum,r)=>sum+r.amount,0n))}</b> · Chi: <b>{vnd([...selected.values()].filter(r=>r.direction==="DEBIT").reduce((sum,r)=>sum+r.amount,0n))}</b></span></div>
-          <label>Gán thủ công vào thiện pháp<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{funds.filter(f=>[...selected.values()].every(r=>fundUsesAccount(f,r.accountId))).map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select></label>
+          {hasWrongAccount&&<div className="notice wrong-account-bulk-notice" role="status"><strong>{wrongAccountRows.length} giao dịch</strong> trong selection bị đánh dấu <strong>Sai tài khoản nhận</strong> — chỉ được gán vào thiện pháp nhận đúng 1 tài khoản khớp với giao dịch đó. Nếu dropdown trống, hãy bỏ chọn các giao dịch từ tài khoản khác và gán riêng.</div>}
+          <label>Gán thủ công vào thiện pháp<select value={effectiveTarget} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{eligibleFunds.map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select></label>
           <label>Lý do chung / ghi chú công khai<input value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000} placeholder="Ví dụ: nội dung thiếu mã thiện pháp"/></label>
-          <button type="button" className="button primary small" disabled={!selected.size||!target||reason.trim().length<5||loading} onClick={assignSelected}>{busy?<><LoadingSpinner size={16}/>Đang gán…</>:`Gán ${selected.size} giao dịch`}</button>
+          <button type="button" className="button primary small" disabled={!selected.size||!effectiveTarget||reason.trim().length<5||loading} onClick={assignSelected}>{busy?<><LoadingSpinner size={16}/>Đang gán…</>:`Gán ${selected.size} giao dịch`}</button>
           <button type="button" className="button subtle small" disabled={!selected.size} onClick={()=>setSelection({scope:selectionScope,rows:new Map()})}>Bỏ chọn</button>
         </fieldset>
         <Pagination page={page} total={count} pageSize={pageSize} base={`/admin?${baseParams}`} />
