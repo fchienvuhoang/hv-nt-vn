@@ -1,3 +1,4 @@
+import {enqueueSyncFailure} from "./admin-push";
 import {effectiveSyncStart} from "./sync-boundary";
 import "server-only";
 import { actorStamp, type Actor } from "./actor";
@@ -171,6 +172,7 @@ export async function synchronize(actor: Actor) {
         finishedAt: new Date(),
       },
     });
+    await enqueueSyncFailure();
     throw error;
   } finally {
     await db.syncLease.deleteMany({ where: { id: "bank-sync", token } });

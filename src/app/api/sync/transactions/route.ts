@@ -1,3 +1,5 @@
+import {after} from "next/server";
+import {dispatchAdminPushSafely} from "@/lib/admin-push";
 import {BANK_SYNC_MIN_DATE,BANK_SYNC_MIN_ISO} from "@/lib/sync-boundary";
 import {ADMIN_LEDGER_TAG,PUBLIC_DIRECTORY_TAG,publicFundTag} from "@/lib/cache-tags";
 import { TRANSACTION_SUMMARY_TAG } from "@/lib/transaction-summary";
@@ -14,6 +16,7 @@ export async function POST(request: Request) {
   const actual = Buffer.from(request.headers.get("authorization") ?? "");
   const expected = Buffer.from(`Bearer ${secret}`);
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  after(dispatchAdminPushSafely);
   try {
     const result = await scheduledSync();
     if(result.balances?.some(b=>b.persisted))revalidateTag(TRANSACTION_SUMMARY_TAG,{expire:0});

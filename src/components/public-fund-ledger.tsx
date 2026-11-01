@@ -10,30 +10,43 @@ import { dateTime,vnd } from "@/lib/domain";
 import { publicQuery } from "@/lib/public-query";
 import type { PublicFundDTO } from "@/lib/public-data";
 const PUBLIC_PAGE_SIZE=100;
-export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:PublicFundDTO;initialKey:string}) {
+export function PublicFundLedger({slug}:{slug:string}) {
   const params=new URLSearchParams(usePublicSearch()),query=publicQuery({page:params.get("page"),type:params.get("type"),q:params.get("q")});
   const {direction,search}=query,key=JSON.stringify(query),base=`/t/${slug}`;
-  const [initialAt]=useState(()=>Math.min(Date.now(),Date.parse(initial.generatedAt)||0));
-  const cached=useRef(new Map([[initialKey,{fund:initial,at:initialAt}]]));
-  const [state,setState]=useState({key:initialKey,fund:initial,loading:false,error:""}),[retry,setRetry]=useState(0);
+  const cached=useRef(new Map<string,{fund:PublicFundDTO;at:number}>());
+  const [state,setState]=useState<{key:string;fund:PublicFundDTO|null;loading:boolean;error:string}>({key:"",fund:null,loading:true,error:""}),[retry,setRetry]=useState(0);
   useEffect(()=>{
+    const actual=new URLSearchParams(window.location.search);
+    if(JSON.stringify(publicQuery({page:actual.get("page"),type:actual.get("type"),q:actual.get("q")}))!==key)return;
     let alive=true;
     const controller=new AbortController();
     async function load(){
       const existing=cached.current.get(key);
       if(existing&&Date.now()-existing.at<30000&&!retry){setState({key,fund:existing.fund,loading:false,error:""});return;}
-      setState({key,fund:existing?.fund??initial,loading:true,error:""});
+      setState(previous=>({key,fund:existing?.fund??previous.fund,loading:true,error:""}));
       try{
         const response=await fetch(`/api/public/funds/${slug}?${new URLSearchParams({type:direction,q:search,page:String(query.page)})}`,{cache:"no-store",signal:controller.signal});
         const data=await response.json();if(!response.ok)throw new Error(data.error??"Không tải được giao dịch");
         if(!alive)return;
         cached.current.set(key,{fund:data,at:Date.now()});if(cached.current.size>20)cached.current.delete(cached.current.keys().next().value!);
         setState({key,fund:data,loading:false,error:""});
-      }catch(cause){if(alive)setState({key,fund:existing?.fund??initial,loading:false,error:cause instanceof Error?cause.message:"Không tải được giao dịch"})}
+      }catch(cause){if(alive)setState(previous=>({key,fund:existing?.fund??previous.fund,loading:false,error:cause instanceof Error?cause.message:"Không tải được giao dịch"}))}
     }
     void load();return()=>{alive=false;controller.abort()};
-  },[key,slug,direction,search,query.page,initial,retry]);
-  const fund=state.key===key?state.fund:initial,loading=state.key!==key||state.loading,error=state.key===key?state.error:"";
+  },[key,slug,direction,search,query.page,retry]);
+  useEffect(()=>{if(state.fund)document.title=`${state.fund.code} · ${state.fund.name} - Học viện nguyên thủy Việt Nam`;},[state.fund]);
+  const fund=state.fund,loading=state.key!==key||state.loading,error=state.key===key?state.error:"";
+  if(!fund)return <div className="public-site">
+    <header className="public-header"><Brand href={base}/></header>
+    <main className="public-detail public-compact" aria-busy={loading}>
+      <div className="fund-intro"><div className="eyebrow">HÀNH TRÌNH THIỆN LÀNH</div><h1>Sao kê thiện pháp</h1></div>
+      <div className="metrics">{["Tổng hùn phước","Tổng chi","Số dư khả dụng","Chi vượt quỹ"].map(label=><div className="metric" key={label}><span>{label}</span><strong aria-label="Đang tải">—</strong></div>)}</div>
+      <div className="public-ledger-card"><Section title="Danh sách hùn phước & khoản chi" note="Số điện thoại được che, giữ 3 số cuối để đối chiếu.">
+        {error?<div className="notice danger" role="alert">{error}<button className="button subtle" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:<LoadingIndicator label="Đang tải số liệu và giao dịch…" className="public-data-status"/>}
+      </Section></div>
+    </main>
+    <footer className="public-footer"><Brand href={base}/></footer>
+  </div>;
   return (
     <div className="public-site">
       <header className="public-header">

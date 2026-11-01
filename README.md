@@ -394,3 +394,15 @@ Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản tr
 - Theo yêu cầu quản trị, cho phép đồng bộ tự động lấy các giao dịch ngân hàng phát sinh từ 00:00 ngày 01/11/2026 (giờ Việt Nam).
 - Tuyệt đối chặn mọi giao dịch trước mốc 01/11/2026 qua `BANK_SYNC_MIN_DATE`, `allowedBankSyncTime` và kiểm tra mốc ngày tại `fetchSourcePage` cùng `ingestBankPage`.
 - Khi kích hoạt đồng bộ, hệ thống tự động gỡ bỏ khóa bảo trì `excel-import-paused:`, ghi nhận audit `BANK_SYNC_RESUMED`, và đưa các job đồng bộ của ngày 01/11/2026 về hàng đợi `QUEUED` để quét đầy đủ các giao dịch phát sinh từ đầu ngày.
+
+### PWA và thông báo quản trị
+
+Manifest `/manifest.webmanifest`, icon và `/sw.js` cho phép cài ứng dụng từ trình duyệt (iPhone: Chia sẻ → Thêm vào Màn hình chính). Service worker không lưu trang quản trị hay dữ liệu tài chính vào cache.
+
+Trong thanh đầu trang quản trị, **Thông báo** cho phép chọn độc lập: sai tài khoản nhận, cần phân loại, đồng bộ lỗi. Lựa chọn lưu theo email quản trị; bật/tắt nhận riêng trên từng thiết bị. Quyền trình duyệt chỉ được hỏi khi bấm bật; iOS cần mở app đã cài (16.4+). Nút **Gửi thử** kiểm tra thiết bị, giới hạn một lần/phút.
+
+Cấu hình ba biến server `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (URL HTTPS của website hoặc mailto hợp lệ). Sinh một cặp khóa bằng `web-push.generateVAPIDKeys()` và giữ nguyên qua các deployment. Chạy migration `20261101120000_admin_web_push` trước deploy. Không đưa private key ra client.
+
+Giao dịch ngân hàng mới được xếp hàng thông báo trong cùng transaction nhập dữ liệu. Hai loại giao dịch không trùng nhau. Lỗi đồng bộ giao dịch hoặc tổng nguồn được gộp theo cửa sổ 30 phút. Webhook đồng bộ xử lý hàng đợi sau response bằng `after()`, kể cả lượt sync lỗi/bận. Chỉ gửi cho email vẫn còn trong `ADMIN_EMAILS` và vẫn bật loại thông báo tương ứng; bỏ qua giao dịch đã xử lý. Dịch vụ push lỗi tạm thời được thử tối đa 6 lần ở các lượt cron tiếp theo; endpoint hết hạn (404/410) bị xóa. Hàng đợi được giữ tối đa 7 ngày. Không gửi lại lịch sử khi vừa bật. Thông báo chỉ có số lượng, không có số tiền/tên/nội dung chuyển khoản. Push phụ thuộc mạng, quyền hệ điều hành và webhook đang chạy; không phải kênh báo động đảm bảo giao nhận.
+
+Kiểm tra: `npx tsx --test tests/push-policy.test.ts`; chạy `tests/admin-push-integration.mts` với `--conditions=react-server --import tsx` và `DATABASE_URL` trỏ tới DB localhost rỗng tên bắt đầu `hvntvn_test`. Test dùng transport giả, không gửi thông báo thật.
