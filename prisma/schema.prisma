@@ -57,6 +57,7 @@ model Fund {
   name               String
   slug               String     @unique
   description        String     @default("")
+  sourceUrl          String     @default("")
   keywords           String[]
   status             FundStatus @default(ACTIVE)
   publicListed       Boolean    @default(false)

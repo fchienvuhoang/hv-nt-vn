@@ -12,7 +12,6 @@ import {
   ExternalLink,
   Settings2,
   Plus,
-  FileUp,
   MoreHorizontal,
   List,
 } from "lucide-react";
@@ -172,12 +171,10 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                         <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
                           <Settings2 size={14} />Cấu hình
                         </AdminDialogButton>
-                        <details className="fund-secondary-actions">
+                        {f.sourceUrl && <details className="fund-secondary-actions">
                           <summary title="Thao tác phụ" aria-label={`Thao tác phụ cho ${f.code}`}><MoreHorizontal size={17}/></summary>
-                          <AdminDialogButton kind="import-fund" fundId={f.id} className="button subtle small">
-                            <FileUp size={13}/>Nhập Excel
-                          </AdminDialogButton>
-                        </details>
+                          <a className="button subtle small" href={f.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`Mở Excel nguồn ${f.code} (tab mới)`}><ExternalLink size={13}/>Excel nguồn</a>
+                        </details>}
 
                       </div>
                     </td>

@@ -4,7 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 const actions=["FUND_CREATED","FUND_UPDATED","Hiển thị trên trang Minh bạch","Ẩn khỏi trang Minh bạch","Ghim thiện pháp","Bỏ ghim thiện pháp"];
 function record(value:unknown):Record<string,unknown>{return value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{}}
 function words(value:unknown):string[]{return Array.isArray(value)?value.filter((v):v is string=>typeof v==="string"):[]}
-const fields=[ ["code","Mã thiện pháp"],["name","Tên thiện pháp"],["status","Trạng thái"],["description","Mô tả"],["publicListed","Hiển thị trang Minh bạch"] ] as const;
+const fields=[ ["code","Mã thiện pháp"],["name","Tên thiện pháp"],["status","Trạng thái"],["description","Mô tả"],["sourceUrl","Link Excel nguồn"],["publicListed","Hiển thị trang Minh bạch"] ] as const;
 function display(key:string,value:unknown){if(value===undefined)return "Không có dữ liệu cũ";if(value===null||value==="")return "(trống)";if(key==="status")return ({ACTIVE:"Đang hoạt động",PAUSED:"Tạm dừng",COMPLETED:"Hoàn thành"} as Record<string,string>)[String(value)]??String(value);if(typeof value==="boolean")return value?"Bật":"Tắt";return String(value)}
 export function describeFundChange(action:string,details:Prisma.JsonValue){
   const data=record(details),created=action==="FUND_CREATED",before=record(data.before),after=created?data:record(data.after);

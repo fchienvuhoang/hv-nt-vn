@@ -45,6 +45,7 @@ const fundSchema = z.object({
   code,
   name: z.string().trim().min(3).max(200),
   description: z.string().trim().max(3000),
+  sourceUrl: z.string().trim().max(2000).refine(value => !value || (URL.canParse(value) && ["https:", "http:"].includes(new URL(value).protocol)), "Link phải bắt đầu bằng https:// hoặc http://").optional(),
   keywords: z.string().max(3000),
   status,
 });
@@ -136,6 +137,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
       const rules = await tx.fund.findMany({ select: { id: true, code: true, name: true, keywords: true } });
       const fields = {
         ...data, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
+        sourceUrl: data.sourceUrl ?? existing?.sourceUrl ?? "",
         accountIds: existing?.accountIds ?? accounts.filter(a => a.id !== accountId).map(a => a.id),
         keywords: validateFundKeywords(data.code, data.keywords, rules, fundId),
       };
@@ -151,6 +153,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
             keywords: before.keywords,
             status: before.status,
             description: before.description,
+            sourceUrl: before.sourceUrl,
             publicListed: before.publicListed,
           },
           after: fields,

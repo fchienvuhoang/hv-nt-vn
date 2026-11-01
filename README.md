@@ -298,3 +298,35 @@ Giữ 85 ghi chú gốc TP54. Dòng 276 của tab TP54- TK Trâm “Điều chuy
 - HTTB chỉ ghi nhận TK Mỹ 0572; PSCD chỉ ghi nhận TK Trâm 0856. Hai thiện pháp có accountIds rỗng và accountId trỏ đúng tài khoản được phép; các thiện pháp khác tiếp tục dùng chung.
 - Sửa cấu hình thiện pháp giữ nguyên phạm vi đã cấu hình, không tự mở lại cả hai tài khoản. Form hiển thị tài khoản thực tế được phép, không cho chọn. Import Excel trái tài khoản của quỹ một tài khoản bị chặn; phân loại, gán tay và điều chuyển dùng chung kiểm tra fundUsesAccount.
 - Cấu hình đã cập nhật có audit FUND_UPDATED và sao lưu riêng tư. Khoản Excel HTTB 1.564.000₫ ở TK Trâm được giữ nguyên chờ quản trị viên quyết định xử lý, không tự thay đổi tiền đã nhập.
+
+### HTTB — thay nguồn sai bằng file chuẩn ngày 01/11/2026
+
+- Theo yêu cầu quản trị, nguồn chuẩn là https://docs.google.com/spreadsheets/d/1aNOFIqneUEoIf3Uvx3y344vg5W9vYjpMT0AiaIjEK3U/edit?gid=2039646716 ; tab THÁNG 11, TK Mỹ 0572, dòng 4 chuyển số dư tháng 10: 71.309.382₫, khớp tổng F3/H3, chi 0₫.
+- Đã thay hai OPENING từ nguồn cũ nhập nhầm (Mỹ 8.061.727₫ và Trâm 1.564.000₫) bằng một OPENING/CREDIT 71.309.382₫ tại đầu tháng 11 giờ Việt Nam. Hai batch cũ CANCELLED và giữ nguyên dữ liệu nguồn để tra cứu; batch chuẩn COMPLETE, chống nhập trùng theo fileHash + sheetName. Nội dung này thay thế số dư HTTB ghi ở các mục lịch sử phía trên.
+- Không nhập cộng các tab tháng 8–10 vì đã nằm trong số dư chuyển sang. HTTB sau thay: hùn phước/số dư 71.309.382₫, chi 0₫, chỉ TK Mỹ. Giữ cấu hình quỹ, từ khóa, quyền công khai/ghim và danh tính người cập nhật.
+- Sao lưu XLSX và dữ liệu trước/sau riêng tư, audit HTTB_WRONG_SOURCE_REPLACED_WITH_STANDARD. Thay atomic trong transaction Serializable; kiểm tra hash xác nhận mọi giao dịch ngoài hai dòng cũ và tổng các quỹ khác không đổi.
+
+### Link Excel nguồn của thiện pháp
+
+- Mỗi thiện pháp có `sourceUrl` riêng, chỉnh trong Cấu hình và lưu qua REST API hiện có. Link **Excel nguồn** nằm cuối nhóm thao tác phụ (dấu …), dùng kiểu nút phụ nhỏ và mở tab mới; chỉ xuất hiện trong quản trị, không thêm vào dữ liệu trang công khai. Nút Nhập Excel đã gỡ khỏi cột Thao tác theo yêu cầu; quỹ chưa có link nguồn không hiện menu phụ trống. Backend chỉ nhận URL HTTP/HTTPS hoặc trống, ghi thay đổi trong lịch sử cấu hình.
+- Đã gắn link từ nhật ký nhập cho ANTONG, BATCOMTHIENPHAP, HTTB, KATHINA2, TP54, TP63, TP97, TP112, TP120, TP121. HTTB trỏ file chuẩn mới nhất; file Trai tăng/Đặt bát/Dâng tứ sự trước đây gán nhầm HTTB nay gắn vào TDTS để tra cứu. Các thiện pháp chưa xác định nguồn giữ trống; không thay đổi dữ liệu tiền.
+
+### Xóa lượt tự đồng bộ ngày 01/11/2026 theo yêu cầu quản trị
+
+- Đã sao lưu rồi xóa 61 giao dịch BANK được nhập trong ngày 01/11 giờ Việt Nam (14 TK Mỹ, 47 TK Trâm), cùng 6 ghi chú phụ thuộc; không có allocation, điều chuyển hay giao dịch Excel gộp phụ thuộc. Kiểm tra hash trong transaction Serializable xác nhận mọi giao dịch còn lại, gồm toàn bộ Excel, giữ nguyên.
+- Audit TODAY_AUTO_BANK_TRANSACTIONS_REMOVED lưu danh sách ID, backup và phạm vi. Giữ lịch sử lần đồng bộ cũ để tra cứu; số inserted trong lịch sử là kết quả lúc chạy, không phải số giao dịch còn tồn tại.
+- Đặt lại khóa `bank-sync` với token `excel-import-paused:user-request-remove-bank-20261101:*` để chặn webhook nhập lại khi người dùng đang tắt cron. Chỉ mở khóa khi quản trị yêu cầu bật đồng bộ trở lại; deploy code không tự xóa khóa này.
+
+### SK — Tủ thuốc Tăng đoàn, nhập nguồn ngày 01/11/2026
+
+- Nguồn: https://docs.google.com/spreadsheets/d/1hNxL-TdfR2uj6nkrQC7nKQ0SmcTwE3xYj4UXXcQCT4A/edit ; tab THÁNG 11, TK Trâm 0856, dòng 4 chuyển từ tháng 10: 1.920.000₫. Đối chiếu tháng 9 thu 520.000₫ và tháng 10 thu thêm 1.400.000₫, không chi, khớp số dư tháng 11.
+- Nhập một OPENING/CREDIT tại đầu tháng 11 giờ Việt Nam, không cộng lại lịch sử tháng 9–10. Hùn phước/số dư SK = 1.920.000₫, chi 0₫. Gắn sourceUrl để mở Excel nguồn trong menu thao tác phụ; giữ nguyên cấu hình và phạm vi tài khoản hiện có của quỹ.
+- Backup nguồn và dữ liệu trước/sau riêng tư, audit SK_SOURCE_SPREADSHEET_IMPORTED; transaction Serializable kiểm tra mọi giao dịch trước đó và tổng các quỹ khác không đổi. Khóa đồng bộ ngân hàng giữ nguyên; không gọi API lấy giao dịch ngân hàng.
+
+### HOCBONG — Học bổng Tăng đoàn, nhập nguồn ngày 01/11/2026
+
+- Nguồn: https://docs.google.com/spreadsheets/d/1_XhwB1qnInaMls5noUDXiSXD0atCmw6h0qo6fhWpzIw/edit ; tab THÁNG 11- TK My, TK Mỹ 0572, dòng 4 số dư âm 9.784.000₫. Đối chiếu tháng 8 thu 3.368.000₫, tháng 9 thu 1.380.000₫/chi 16.000.000₫, tháng 10 thu 1.468.000₫: khớp số âm chuyển tháng 11.
+- Nhập một OPENING/DEBIT 9.784.000₫ đầu tháng 11 giờ Việt Nam, giữ openingCredit âm trong metadata nguồn, không cộng lại lịch sử tháng 8–10. Số dư signed -9.784.000₫, khả dụng 0₫, chi vượt quỹ 9.784.000₫. Gắn link Excel nguồn; cấu hình quỹ giữ nguyên.
+- Backup XLSX và trước/sau riêng tư; audit HOCBONG_SOURCE_SPREADSHEET_IMPORTED. Transaction Serializable xác nhận mọi giao dịch cũ và tổng các quỹ khác không đổi; khóa đồng bộ ngân hàng giữ nguyên.
+
+Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản trị: accountId = TK 0856, accountIds rỗng; giữ slug cũ để link công khai tiếp tục hoạt động. Đã kiểm tra không có giao dịch/phân bổ trái tài khoản, sao lưu cấu hình và ghi audit FUND_UPDATED; số dư 1.920.000₫ giữ nguyên.
