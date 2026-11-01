@@ -4143,6 +4143,12 @@ tfoot td {
 .fund-secondary-actions > summary:hover, .fund-secondary-actions > summary:focus-visible { background:#f1eadd; color:#733343; }
 .fund-secondary-actions[open] { display:flex; }
 .fund-secondary-actions .button { font-size:10px; color:#806b59; }
+.fund-source-cell .button { font-size:10px; color:#806b59; white-space:nowrap; }
+.fund-transaction-account-tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.fund-transaction-account-tabs > button { flex:1; min-width:180px; display:flex; flex-direction:column; gap:5px; padding:12px 14px; text-align:left; border:1px solid #ded3c5; border-radius:8px; background:#fcfaf7; color:#685547; cursor:pointer; }
+.fund-transaction-account-tabs > button[aria-selected="true"] { border-color:#7b3040; background:#f7eceb; color:#7b3040; }
+.fund-transaction-account-tabs > button:focus-visible { outline:2px solid #c58a32; outline-offset:2px; }
+.fund-transaction-account-tabs small { font-size:11px; }
 
 /* The transaction ledger grows with its rows; the document owns vertical scrolling. */
 .workspace-main:has(.transaction-sheet) { overflow: visible; }

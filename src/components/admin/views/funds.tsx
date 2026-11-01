@@ -12,7 +12,6 @@ import {
   ExternalLink,
   Settings2,
   Plus,
-  MoreHorizontal,
   List,
 } from "lucide-react";
 import type { AdminBootstrap } from "@/lib/admin-read-model";
@@ -125,6 +124,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                   <th className="align-right">Thao tác</th>
                   <th>Người tạo</th>
                   <th>Người cập nhật</th>
+                  <th>Excel nguồn</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,15 +171,12 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                         <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
                           <Settings2 size={14} />Cấu hình
                         </AdminDialogButton>
-                        {f.sourceUrl && <details className="fund-secondary-actions">
-                          <summary title="Thao tác phụ" aria-label={`Thao tác phụ cho ${f.code}`}><MoreHorizontal size={17}/></summary>
-                          <a className="button subtle small" href={f.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`Mở Excel nguồn ${f.code} (tab mới)`}><ExternalLink size={13}/>Excel nguồn</a>
-                        </details>}
 
                       </div>
                     </td>
                     <td><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
                     <td><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
+                    <td className="fund-source-cell">{f.sourceUrl ? <a className="button subtle small" href={f.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`Mở Excel nguồn ${f.code} (tab mới)`}><ExternalLink size={13}/>Excel nguồn</a> : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -200,9 +197,9 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     {vnd(totals.availableBalance)}
                   </td>
                   <td className={`money align-right nowrap${totals.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(totals.excessExpense)}</td>
-                  <td colSpan={3} />
+                  <td colSpan={4} />
                 </tr>
-                <tr><td colSpan={11} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
+                <tr><td colSpan={12} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
               </tfoot>
             </table>
           </div>

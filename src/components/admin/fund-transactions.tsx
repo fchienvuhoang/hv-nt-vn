@@ -7,20 +7,36 @@ import { dateTime, vnd } from "@/lib/domain";
 import { useToast } from "@/components/toasts";
 type Row=FundTransactionList["rows"][number];
 export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;active:boolean;funds:{id:string;code:string;name:string}[];accounts:{id:string;number:string}[]}) {
-  const [data,setData]=useState<FundTransactionList>({rows:[],count:0,page:1}),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
+  const [data,setData]=useState<FundTransactionList>({rows:[],count:0,page:1,summary:{total:{count:0,income:"0",expense:"0"},byAccount:[]}}),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
   const [page,setPage]=useState(1),[query,setQuery]=useState(""),[draft,setDraft]=useState(""),[type,setType]=useState(""),[account,setAccount]=useState(""),[reload,setReload]=useState(0);
   const [selected,setSelected]=useState<Map<string,Row>>(new Map()),[target,setTarget]=useState(""),[reason,setReason]=useState("");
   const [editing,setEditing]=useState(""),[note,setNote]=useState("");
   const request=useRef(0),operation=useRef<{signature:string;id:string}|null>(null),noteOperation=useRef<{signature:string;id:string}|null>(null);
   const toast=useToast();
+  const [accountReady,setAccountReady]=useState(false);
+  const lastReload=useRef(0);
+  useEffect(()=>{
+    if(!active)return;
+    const restore=()=>{const params=new URL(window.location.href).searchParams;const value=params.get("txFund")===fundId?params.get("txAccount")??"":"";setAccount(accounts.some(a=>a.id===value)?value:"");setPage(1);setAccountReady(true)};
+    restore();window.addEventListener("popstate",restore);
+    return()=>window.removeEventListener("popstate",restore);
+  },[active,fundId,accounts]);
+  function chooseAccount(value:string){
+    if(value===account)return;
+    const url=new URL(window.location.href);url.searchParams.set("txFund",fundId);
+    if(value)url.searchParams.set("txAccount",value);else url.searchParams.delete("txAccount");
+    window.history.pushState(window.history.state,"",url.pathname+url.search);
+    setAccount(value);setPage(1);setEditing("");
+  }
   useEffect(()=>{
     const current=++request.current;
     let cancelled=false;
-    if(!active)return;
+    if(!active||!accountReady)return;
     async function load(){
       setLoading(true);setError("");
       try{
-        const result=await getFundTransactions({fundId,page,q:query,type,account});
+        const force=reload!==lastReload.current;lastReload.current=reload;
+        const result=await getFundTransactions({fundId,page,q:query,type,account},force);
         if(cancelled||current!==request.current)return;
         if(result.error||!result.data)throw new Error(result.error??"Không tải được giao dịch");
         setData(result.data);
@@ -29,7 +45,7 @@ export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;a
     }
     void load();
     return()=>{cancelled=true};
-  },[fundId,active,page,query,type,account,reload,toast]);
+  },[fundId,active,accountReady,page,query,type,account,reload,toast]);
   const rows=[...selected.values()],income=rows.reduce((n,r)=>n+(r.direction==="CREDIT"?BigInt(r.amount):0n),0n),expense=rows.reduce((n,r)=>n+(r.direction==="DEBIT"?BigInt(r.amount):0n),0n);
   const selectable=data.rows.filter(r=>!r.opening);
   const allOnPage=selectable.length>0&&selectable.every(r=>selected.has(r.id));
@@ -63,11 +79,13 @@ export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;a
     finally{setBusy(false)}
   }
   return <div className="fund-transaction-workspace">
+    <div className="fund-transaction-account-tabs" role="tablist" aria-label="Giao dịch theo tài khoản">
+      {[{id:"",label:"Tổng"},...accounts.map(a=>({id:a.id,label:`TK ${a.number} – ${a.number==="0572"?"Mỹ":a.number==="0856"?"Trâm":a.number}`}))].map(tab=>{const total=tab.id?data.summary.byAccount.find(a=>a.accountId===tab.id):data.summary.total;return <button key={tab.id} type="button" role="tab" aria-selected={account===tab.id} aria-controls="fund-transaction-results" disabled={busy} onClick={()=>chooseAccount(tab.id)}><strong>{tab.label}</strong><span>{total?.count??0} giao dịch</span><small>Thu {vnd(total?.income??"0")} · Chi {vnd(total?.expense??"0")}</small><small>Số dư {vnd(BigInt(total?.income??"0")-BigInt(total?.expense??"0"))}</small></button>})}
+    </div>
     <div className="notice">Chọn các giao dịch để đổi thiện pháp. Lý do chung sẽ xuất hiện công khai ở từng khoản; nội dung gốc, số tiền và tài khoản sao kê được giữ nguyên. Mỗi lần tối đa 500 giao dịch.</div>
     <form className="fund-transaction-filters" onSubmit={event=>{event.preventDefault();setQuery(draft);setPage(1);setReload(n=>n+1)}}>
       <input aria-label="Tìm giao dịch trong thiện pháp" value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Nội dung, người chuyển, mã giao dịch hoặc ghi chú…" maxLength={100} disabled={busy}/>
       <select aria-label="Loại giao dịch" value={type} disabled={busy} onChange={e=>{setType(e.target.value);setPage(1)}}><option value="">Thu & chi</option><option value="CREDIT">Hùn phước</option><option value="DEBIT">Khoản chi</option></select>
-      <select aria-label="Tài khoản giao dịch" value={account} disabled={busy} onChange={e=>{setAccount(e.target.value);setPage(1)}}><option value="">Cả hai tài khoản</option>{accounts.map(a=><option key={a.id} value={a.id}>{a.number}</option>)}</select>
       <button className="button subtle small" disabled={busy||loading}>Tìm / tải lại</button>
     </form>
     <div className="bulk-selection-summary" aria-live="polite"><strong>Đã chọn {selected.size} giao dịch · Tổng số tiền {vnd(income+expense)}</strong><span>Thu: <b>{vnd(income)}</b> · Chi: <b>{vnd(expense)}</b> · Chênh lệch thu − chi: <b>{vnd(income-expense)}</b></span>{accounts.map(a=>{const own=rows.filter(r=>r.accountId===a.id);return own.length>0&&<small key={a.id}>TK {a.number}: {own.length} khoản · Thu {vnd(own.filter(r=>r.direction==="CREDIT").reduce((n,r)=>n+BigInt(r.amount),0n))} · Chi {vnd(own.filter(r=>r.direction==="DEBIT").reduce((n,r)=>n+BigInt(r.amount),0n))}</small>})}<button type="button" className="button subtle small" disabled={busy||!selected.size} onClick={()=>setSelected(new Map())}>Bỏ chọn tất cả</button></div>
@@ -78,7 +96,7 @@ export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;a
     </fieldset>
     {error&&<div className="notice danger" role="alert">{error}</div>}
     <p className="fund-transaction-count">{loading?<LoadingIndicator compact label="Đang tải giao dịch…"/>:`${data.count.toLocaleString("vi-VN")} giao dịch · Trang ${data.page} · 100 dòng/trang`}</p>
-    <div className="table-scroll table-card fund-transaction-table" aria-busy={loading}>
+    <div id="fund-transaction-results" role="tabpanel" className="table-scroll table-card fund-transaction-table" aria-busy={loading}>
       <table><thead><tr><th><input type="checkbox" aria-label="Chọn toàn bộ giao dịch trang này" checked={allOnPage} disabled={loading||busy||!selectable.length} onChange={()=>setSelected(previous=>{const next=new Map(previous);for(const row of selectable){if(allOnPage)next.delete(row.id);else if(next.size<500)next.set(row.id,row)}return next})}/></th><th>Thời gian / TK</th><th>Nội dung gốc / ghi chú công khai</th><th className="align-right">Số tiền</th><th>Thao tác</th></tr></thead><tbody>
         {data.rows.map(row=><tr key={row.id} className={selected.has(row.id)?"bulk-selected":""}><td><input type="checkbox" aria-label={`Chọn giao dịch ${row.refId||row.id}`} checked={selected.has(row.id)} disabled={busy||loading||row.opening} onChange={()=>toggle(row)}/></td><td>{row.dateUnknown?"Chưa có ngày trong Excel":dateTime(row.at)}<small>TK {row.account} · {row.refId}</small></td><td><p className="sheet-narrative">{row.narrative||"Không có nội dung"}</p>{row.opening&&<span className="sheet-source">Số dư chuyển sang đầu tháng</span>}<small>{row.displayName}</small>{row.notes.map(n=><div key={n.id} className="transaction-admin-note"><strong>Ghi chú quản trị:</strong> {n.text}<small>{n.actor} · {dateTime(n.at)}</small></div>)}{editing===row.id&&<div className="inline-note-editor"><label>Ghi chú hiển thị công khai<textarea value={note} onChange={e=>setNote(e.target.value)} maxLength={2000} rows={2} disabled={busy}/></label><button type="button" className="button primary small" disabled={busy||note.trim().length<3} onClick={()=>saveNote(row)}>Lưu ghi chú</button><button type="button" className="button subtle small" disabled={busy} onClick={()=>setEditing("")}>Hủy</button></div>}</td><td className="money align-right nowrap">{row.direction==="CREDIT"?"+":"−"}{vnd(row.amount)}</td><td>{row.opening?<span className="badge neutral">Số dư chuyển sang</span>:<button type="button" className="button subtle small" disabled={busy} onClick={()=>{setEditing(row.id);setNote("")}}>Thêm ghi chú</button>}</td></tr>)}
         {!loading&&!data.rows.length&&<tr><td colSpan={5}>Không có giao dịch phù hợp.</td></tr>}

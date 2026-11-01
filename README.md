@@ -308,7 +308,7 @@ Giữ 85 ghi chú gốc TP54. Dòng 276 của tab TP54- TK Trâm “Điều chuy
 
 ### Link Excel nguồn của thiện pháp
 
-- Mỗi thiện pháp có `sourceUrl` riêng, chỉnh trong Cấu hình và lưu qua REST API hiện có. Link **Excel nguồn** nằm cuối nhóm thao tác phụ (dấu …), dùng kiểu nút phụ nhỏ và mở tab mới; chỉ xuất hiện trong quản trị, không thêm vào dữ liệu trang công khai. Nút Nhập Excel đã gỡ khỏi cột Thao tác theo yêu cầu; quỹ chưa có link nguồn không hiện menu phụ trống. Backend chỉ nhận URL HTTP/HTTPS hoặc trống, ghi thay đổi trong lịch sử cấu hình.
+- Mỗi thiện pháp có `sourceUrl` riêng, chỉnh trong Cấu hình và lưu qua REST API hiện có. Link **Excel nguồn** nằm trong cột riêng cuối bảng, sau Người cập nhật, dùng kiểu nút phụ nhỏ và mở tab mới; chỉ xuất hiện trong quản trị, không thêm vào dữ liệu trang công khai. Nút Nhập Excel đã gỡ khỏi cột Thao tác theo yêu cầu; quỹ chưa có link nguồn hiển thị dấu —. Backend chỉ nhận URL HTTP/HTTPS hoặc trống, ghi thay đổi trong lịch sử cấu hình.
 - Đã gắn link từ nhật ký nhập cho ANTONG, BATCOMTHIENPHAP, HTTB, KATHINA2, TP54, TP63, TP97, TP112, TP120, TP121. HTTB trỏ file chuẩn mới nhất; file Trai tăng/Đặt bát/Dâng tứ sự trước đây gán nhầm HTTB nay gắn vào TDTS để tra cứu. Các thiện pháp chưa xác định nguồn giữ trống; không thay đổi dữ liệu tiền.
 
 ### Xóa lượt tự đồng bộ ngày 01/11/2026 theo yêu cầu quản trị
@@ -330,3 +330,21 @@ Giữ 85 ghi chú gốc TP54. Dòng 276 của tab TP54- TK Trâm “Điều chuy
 - Backup XLSX và trước/sau riêng tư; audit HOCBONG_SOURCE_SPREADSHEET_IMPORTED. Transaction Serializable xác nhận mọi giao dịch cũ và tổng các quỹ khác không đổi; khóa đồng bộ ngân hàng giữ nguyên.
 
 Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản trị: accountId = TK 0856, accountIds rỗng; giữ slug cũ để link công khai tiếp tục hoạt động. Đã kiểm tra không có giao dịch/phân bổ trái tài khoản, sao lưu cấu hình và ghi audit FUND_UPDATED; số dư 1.920.000₫ giữ nguyên.
+
+### ANTONG — nhập lại theo yêu cầu mới ngày 01/11/2026
+
+- Quản trị gửi lại nguồn https://docs.google.com/spreadsheets/d/17ou0OAatD0oI4gvqixBuNQRqkGRcVpKc6SxLN0TAwU0/edit để nhập Ấn Tống, thay cho quyết định tạm gỡ trước đó. Tab THÁNG 11- TK My, TK Mỹ 0572, số dư âm 11.579.561₫; đối chiếu tháng 8 thu 8.733.295₫, tháng 9 thu 22.892.790₫/chi 78.600.000₫, tháng 10 thu 35.394.354₫: khớp số dư chuyển tháng 11.
+- Tạo một OPENING/DEBIT 11.579.561₫ đầu tháng 11, giữ dấu âm nguồn trong openingCredit; khả dụng 0₫, chi vượt quỹ 11.579.561₫. Không cộng lại lịch sử tháng 8–10. Batch cũ vẫn CANCELLED, batch mới COMPLETE; sourceUrl gắn nguồn mới gửi.
+- Backup XLSX và dữ liệu trước/sau riêng tư, audit ANTONG_SOURCE_SPREADSHEET_IMPORTED. Đã kiểm tra trong transaction Serializable mọi giao dịch trước đó và tổng quỹ khác không đổi; khóa đồng bộ ngân hàng giữ nguyên.
+
+### PSCD — quỹ dài hạn, chỉ số dư TK Trâm 0856
+
+- Nguồn: https://docs.google.com/spreadsheets/d/1oa7wh6xP4Iyz6FcWgot99WEnF8nzx2mRbur9lXvb7KE/edit ; theo yêu cầu quản trị chỉ nhập số dư, không nhập chi tiết giao dịch. Tab THÁNG 11 dòng 4 là 86.244.741₫, khớp tổng tháng 10: 90.051.677₫ − 3.806.936₫.
+- Một OPENING/CREDIT đầu tháng 11 giờ Việt Nam; hùn phước/số dư 86.244.741₫, chi hệ thống 0₫. Giữ accountId TK Trâm 0856, accountIds rỗng; không ghi nhận TK Mỹ. Link Excel nguồn đã gắn.
+- Backup XLSX và trước/sau riêng tư, audit PSCD_SOURCE_SPREADSHEET_IMPORTED; kiểm tra transaction Serializable không đổi giao dịch cũ và tổng các quỹ khác. Khóa đồng bộ ngân hàng giữ nguyên.
+
+### DTS / TDTS — Trai tăng, Đặt bát, Dâng tứ sự
+
+- Nguồn https://docs.google.com/spreadsheets/d/1K32uoI01lzvTrrc0u5LL9KSVbjbee-GRIguZzKLLIr4/edit ; quản trị xác nhận nhập cả TK Mỹ 0572 (8.061.727₫, tab TK My- THÁNG 11) và TK Trâm 0856 (1.564.000₫, tổng hợp 10 giao dịch cũ của tab TK Trâm), tổng 9.625.727₫.
+- Nhập hai OPENING/CREDIT đầu tháng 11 vào quỹ cùng tên hiện có mã TDTS; không tạo quỹ trùng hoặc đổi mã/slug. Giữ chú thích nguồn của TK Trâm, link Excel nguồn và cấu hình hiện có. Không nhập cộng lịch sử tháng cũ; HTTB không thay đổi.
+- Backup riêng tư, audit TDTS_SOURCE_SPREADSHEET_IMPORTED lưu xác nhận hai tài khoản. Kiểm tra trong transaction Serializable mọi giao dịch cũ và tổng quỹ khác không đổi; đồng bộ ngân hàng vẫn khóa.
