@@ -1,3 +1,4 @@
+import {BANK_SYNC_MIN_DATE} from "./sync-boundary";
 import { localDate, startOfVietnamDay } from "./domain";
 // Ten reconciliation points for today's transactions, in Vietnam time.
 export const FULL_DAY_TIMES = ["02:00", "04:00", "06:00", "08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "22:00"];
@@ -11,5 +12,5 @@ export function dueSyncSlots(now: Date) {
   })).filter(slot => slot.scheduledAt <= now);
   // On downtime recovery only the latest due slot of each kind is needed:
   // it covers the same whole date as earlier missed slots.
-  return [due(FULL_DAY_TIMES, today, "FULL_DAY").at(-1), due(PREVIOUS_DAY_TIMES, yesterday, "PREVIOUS_DAY").at(-1)].filter(s => s !== undefined);
+  return [due(FULL_DAY_TIMES, today, "FULL_DAY").at(-1), due(PREVIOUS_DAY_TIMES, yesterday, "PREVIOUS_DAY").at(-1)].filter((s): s is NonNullable<typeof s> => s !== undefined&&s.targetDate>=BANK_SYNC_MIN_DATE);
 }

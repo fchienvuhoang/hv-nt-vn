@@ -1,8 +1,9 @@
+import {effectiveSyncStart} from "./sync-boundary";
 import "server-only";
 import { actorStamp, type Actor } from "./actor";
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
-import { localDate, parseSourceTime, startOfVietnamDay } from "./domain";
+import { localDate, parseSourceTime } from "./domain";
 import { fetchSourcePage } from "./source";
 import { serializable } from "./ledger";
 import { ingestBankPage } from "./ingest-bank";
@@ -37,8 +38,8 @@ export async function synchronize(actor: Actor) {
     const accounts = [];
     for (const account of configured) {
       const syncFrom =
-        account.syncFrom ?? account.cutoverAt ?? startOfVietnamDay(localDate());
-      if (!account.syncFrom)
+        effectiveSyncStart(account.syncFrom??account.cutoverAt);
+      if (account.syncFrom?.getTime()!==syncFrom.getTime())
         await db.bankAccount.update({
           where: { id: account.id },
           data: { syncFrom },
@@ -70,7 +71,7 @@ export async function synchronize(actor: Actor) {
           create: { accountId: account.id, direction },
           update: {},
         });
-        const from =
+        const originalFrom =
           state.windowFrom ??
           localDate(
             new Date(
@@ -81,10 +82,12 @@ export async function synchronize(actor: Actor) {
               ),
             ),
           );
-        const to = state.windowTo ?? localDate();
-        const page = state.windowFrom ? state.nextPage : 1;
+        const from=originalFrom<localDate(account.syncFrom)?localDate(account.syncFrom):originalFrom;
+        const staleWindow=from!==originalFrom;
+        const to=staleWindow?localDate():(state.windowTo??localDate());
+        const page=state.windowFrom&&!staleWindow?state.nextPage:1;
         // Freeze the window before the first source request, so errors resume the same window.
-        if (!state.windowFrom)
+        if (!state.windowFrom||staleWindow)
           await db.syncState.update({
             where: { id: state.id },
             data: { windowFrom: from, windowTo: to, nextPage: 1 },

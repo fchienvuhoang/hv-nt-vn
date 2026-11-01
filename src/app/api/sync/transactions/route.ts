@@ -1,3 +1,4 @@
+import {BANK_SYNC_MIN_DATE,BANK_SYNC_MIN_ISO} from "@/lib/sync-boundary";
 import {ADMIN_LEDGER_TAG,PUBLIC_DIRECTORY_TAG,publicFundTag} from "@/lib/cache-tags";
 import { TRANSACTION_SUMMARY_TAG } from "@/lib/transaction-summary";
 import { timingSafeEqual } from "node:crypto";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
       revalidateTag(PUBLIC_DIRECTORY_TAG,{expire:0});
       for(const id of result.affectedFundIds)revalidateTag(publicFundTag(id),{expire:0});
     }
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, minimumSyncDate:BANK_SYNC_MIN_DATE, minimumSyncAt:BANK_SYNC_MIN_ISO, timezone:"Asia/Ho_Chi_Minh", ...result });
   } catch (error) {
     revalidateTag(TRANSACTION_SUMMARY_TAG, { expire: 0 });
     // A failure may follow committed pages. Busy/no-change calls keep public cache warm.

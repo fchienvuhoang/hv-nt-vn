@@ -1,3 +1,4 @@
+import {allowedBankSyncTime} from "./sync-boundary";
 import "server-only";
 import { actorStamp, createdStamp, updatedStamp, type Actor } from "./actor";
 import { createHash, randomUUID } from "node:crypto";
@@ -17,6 +18,7 @@ export async function ingestBankPage(
   items: SourceItem[],
   actor: Actor,
 ) {
+  items=items.filter(i=>allowedBankSyncTime(i.transactionTime));
   if(!items.length)return {inserted:0,updated:0,knownCount:0,affectedFundIds:[] as string[]};
   const existing=await tx.bankTransaction.findMany({where:{accountId,sourceId:{in:items.map(i=>i.id)}},select:{id:true,sourceId:true,sourceHash:true,fundId:true}});
   const fingerprints=new Map(items.map(item=>[item.id,createHash("sha256").update(JSON.stringify(item)).digest("hex")]));

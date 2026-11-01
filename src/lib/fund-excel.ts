@@ -180,7 +180,8 @@ export function parseFundGrid(
       continue;
     }
     try {
-      const openingRow=!date&&/^(DIEU CHUYEN (SO DU )?(TU|THANG)|SO DU (DAU|CHUYEN))/.test(normalize(text));
+      const undatedFundTransfer=!date&&/^(?:DIEU )?CHUYEN SO DU (?:TU|VE|SANG) TP\s*\d+\b/.test(normalize(text));
+      const openingRow=!date&&!undatedFundTransfer&&/^(DIEU CHUYEN (SO DU )?(TU|THANG)|SO DU (DAU|CHUYEN))/.test(normalize(text));
       const credit = openingRow?parseOpeningVnd(amountIn):parseVnd(amountIn),
         debit = openingRow?parseOpeningVnd(amountOut):parseVnd(amountOut);
       if (!credit && !debit) {
@@ -198,7 +199,7 @@ export function parseFundGrid(
         result.rows.unshift({row:i+1,kind:"OPENING",openingCredit:credit.toString(),openingDebit:debit.toString(),at:parseExcelTime(`${year}-${month[1].padStart(2,"0")}-01`),amount:(signedBalance<0n?-signedBalance:signedBalance).toString(),direction:signedBalance<0n?"DEBIT":"CREDIT",narrative:text,displayName:"Số dư chuyển sang",refId:"",note:note<0?"":row[note]??""});
         continue;
       }
-      const dateUnknown=!date&&/^CHUYEN SO DU TU TP\s*\d+\b/.test(normalize(text));
+      const dateUnknown=undatedFundTransfer;
       const at = dateUnknown?parseExcelTime(localDate()):parseExcelTime(date);
       const direction = credit ? "CREDIT" : "DEBIT";
       if (text.length > 6000) throw new Error("Nội dung quá dài");

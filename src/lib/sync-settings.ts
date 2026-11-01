@@ -1,3 +1,4 @@
+import {BANK_SYNC_MIN_DATE} from "./sync-boundary";
 import "server-only";
 import { actorStamp, type Actor } from "./actor";
 import { randomUUID } from "node:crypto";
@@ -17,6 +18,7 @@ export async function saveSyncStart(
     from > localDate()
   )
     throw new Error("Ngày bắt đầu không hợp lệ hoặc ở tương lai");
+  if(from<BANK_SYNC_MIN_DATE)throw new Error("Không được đồng bộ trước 01/11/2026; dữ liệu trước mốc này nhập Excel");
   const token = randomUUID();
   const acquired =
     await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('bank-sync',${token},(NOW() AT TIME ZONE 'UTC') + INTERVAL '120 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`;

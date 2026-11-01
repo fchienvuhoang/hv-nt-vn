@@ -1,3 +1,4 @@
+import {BANK_SYNC_MIN_DATE,effectiveSyncStart} from "./sync-boundary";
 import "server-only";
 import { refreshSourceBalances } from "./source-balance-sync";
 import { randomUUID } from "node:crypto";
@@ -31,10 +32,9 @@ export async function scheduledSync(now = new Date()) {
     const balances = await refreshSourceBalances(accounts,now);
     const today = localDate(now);
     for (const account of accounts) {
-      if (!account.syncFrom) {
-        account.syncFrom = account.cutoverAt ?? startOfVietnamDay(today);
-        await db.bankAccount.update({ where: { id: account.id }, data: { syncFrom: account.syncFrom } });
-      }
+      const syncFrom=effectiveSyncStart(account.syncFrom??account.cutoverAt);
+      if(account.syncFrom?.getTime()!==syncFrom.getTime())await db.bankAccount.update({where:{id:account.id},data:{syncFrom}});
+      account.syncFrom=syncFrom;
     }
     const progress: Progress = accounts.flatMap(a => (["CREDIT", "DEBIT"] as const).map(direction => ({ accountId: a.id, number: a.number, direction, page: 1, done: false })));
     const planned:Prisma.SyncJobCreateManyInput[]=dueSyncSlots(now).map(slot=>({...slot,progress}));
@@ -48,6 +48,12 @@ export async function scheduledSync(now = new Date()) {
     }
     const openStatuses=["QUEUED","RUNNING","PARTIAL","FAILED"];
     const jobs=await db.syncJob.findMany({where:{OR:[{status:{in:openStatuses}},{slotKey:{in:planned.map(j=>j.slotKey)}}]},orderBy:[{scheduledAt:"asc"},{id:"asc"}]});
+    const obsolete=jobs.filter(j=>openStatuses.includes(j.status)&&(j.rangeTo??j.targetDate)<BANK_SYNC_MIN_DATE);
+    if(obsolete.length){await db.syncJob.updateMany({where:{id:{in:obsolete.map(j=>j.id)}},data:{status:"SUPERSEDED",finishedAt:new Date(),error:"Chặn sao kê trước 01/11/2026: dữ liệu lịch sử nhập Excel"}});for(const job of obsolete)job.status="SUPERSEDED"}
+    for(const job of jobs.filter(j=>openStatuses.includes(j.status)&&j.targetDate<BANK_SYNC_MIN_DATE)){
+      const reset=(job.progress as unknown as Progress).map(stream=>({...stream,page:1,done:false}));
+      await db.syncJob.update({where:{id:job.id},data:{targetDate:BANK_SYNC_MIN_DATE,progress:reset}});job.targetDate=BANK_SYNC_MIN_DATE;job.progress=reset;
+    }
     const missing=planned.filter(j=>!jobs.some(old=>old.slotKey===j.slotKey));
     if(!jobs.some(j=>j.kind==="QUICK"&&openStatuses.includes(j.status)))missing.push({slotKey:`QUICK:${invocation.id}`,kind:"QUICK",targetDate:today,scheduledAt:now,progress});
     if(missing.length)jobs.push(...await db.syncJob.createManyAndReturn({data:missing,skipDuplicates:true}));
@@ -71,10 +77,11 @@ export async function scheduledSync(now = new Date()) {
         if (Date.now() >= deadline - 6000 || quickPages + fullPages >= maxPages) break;
         const account = accounts.find(a => a.id === stream.accountId);
         if (!account) { stream.done = true; continue; }
-        const syncFrom = account.syncFrom ?? account.cutoverAt ?? startOfVietnamDay(today);
-        if (localDate(syncFrom) > job.targetDate) { stream.done = true; continue; }
+        const syncFrom = effectiveSyncStart(account.syncFrom??account.cutoverAt);
+        if (localDate(syncFrom) > (job.rangeTo??job.targetDate)) { stream.done = true; continue; }
+        const from=localDate(syncFrom)>job.targetDate?localDate(syncFrom):job.targetDate;
         const page = stream.page;
-        const result = await fetchSourcePage(stream.number, stream.direction, job.targetDate, job.rangeTo ?? job.targetDate, page, Math.max(1000, Math.min(10000, deadline - Date.now() - 5000)), pageSize);
+        const result = await fetchSourcePage(stream.number, stream.direction, from, job.rangeTo ?? job.targetDate, page, Math.max(1000, Math.min(10000, deadline - Date.now() - 5000)), pageSize);
         if (result.total > 0 && page <= Math.ceil(result.total / pageSize) && !result.items.length) throw new Error("Nguồn trả trang rỗng trước khi hết dữ liệu");
         const items = [...new Map(result.items.map(i => [i.id, i])).values()].filter(i => parseSourceTime(i.transactionTime) >= syncFrom && localDate(parseSourceTime(i.transactionTime)) >= job.targetDate && localDate(parseSourceTime(i.transactionTime)) <= (job.rangeTo ?? job.targetDate));
         const previous={page:stream.page,done:stream.done};

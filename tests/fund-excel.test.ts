@@ -68,3 +68,13 @@ test("explicit undated internal fund transfers are preserved, while missing date
  const parsed=parseFundGrid("TP97- TK My",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Chuyển số dư từ TP100 về","","175611"],["","Chuyển số dư từ TP73 sang","","27161812"],["","Unknown gift","","100"]])!;
  assert.equal(parsed.rows.length,2);assert.ok(parsed.rows.every(r=>r.dateUnknown));assert.equal(parsed.income,"27337423");assert.equal(parsed.errors.length,1);
 });
+
+test("Điều chuyển số dư từ TP is an internal transfer, not a monthly opening balance",()=>{
+ const s=parseFundGrid("TP54- TK Trâm",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Điều chuyển số dư từ TP121- Rạp che sang","","3967828"]])!;
+ assert.deepEqual(s.errors,[]);assert.equal(s.rows.length,1);assert.equal(s.rows[0].dateUnknown,true);assert.equal(s.rows[0].kind,undefined);assert.equal(s.income,"3967828");
+});
+
+test("undated outgoing fund transfer preserves debit and does not become an opening snapshot",()=>{
+ const s=parseFundGrid("TP121- TK Trâm",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Điều chuyển số dư về TP54","3967628",""]])!;
+ assert.deepEqual(s.errors,[]);assert.equal(s.rows[0].dateUnknown,true);assert.equal(s.rows[0].kind,undefined);assert.equal(s.rows[0].direction,"DEBIT");assert.equal(s.expense,"3967628");
+});
