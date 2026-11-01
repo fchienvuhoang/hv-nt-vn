@@ -128,7 +128,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
       if (!accounts.length) throw new Error("Chưa cấu hình tài khoản sao kê");
       const existing = fundId ? await tx.fund.findUniqueOrThrow({ where: { id: fundId } }) : null;
       // The primary ID is retained solely for legacy totals and stable public URLs.
-      // Neither posted form fields nor the UI can restrict a fund to one account.
+      // Preserve configured account scope; new ordinary funds use both accounts.
       const accountId = existing?.accountId ?? accounts[0].id;
       const account = accounts.find(a => a.id === accountId)!;
       // Reading every fund in the serializable transaction also protects against
@@ -136,7 +136,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
       const rules = await tx.fund.findMany({ select: { id: true, code: true, name: true, keywords: true } });
       const fields = {
         ...data, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
-        accountIds: accounts.filter(a => a.id !== accountId).map(a => a.id),
+        accountIds: existing?.accountIds ?? accounts.filter(a => a.id !== accountId).map(a => a.id),
         keywords: validateFundKeywords(data.code, data.keywords, rules, fundId),
       };
       if (fundId) {

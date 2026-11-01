@@ -5,7 +5,7 @@ import type { ActionState } from "@/app/admin/actions";
 import { useActionToast } from "@/components/toasts";
 import { useCloseModal } from "@/components/modal";
 import { saveFund } from "@/lib/admin-api";
-import { dateTime } from "@/lib/domain";
+import { dateTime, fundUsesAccount } from "@/lib/domain";
 import type { BankAccount, Fund } from "@/generated/prisma/client";
 export function FundForm({
   accounts,
@@ -46,10 +46,10 @@ export function FundForm({
     <form ref={formRef} action={dispatch} className="action-form fund-form" aria-busy={pending} onReset={event => event.preventDefault()} onSubmit={() => setEdited({})}>
       <fieldset className="action-fields" disabled={locked}>
       {fund && <input type="hidden" name="id" value={fund.id} />}
-      <div className="fund-accounts-readonly" role="group" aria-label="Tài khoản thu chi dùng chung">
+      <div className="fund-accounts-readonly" role="group" aria-label="Tài khoản thu chi được phép">
         <span>Tài khoản thu / chi</span>
-        <div>{accounts.map((a) => <strong key={a.id}>{a.number} · {a.label}</strong>)}</div>
-        <small>Mọi thiện pháp dùng chung cả hai tài khoản. Thu và chi được ghi nhận đúng tài khoản thực tế, không thay đổi khi gán thiện pháp.</small>
+        <div>{accounts.filter(a=>!fund||fundUsesAccount(fund,a.id)).map((a) => <strong key={a.id}>{a.number} · {a.label}</strong>)}</div>
+        <small>Chỉ ghi nhận thu và chi từ các tài khoản hiển thị ở trên. Tài khoản thực tế của giao dịch không thay đổi khi gán thiện pháp.</small>
       </div>
       <div className="form-row">
         <label>

@@ -78,3 +78,5 @@ test("undated outgoing fund transfer preserves debit and does not become an open
  const s=parseFundGrid("TP121- TK Trâm",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Điều chuyển số dư về TP54","3967628",""]])!;
  assert.deepEqual(s.errors,[]);assert.equal(s.rows[0].dateUnknown,true);assert.equal(s.rows[0].kind,undefined);assert.equal(s.rows[0].direction,"DEBIT");assert.equal(s.expense,"3967628");
 });
+
+test("Kathina fund carry-over without a date is an explicit internal transfer",()=>{const s=parseFundGrid("Kathina02- TK My",[["Thời gian","Nội dung","Tiền ra","Tiền vào"],["","Điều chuyển số dư từ Kathina01 sang","","6194353"]])!;assert.deepEqual(s.errors,[]);assert.equal(s.rows[0].dateUnknown,true);assert.equal(s.rows[0].kind,undefined);assert.equal(s.income,"6194353")});

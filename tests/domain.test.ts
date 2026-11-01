@@ -43,3 +43,8 @@ test("CSV handles Excel BOM, quoted names, CRLF, newlines and rejects broken row
   assert.throws(() => parseCsv('code,name\nTP1'));
   assert.throws(() => parseCsv('code,code\nTP1,TP2'));
 });
+
+test('single-account funds never classify the other account while shared funds retain both',()=>{
+ const rules=[{id:'httb',code:'HTTB',keywords:['TAM BAO'],status:'ACTIVE',accountId:'my',accountIds:[]},{id:'pscd',code:'PSCD',keywords:[],status:'ACTIVE',accountId:'tram',accountIds:[]},{id:'shared',code:'TP112',keywords:[],status:'ACTIVE',accountId:'my',accountIds:['tram']}];
+ assert.equal(classify('TAM BAO','my',rules).fundId,'httb');assert.equal(classify('HTTB','tram',rules).fundId,null);assert.equal(classify('PSCD','tram',rules).fundId,'pscd');assert.equal(classify('PSCD','my',rules).fundId,null);assert.equal(classify('TP112','tram',rules).fundId,'shared');
+});

@@ -285,3 +285,16 @@ Giữ 85 ghi chú gốc TP54. Dòng 276 của tab TP54- TK Trâm “Điều chuy
 - Nhập 191 dòng POSTED/MANUAL (190 thu, 1 chi), thu 50.297.400₫, chi 32.000.000₫, còn 18.297.400₫; giữ 5 ghi chú nguồn, không phát hiện trùng chính xác với lịch sử đã có.
 - Giữ nguyên 4 khoản BANK tự đồng bộ từ 01/11 tổng 1.450.000₫. Sau nhập: hùn phước 51.747.400₫, chi 32.000.000₫, số dư 19.747.400₫ (195 giao dịch).
 - Giữ nguyên tên, từ khóa, trạng thái, công khai và danh tính người tạo/cập nhật thiện pháp. File nguồn và dữ liệu trước nhập được sao lưu riêng tư; audit TP120_FULL_DETAIL_IMPORTED.
+
+### KATHINA2 — nhập chi tiết Kathina02 ngày 01/11/2026
+
+- Nguồn: https://docs.google.com/spreadsheets/d/1VofElEuqZvQxypj-LlrcHX6p7CldC2XN2A1EO4NgFAA/edit ; tab Kathina02- TK My, 136 dòng POSTED/MANUAL (135 thu, 1 chi).
+- Thu 29.254.302₫, chi 143.250.000₫, khả dụng 0₫, chi vượt 113.995.698₫; giữ số dư có dấu để cộng quỹ chính xác.
+- Dòng 4 điều chuyển từ Kathina01 sang 6.194.353₫ chưa có ngày: giữ SOURCE_DATE_MISSING, không suy đoán ngày nghiệp vụ. Giữ 9 ghi chú nguồn; không có trùng chính xác trước nhập.
+- Giữ nguyên cấu hình thiện pháp mã KATHINA2. Sao lưu nguồn và dữ liệu trước nhập riêng tư; audit KATHINA2_FULL_DETAIL_IMPORTED.
+
+### Phạm vi riêng của HTTB và PSCD
+
+- HTTB chỉ ghi nhận TK Mỹ 0572; PSCD chỉ ghi nhận TK Trâm 0856. Hai thiện pháp có accountIds rỗng và accountId trỏ đúng tài khoản được phép; các thiện pháp khác tiếp tục dùng chung.
+- Sửa cấu hình thiện pháp giữ nguyên phạm vi đã cấu hình, không tự mở lại cả hai tài khoản. Form hiển thị tài khoản thực tế được phép, không cho chọn. Import Excel trái tài khoản của quỹ một tài khoản bị chặn; phân loại, gán tay và điều chuyển dùng chung kiểm tra fundUsesAccount.
+- Cấu hình đã cập nhật có audit FUND_UPDATED và sao lưu riêng tư. Khoản Excel HTTB 1.564.000₫ ở TK Trâm được giữ nguyên chờ quản trị viên quyết định xử lý, không tự thay đổi tiền đã nhập.

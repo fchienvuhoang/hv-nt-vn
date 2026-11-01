@@ -180,7 +180,7 @@ export function parseFundGrid(
       continue;
     }
     try {
-      const undatedFundTransfer=!date&&/^(?:DIEU )?CHUYEN SO DU (?:TU|VE|SANG) TP\s*\d+\b/.test(normalize(text));
+      const undatedFundTransfer=!date&&/^(?:DIEU )?CHUYEN SO DU (?:TU|VE|SANG) (?:TP|KATHINA)\s*\d+\b/.test(normalize(text));
       const openingRow=!date&&!undatedFundTransfer&&/^(DIEU CHUYEN (SO DU )?(TU|THANG)|SO DU (DAU|CHUYEN))/.test(normalize(text));
       const credit = openingRow?parseOpeningVnd(amountIn):parseVnd(amountIn),
         debit = openingRow?parseOpeningVnd(amountOut):parseVnd(amountOut);

@@ -155,6 +155,7 @@ export async function processFundImport(
       f.accountId !== accountId &&
       !f.accountIds.includes(accountId)
     ) {
+      if(!f.accountIds.length)throw new Error("Thiện pháp này chỉ ghi nhận tài khoản đã cấu hình; không nhập Excel của tài khoản khác.");
       const collision = await tx.fund.findFirst({
         where: {
           id: { not: f.id },
