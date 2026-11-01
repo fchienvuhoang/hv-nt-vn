@@ -3,10 +3,10 @@ import { LoadingSpinner, LoadingIndicator } from "@/components/loading-indicator
 import { useEffect, useRef, useState } from "react";
 import { getFundTransactions, bulkAssignTransactions, addTransactionNote } from "@/lib/admin-api";
 import type { FundTransactionList } from "@/lib/transaction-management";
-import { dateTime, vnd } from "@/lib/domain";
+import { dateTime, vnd, fundUsesAccount } from "@/lib/domain";
 import { useToast } from "@/components/toasts";
 type Row=FundTransactionList["rows"][number];
-export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;active:boolean;funds:{id:string;code:string;name:string}[];accounts:{id:string;number:string}[]}) {
+export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;active:boolean;funds:{id:string;code:string;name:string;accountId:string;accountIds:string[]}[];accounts:{id:string;number:string}[]}) {
   const [data,setData]=useState<FundTransactionList>({rows:[],count:0,page:1,summary:{total:{count:0,income:"0",expense:"0"},byAccount:[]}}),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
   const [page,setPage]=useState(1),[query,setQuery]=useState(""),[draft,setDraft]=useState(""),[type,setType]=useState(""),[account,setAccount]=useState(""),[reload,setReload]=useState(0);
   const [selected,setSelected]=useState<Map<string,Row>>(new Map()),[target,setTarget]=useState(""),[reason,setReason]=useState("");
@@ -90,7 +90,7 @@ export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;a
     </form>
     <div className="bulk-selection-summary" aria-live="polite"><strong>Đã chọn {selected.size} giao dịch · Tổng số tiền {vnd(income+expense)}</strong><span>Thu: <b>{vnd(income)}</b> · Chi: <b>{vnd(expense)}</b> · Chênh lệch thu − chi: <b>{vnd(income-expense)}</b></span>{accounts.map(a=>{const own=rows.filter(r=>r.accountId===a.id);return own.length>0&&<small key={a.id}>TK {a.number}: {own.length} khoản · Thu {vnd(own.filter(r=>r.direction==="CREDIT").reduce((n,r)=>n+BigInt(r.amount),0n))} · Chi {vnd(own.filter(r=>r.direction==="DEBIT").reduce((n,r)=>n+BigInt(r.amount),0n))}</small>})}<button type="button" className="button subtle small" disabled={busy||!selected.size} onClick={()=>setSelected(new Map())}>Bỏ chọn tất cả</button></div>
     <fieldset disabled={busy} className="bulk-assignment-controls action-fields">
-      <label>Thiện pháp nhận<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp…</option>{funds.filter(f=>f.id!==fundId).map(f=><option key={f.id} value={f.id}>{f.code} · {f.name}</option>)}</select></label>
+      <label>Thiện pháp nhận<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp…</option>{funds.filter(f=>f.id!==fundId&&rows.every(r=>fundUsesAccount(f,r.accountId))).map(f=><option key={f.id} value={f.id}>{f.code} · {f.name}</option>)}</select><small>Chỉ gán vào thiện pháp nhận đúng tài khoản của tất cả giao dịch đã chọn.</small></label>
       <label>Lý do chung, hiển thị công khai<textarea value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000} rows={2} placeholder="Ví dụ: Nội dung ghi TP112, quản trị viên điều chỉnh về đúng thiện pháp."/></label>
       <button type="button" className="button primary small" disabled={!selected.size||!target||reason.trim().length<5||busy} onClick={assign}>{busy?<><LoadingSpinner size={20}/>Đang lưu…</>:`Gán ${selected.size} giao dịch đã chọn`}</button>
     </fieldset>

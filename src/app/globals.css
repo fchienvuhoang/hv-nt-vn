@@ -4144,20 +4144,21 @@ tfoot td {
 .fund-secondary-actions[open] { display:flex; }
 .fund-secondary-actions .button { font-size:10px; color:#806b59; }
 .fund-source-cell .button { font-size:10px; color:#806b59; white-space:nowrap; }
-.fund-transaction-account-tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
-.fund-transaction-account-tabs > button { flex:1; min-width:180px; display:flex; flex-direction:column; gap:5px; padding:12px 14px; text-align:left; border:1px solid #ded3c5; border-radius:8px; background:#fcfaf7; color:#685547; cursor:pointer; }
+.fund-transaction-account-tabs { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.fund-transaction-account-tabs > button { flex:1; min-width:180px; display:flex; flex-direction:column; gap:3px; padding:8px 10px; text-align:left; border:1px solid #ded3c5; border-radius:8px; background:#fcfaf7; color:#685547; cursor:pointer; font-size:12px; }
 .fund-transaction-account-tabs > button[aria-selected="true"] { border-color:#7b3040; background:#f7eceb; color:#7b3040; }
 .fund-transaction-account-tabs > button:focus-visible { outline:2px solid #c58a32; outline-offset:2px; }
 .fund-transaction-account-tabs small { font-size:11px; }
-.fund-transaction-account-tabs .fund-tab-amounts { display:flex; flex-wrap:wrap; gap:10px 24px; margin-top:8px; }
-.fund-tab-amounts > span, .fund-transaction-account-tabs .fund-tab-balance { display:flex; flex-direction:column; gap:3px; }
-.fund-transaction-account-tabs .fund-tab-amounts small, .fund-transaction-account-tabs .fund-tab-balance small { color:#796553; font-size:12px; font-weight:500; }
-.fund-tab-amounts b { font-size:18px; font-weight:750; line-height:1.35; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.fund-transaction-account-tabs .fund-tab-amounts { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:2px; }
+.fund-tab-amounts > span, .fund-transaction-account-tabs .fund-tab-balance { display:flex; flex-direction:row; align-items:baseline; gap:5px; flex-wrap:wrap; }
+.fund-transaction-account-tabs .fund-tab-amounts small, .fund-transaction-account-tabs .fund-tab-balance small { color:#796553; font-size:11px; font-weight:500; }
+.fund-tab-amounts b { font-size:13px; font-weight:700; line-height:1.3; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .fund-tab-income b { color:#236344; }
 .fund-tab-expense b { color:#923e3e; }
-.fund-transaction-account-tabs .fund-tab-balance { margin-top:8px; padding-top:10px; border-top:1px solid #ded3c5; }
-.fund-tab-balance b { color:#7b3040; font-size:24px; font-weight:800; line-height:1.25; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.fund-transaction-account-tabs .fund-tab-balance { margin-top:3px; padding-top:4px; border-top:1px solid #ded3c5; }
+.fund-tab-balance b { color:#7b3040; font-size:15px; font-weight:750; line-height:1.25; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .fund-tab-balance.negative b { color:#ad2929; }
+.account-mismatch-warning { display:block; margin-top:4px; padding:4px 6px; border:1px solid #d69d58; border-radius:4px; color:#8c3e13; background:#fff1d9; font-size:11px; font-weight:700; white-space:normal; }
 
 /* The transaction ledger grows with its rows; the document owns vertical scrolling. */
 .workspace-main:has(.transaction-sheet) { overflow: visible; }

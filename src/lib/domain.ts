@@ -29,6 +29,13 @@ export function classify(
   rules: FundRule[],
 ) {
   const text = normalize(narrative);
+  const explicitCodes = rules.filter(r => contains(text, r.code));
+  const globalMatches = explicitCodes.length ? explicitCodes : rules.filter(r => r.keywords.some(k => contains(text, k)));
+  const wrongAccount = globalMatches.filter(r => !fundUsesAccount(r, accountId));
+  if (wrongAccount.length) return {
+    fundId: null,
+    reason: `Sai tài khoản nhận: khớp ${explicitCodes.length ? "mã" : "từ khóa"} ${wrongAccount.map(r => r.code).join(", ")} nhưng thiện pháp không nhận tài khoản của giao dịch. Cần quản trị viên phân loại thủ công vào thiện pháp cùng tài khoản.`,
+  };
   const scoped = rules.filter((r) => fundUsesAccount(r, accountId));
   const codes = scoped.filter((r) => contains(text, r.code));
   // An explicit inactive code must not fall through to an active fund's alias.

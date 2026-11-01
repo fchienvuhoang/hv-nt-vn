@@ -86,7 +86,7 @@ export async function advanceTabReclassification(runId: string, phase: "CHECK"|"
       return summary(tx,run);
     }
     const items=await tx.tabReclassificationItem.findMany({where:{runId,status:phase==="CHECK"?"PENDING":"CHANGE"},orderBy:{transactionId:"asc"},take:100});
-    const rows=await tx.bankTransaction.findMany({where:{id:{in:items.map(i=>i.transactionId)}},select:{id:true,accountId:true,narrative:true,fundId:true,assignment:true,entryStatus:true,updatedAt:true}});
+    const rows=await tx.bankTransaction.findMany({where:{id:{in:items.map(i=>i.transactionId)}},select:{id:true,accountId:true,narrative:true,fundId:true,assignment:true,entryStatus:true,updatedAt:true,matchReason:true}});
     const found=new Map(rows.map(r=>[r.id,r]));
     const conflicts:string[]=[],keep:string[]=[];
     const plans:{id:string;fundId:string|null;assignment:"AUTO"|"UNASSIGNED";reason:string;beforeFundId:string|null;beforeAssignment:string}[]=[];
@@ -109,7 +109,7 @@ export async function advanceTabReclassification(runId: string, phase: "CHECK"|"
       const preserveInactive="matchedInactiveFundId" in match && match.matchedInactiveFundId===row.fundId && !!row.fundId;
       const fundId=preserveInactive?row.fundId:match.fundId;
       const assignment=fundId?"AUTO":"UNASSIGNED";
-      if(fundId===row.fundId&&assignment===row.assignment){keep.push(row.id);continue;}
+      if(fundId===row.fundId&&assignment===row.assignment&&(!match.reason.startsWith("Sai tài khoản nhận:")||row.matchReason===match.reason)){keep.push(row.id);continue;}
       plans.push({id:row.id,fundId,assignment,reason:match.reason,beforeFundId:item.beforeFundId,beforeAssignment:item.beforeAssignment});
     }
     if(conflicts.length)await tx.tabReclassificationItem.updateMany({where:{runId,transactionId:{in:conflicts}},data:{status:"CONFLICT"}});

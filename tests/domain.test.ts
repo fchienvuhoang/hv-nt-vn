@@ -48,3 +48,14 @@ test('single-account funds never classify the other account while shared funds r
  const rules=[{id:'httb',code:'HTTB',keywords:['TAM BAO'],status:'ACTIVE',accountId:'my',accountIds:[]},{id:'pscd',code:'PSCD',keywords:[],status:'ACTIVE',accountId:'tram',accountIds:[]},{id:'shared',code:'TP112',keywords:[],status:'ACTIVE',accountId:'my',accountIds:['tram']}];
  assert.equal(classify('TAM BAO','my',rules).fundId,'httb');assert.equal(classify('HTTB','tram',rules).fundId,null);assert.equal(classify('PSCD','tram',rules).fundId,'pscd');assert.equal(classify('PSCD','my',rules).fundId,null);assert.equal(classify('TP112','tram',rules).fundId,'shared');
 });
+
+test("wrong-account codes and aliases require manual review without falling through to another fund",()=>{
+ const restricted={id:"httb",code:"HTTB",keywords:["HO TRI TAM BAO"],status:"ACTIVE",accountId:"my",accountIds:[]};
+ const shared={id:"shared",code:"TP112",keywords:["HO TRI TAM BAO"],status:"ACTIVE",accountId:"my",accountIds:["tram"]};
+ for(const text of ["HTTB","HTTB TP112","HTTB HO TRI TAM BAO","HO TRI TAM BAO"]){
+  const match=classify(text,"tram",[restricted,shared]);
+  assert.equal(match.fundId,null);assert.match(match.reason,/^Sai tài khoản nhận:.*HTTB/);
+ }
+ assert.equal(classify("TP112","tram",[restricted,shared]).fundId,"shared");
+ assert.equal(classify("HTTB","my",[restricted,shared]).fundId,"httb");
+});

@@ -25,7 +25,7 @@ export async function ingestBankPage(
   const known = new Map(existing.map((row) => [row.sourceId, row]));
   if(items.every(item=>known.get(item.id)?.sourceHash===fingerprints.get(item.id)))return {inserted:0,updated:0,knownCount:existing.length,affectedFundIds:[] as string[]};
   const fresh = items.filter((item) => !known.has(item.id));
-  const rules=fresh.length?await tx.fund.findMany({where:{OR:[{accountId},{accountIds:{has:accountId}}]}}):[];
+  const rules=fresh.length?await tx.fund.findMany():[];
   const affectedFundIds=new Set<string>();
   const dates = fresh.map((item) =>
     parseSourceTime(item.transactionTime).getTime(),
@@ -125,7 +125,7 @@ export async function ingestBankPage(
       matchReason: match.exact
         ? "Đối chiếu Excel: giữ thiện pháp đã nhập"
         : entryStatus === "REVIEW"
-          ? "Có giao dịch Excel cùng ngày, số tiền và chiều thu chi; cần kiểm tra trước khi cộng tổng"
+          ? `${automatic.reason.startsWith("Sai tài khoản nhận:") ? automatic.reason+" " : ""}Có giao dịch Excel cùng ngày, số tiền và chiều thu chi; cần kiểm tra trước khi cộng tổng`
           : automatic.reason,
     });
     if (match.exact) {

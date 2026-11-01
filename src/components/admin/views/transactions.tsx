@@ -125,7 +125,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
         </div>
         <fieldset className="sheet-bulk-actions" disabled={busy}>
           <div className="sheet-bulk-totals" aria-live="polite"><strong>Đã chọn {selected.size} giao dịch</strong><span>Thu: <b>{vnd([...selected.values()].filter(r=>r.direction==="CREDIT").reduce((sum,r)=>sum+r.amount,0n))}</b> · Chi: <b>{vnd([...selected.values()].filter(r=>r.direction==="DEBIT").reduce((sum,r)=>sum+r.amount,0n))}</b></span></div>
-          <label>Gán thủ công vào thiện pháp<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{funds.map(f=><option key={f.id} value={f.id}>{f.code} · {f.name}</option>)}</select></label>
+          <label>Gán thủ công vào thiện pháp<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{funds.filter(f=>[...selected.values()].every(r=>fundUsesAccount(f,r.accountId))).map(f=><option key={f.id} value={f.id}>{f.code} · {f.name}</option>)}</select></label>
           <label>Lý do chung / ghi chú công khai<input value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000} placeholder="Ví dụ: nội dung thiếu mã thiện pháp"/></label>
           <button type="button" className="button primary small" disabled={!selected.size||!target||reason.trim().length<5||loading} onClick={assignSelected}>{busy?<><LoadingSpinner size={16}/>Đang gán…</>:`Gán ${selected.size} giao dịch`}</button>
           <button type="button" className="button subtle small" disabled={!selected.size} onClick={()=>setSelection({scope:selectionScope,rows:new Map()})}>Bỏ chọn</button>
@@ -176,6 +176,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                     </td>
                     <td className="classification-cell">
                       {r.allocations.length&&!params.fund?<div className="transaction-allocation-labels">{r.allocations.map(a=><span key={a.id} className="badge active">{a.fund.code} · {vnd(a.amount)}</span>)}</div>:<span className={`badge ${r.fund?"active":"pending"}`}>{r.fund?.code??"Chờ phân loại"}</span>}
+                      {r.matchReason.startsWith("Sai tài khoản nhận:")&&<span className="account-mismatch-warning" role="status" title={r.matchReason}>Sai tài khoản nhận · Cần phân loại thủ công</span>}
                       <span className="sheet-assignment" title={`${r.assignment === "MANUAL" ? "Gán tay" : r.assignment === "AUTO" ? "Tự động" : "Chưa gán"} · ${r.matchReason}`}>
                         {r.assignment === "MANUAL" ? "Tay" : r.assignment === "AUTO" ? "Tự động" : ""}
                       </span>

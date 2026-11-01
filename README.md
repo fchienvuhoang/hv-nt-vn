@@ -348,3 +348,9 @@ Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản tr
 - Nguồn https://docs.google.com/spreadsheets/d/1K32uoI01lzvTrrc0u5LL9KSVbjbee-GRIguZzKLLIr4/edit ; quản trị xác nhận nhập cả TK Mỹ 0572 (8.061.727₫, tab TK My- THÁNG 11) và TK Trâm 0856 (1.564.000₫, tổng hợp 10 giao dịch cũ của tab TK Trâm), tổng 9.625.727₫.
 - Nhập hai OPENING/CREDIT đầu tháng 11 vào quỹ cùng tên hiện có mã TDTS; không tạo quỹ trùng hoặc đổi mã/slug. Giữ chú thích nguồn của TK Trâm, link Excel nguồn và cấu hình hiện có. Không nhập cộng lịch sử tháng cũ; HTTB không thay đổi.
 - Backup riêng tư, audit TDTS_SOURCE_SPREADSHEET_IMPORTED lưu xác nhận hai tài khoản. Kiểm tra trong transaction Serializable mọi giao dịch cũ và tổng quỹ khác không đổi; đồng bộ ngân hàng vẫn khóa.
+
+### Phân loại luôn theo tài khoản thực nhận
+
+- Gán tay từng dòng/hàng loạt, gán trong Xem giao dịch, đối soát và điều chuyển phần phân bổ đều kiểm tra tài khoản của giao dịch thuộc phạm vi thiện pháp nhận. Danh sách chọn gán tay chỉ hiện thiện pháp hỗ trợ toàn bộ tài khoản của các dòng đang chọn; backend tiếp tục chặn nếu gửi yêu cầu không hợp lệ. Không sửa tài khoản hay số tiền nguồn khi phân loại.
+- Đồng bộ đọc quy tắc của mọi thiện pháp để phát hiện mã/từ khóa đúng nhưng chuyển vào tài khoản ngoài phạm vi. Trường hợp này giữ UNASSIGNED, reason bắt đầu `Sai tài khoản nhận:`, hiển thị cảnh báo ở cột Phân loại để quản trị gán vào thiện pháp cùng tài khoản. Không tự chuyển sang thiện pháp khác qua từ khóa dự phòng khi nội dung có mã sai tài khoản.
+- Chạy lại phân loại cũng lưu cảnh báo cho giao dịch vốn chưa phân loại; các khoản đã gán MANUAL vẫn được bảo vệ. Kiểm thử domain và integration trên database localhost riêng: nhận diện sai tài khoản ở luồng ingest, chặn gán tay khác tài khoản, giữ nguyên tiền và tài khoản khi gán hợp lệ, regression phân loại lại/hàng loạt. Không mở khóa đồng bộ production.
