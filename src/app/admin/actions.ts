@@ -138,7 +138,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
       const fields = {
         ...data, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
         sourceUrl: data.sourceUrl ?? existing?.sourceUrl ?? "",
-        accountIds: existing?.accountIds ?? accounts.filter(a => a.id !== accountId).map(a => a.id),
+        accountIds: [...new Set(existing?.accountIds ?? accounts.map(a => a.id))].filter(id => id !== accountId),
         keywords: validateFundKeywords(data.code, data.keywords, rules, fundId),
       };
       if (fundId) {

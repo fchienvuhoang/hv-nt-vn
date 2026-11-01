@@ -143,13 +143,14 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </td>
                     <td className="nowrap">
                       <span className="account-number">
-                        {[f.accountId, ...f.accountIds]
+                        {[...new Set([f.accountId, ...f.accountIds])]
                           .map(
                             (id) => balances.find((a) => a.id === id)?.number,
                           )
                           .filter(Boolean)
                           .join(" · ")}
                       </span>
+                      {new Set([f.accountId, ...f.accountIds]).size === 1 && <small className="fund-account-restriction">Chỉ TK {balances.find(a=>a.id===f.accountId)?.number === "0572" ? "Mỹ 0572" : balances.find(a=>a.id===f.accountId)?.number === "0856" ? "Trâm 0856" : balances.find(a=>a.id===f.accountId)?.number ?? "đã cấu hình"}</small>}
                     </td>
                     <td>
                       <Status status={f.status} />

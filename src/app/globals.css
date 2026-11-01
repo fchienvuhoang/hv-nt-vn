@@ -4144,6 +4144,7 @@ tfoot td {
 .fund-secondary-actions[open] { display:flex; }
 .fund-secondary-actions .button { font-size:10px; color:#806b59; }
 .fund-source-cell .button { font-size:10px; color:#806b59; white-space:nowrap; }
+.fund-account-restriction { display:block; width:fit-content; margin-top:4px; padding:3px 6px; border:1px solid #dcc28e; border-radius:4px; background:#fff4dc; color:#805422; font-size:10px; font-weight:700; line-height:1.3; }
 .fund-transaction-account-tabs { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
 .fund-transaction-account-tabs > button { flex:1; min-width:180px; display:flex; flex-direction:column; gap:3px; padding:8px 10px; text-align:left; border:1px solid #ded3c5; border-radius:8px; background:#fcfaf7; color:#685547; cursor:pointer; font-size:12px; }
 .fund-transaction-account-tabs > button[aria-selected="true"] { border-color:#7b3040; background:#f7eceb; color:#7b3040; }
