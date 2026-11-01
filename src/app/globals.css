@@ -4149,6 +4149,15 @@ tfoot td {
 .fund-transaction-account-tabs > button[aria-selected="true"] { border-color:#7b3040; background:#f7eceb; color:#7b3040; }
 .fund-transaction-account-tabs > button:focus-visible { outline:2px solid #c58a32; outline-offset:2px; }
 .fund-transaction-account-tabs small { font-size:11px; }
+.fund-transaction-account-tabs .fund-tab-amounts { display:flex; flex-wrap:wrap; gap:10px 24px; margin-top:8px; }
+.fund-tab-amounts > span, .fund-transaction-account-tabs .fund-tab-balance { display:flex; flex-direction:column; gap:3px; }
+.fund-transaction-account-tabs .fund-tab-amounts small, .fund-transaction-account-tabs .fund-tab-balance small { color:#796553; font-size:12px; font-weight:500; }
+.fund-tab-amounts b { font-size:18px; font-weight:750; line-height:1.35; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.fund-tab-income b { color:#236344; }
+.fund-tab-expense b { color:#923e3e; }
+.fund-transaction-account-tabs .fund-tab-balance { margin-top:8px; padding-top:10px; border-top:1px solid #ded3c5; }
+.fund-tab-balance b { color:#7b3040; font-size:24px; font-weight:800; line-height:1.25; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.fund-tab-balance.negative b { color:#ad2929; }
 
 /* The transaction ledger grows with its rows; the document owns vertical scrolling. */
 .workspace-main:has(.transaction-sheet) { overflow: visible; }
