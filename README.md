@@ -371,3 +371,8 @@ Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản tr
 
 - `adminNote` là ghi chú riêng trong quản trị, tối đa 3.000 ký tự, chỉnh ở Cấu hình và hiển thị cột Ghi chú ngay sau Hùn phước. Giữ xuống dòng, nội dung được render như văn bản; không đưa vào trang hoặc REST API công khai. Độc lập với mô tả công khai và các ghi chú giao dịch.
 - Lưu qua REST hiện có, ghi FUND_UPDATED/FUND_CREATED; form cũ không gửi adminNote vẫn giữ ghi chú hiện tại, gửi chuỗi trống để xóa. Quỹ cũ mặc định trống. Kiểm thử HTTP trên database QA riêng gồm lưu nhiều dòng, giới hạn độ dài, giữ ghi chú qua form cũ, xóa và kiểm tra không lộ ở API công khai.
+
+### Gỡ danh mục Minh bạch theo yêu cầu quản trị
+
+- Đã gỡ trang tổng hợp `/minh-bach`, lối vào cũ `/t` và endpoint danh mục `/api/public/funds`; giữ trang công khai từng thiện pháp `/t/[slug]` và REST chi tiết `/api/public/funds/[slug]`. Không còn liên kết quay về danh mục từ trang chi tiết.
+- Danh sách quản trị không còn nút Trang tổng hợp công khai hoặc icon mắt. Nút Trang công khai của từng thiện pháp dùng viền mảnh, nền trong suốt và chữ nhỏ nhẹ. Dữ liệu giao dịch và cấu hình công khai cũ giữ nguyên.

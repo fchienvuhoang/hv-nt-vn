@@ -38,8 +38,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
   return (
     <div className="public-site">
       <header className="public-header">
-        <Brand href="/minh-bach" />
-        <Link href="/minh-bach" className="button subtle small">Về trang Minh bạch</Link>
+        <Brand href={`/t/${slug}`} />
       </header>
       <main className="public-detail public-compact">
         <div className="fund-intro">
@@ -239,7 +238,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
         </div>
       </main>
       <footer className="public-footer">
-        <Brand href="/minh-bach" />
+        <Brand href={`/t/${slug}`} />
         <span>“Lấy thí thắng xan tham.” — Kinh Pháp Cú, kệ 223 (HT. Thích Minh Châu dịch)</span>
       </footer>
     </div>
