@@ -271,3 +271,17 @@ Giữ 85 ghi chú gốc TP54. Dòng 276 của tab TP54- TK Trâm “Điều chuy
 - API nguồn không được yêu cầu khoảng trước mốc; bộ ghi giao dịch BANK tiếp tục chặn bản ghi trước mốc kể cả nguồn trả nhầm. Job cũ trước mốc bị bỏ qua; job giao khoảng được đặt lại trang đầu.
 - Giao dịch lịch sử được nhập riêng từ Excel; giới hạn trên không áp dụng cho nhập Excel. Hai tài khoản 0572/0856 dùng chung mốc này.
 - Đã triển khai production và mở lại lease đồng bộ ngày 01/11/2026. Lượt kiểm tra đầu nhận 61 giao dịch từ mốc trở đi, không có giao dịch BANK trước mốc; 2.911 bản ghi Excel giữ nguyên (đã đối chiếu hash).
+
+### TP121 — nhập chi tiết Excel ngày 01/11/2026
+
+- Nguồn: https://docs.google.com/spreadsheets/d/1E4akqwCyNYUKBD7eg4rrvwA_FuRwEi50bq4I65C4mOI/edit ; nhập 111 giao dịch POSTED/MANUAL, không dùng số dư tổng hợp.
+- TK Trâm: 105 dòng, thu 21.967.628₫, chi 3.967.628₫. TK Mỹ: 6 dòng, thu 510.000₫, chi 18.000.000₫. Tổng thu 22.477.628₫, chi 21.967.628₫, còn 510.000₫.
+- Dòng 108 của TK Trâm “Điều chuyển số dư về TP54” không có ngày: giữ dấu SOURCE_DATE_MISSING, không tự đặt ngày nghiệp vụ. TP121 ghi 3.967.628₫ trong khi TP54 ghi 3.967.828₫; ghi chú công khai chênh lệch 200₫, giữ nguyên TP54 để quản trị viên kiểm tra.
+- Tạo TP121 với từ khóa RAPCHE, mặc định chưa đưa vào danh sách công khai tổng hợp. Lưu file nguồn riêng tư và audit TP121_FULL_DETAIL_IMPORTED; kiểm tra trùng chính xác trước nhập.
+
+### TP120 — nhập chi tiết Excel ngày 01/11/2026
+
+- Nguồn: https://docs.google.com/spreadsheets/d/1FqxRPfii-fCWyWGZevYDOGx3Mj4SFypmrcm7yjsA0PA/edit ; chỉ có tab TP120- TK My.
+- Nhập 191 dòng POSTED/MANUAL (190 thu, 1 chi), thu 50.297.400₫, chi 32.000.000₫, còn 18.297.400₫; giữ 5 ghi chú nguồn, không phát hiện trùng chính xác với lịch sử đã có.
+- Giữ nguyên 4 khoản BANK tự đồng bộ từ 01/11 tổng 1.450.000₫. Sau nhập: hùn phước 51.747.400₫, chi 32.000.000₫, số dư 19.747.400₫ (195 giao dịch).
+- Giữ nguyên tên, từ khóa, trạng thái, công khai và danh tính người tạo/cập nhật thiện pháp. File nguồn và dữ liệu trước nhập được sao lưu riêng tư; audit TP120_FULL_DETAIL_IMPORTED.
