@@ -220,3 +220,5 @@ Bảng lịch sử có người thực hiện, thời gian, mức thành tựu, 
 Migration: `20261101010000_allocation_transfers`. Kiểm thử: `npm run test:allocation-transfers`, cùng bài REST `tests/allocation-transfers-http.mts` trên database QA riêng. Không dùng giao dịch thật để kiểm thử điều chuyển.
 
 Số đếm tab giao dịch (Tất cả, Chưa phân loại và từng thiện pháp) tính toàn bộ lịch sử, không phụ thuộc bộ lọc; không tính bản đã gộp. Mặc định xem toàn bộ thời gian. Bộ lọc ngày/tìm kiếm/tài khoản chỉ giới hạn danh sách và số kết quả bên dưới, được giữ khi đổi tab; có nút Hôm nay, Toàn bộ thời gian, Xóa bộ lọc. Phân loại lại vẫn chỉ xử lý tab và bộ lọc hiện tại, giữ nguyên khoản gán thủ công.
+
+Phiên Google SSO quản trị lưu tối đa 90 ngày thay vì 8 giờ. Cookie phiên do Auth.js quản lý; quyền ADMIN_EMAILS vẫn kiểm tra trên từng REST request/thao tác. Giữ AUTH_SECRET ổn định giữa các lần deploy để các phiên đang dùng không bị mất hiệu lực. Phiên cũ vẫn có hạn đã cấp trước đó; đăng nhập lại một lần để nhận thời hạn mới.
