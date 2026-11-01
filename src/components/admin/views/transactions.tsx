@@ -1,5 +1,5 @@
 "use client";
-import { accountLabel } from "@/lib/account-label";
+import { accountLabel, fundOptionLabel } from "@/lib/account-label";
 import { useRef, useState } from "react";
 import { useToast } from "@/components/toasts";
 import { bulkAssignTransactions } from "@/lib/admin-api";
@@ -126,7 +126,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
         </div>
         <fieldset className="sheet-bulk-actions" disabled={busy}>
           <div className="sheet-bulk-totals" aria-live="polite"><strong>Đã chọn {selected.size} giao dịch</strong><span>Thu: <b>{vnd([...selected.values()].filter(r=>r.direction==="CREDIT").reduce((sum,r)=>sum+r.amount,0n))}</b> · Chi: <b>{vnd([...selected.values()].filter(r=>r.direction==="DEBIT").reduce((sum,r)=>sum+r.amount,0n))}</b></span></div>
-          <label>Gán thủ công vào thiện pháp<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{funds.filter(f=>[...selected.values()].every(r=>fundUsesAccount(f,r.accountId))).map(f=><option key={f.id} value={f.id}>{f.code} · {f.name}</option>)}</select></label>
+          <label>Gán thủ công vào thiện pháp<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{funds.filter(f=>[...selected.values()].every(r=>fundUsesAccount(f,r.accountId))).map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select></label>
           <label>Lý do chung / ghi chú công khai<input value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000} placeholder="Ví dụ: nội dung thiếu mã thiện pháp"/></label>
           <button type="button" className="button primary small" disabled={!selected.size||!target||reason.trim().length<5||loading} onClick={assignSelected}>{busy?<><LoadingSpinner size={16}/>Đang gán…</>:`Gán ${selected.size} giao dịch`}</button>
           <button type="button" className="button subtle small" disabled={!selected.size} onClick={()=>setSelection({scope:selectionScope,rows:new Map()})}>Bỏ chọn</button>
@@ -185,7 +185,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                     <td className="sheet-row-actions">
                       {r.entryStatus==="POSTED"&&<TransactionNoteEditor transactionId={r.id} narrative={r.narrative}/>}
                       {r.entryStatus==="OPENING"?<span className="badge neutral">Số dư chuyển sang</span>:r.entryStatus === "REVIEW" ? (
-                        <EntryReview entry={r} funds={funds} />
+                        <EntryReview entry={r} funds={funds} accounts={accounts} />
                       ) : r.entryStatus === "MERGED" ? (
                         <span className="badge neutral">
                           Đã đối chiếu — không tính lặp
@@ -233,7 +233,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                                   .filter((f) => fundUsesAccount(f,r.accountId))
                                   .map((f) => (
                                     <option key={f.id} value={f.id}>
-                                      {f.code} · {f.name}
+                                      {fundOptionLabel(f,accounts)}
                                       {f.status === "ACTIVE"
                                         ? ""
                                         : f.status === "PAUSED"

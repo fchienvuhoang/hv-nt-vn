@@ -3,8 +3,7 @@ import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
 
 import { useEffect,useRef,useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { PublicLink as Link } from "@/components/public-link";
+import { PublicLink as Link, usePublicSearch, publicNavigate } from "@/components/public-link";
 import { ShieldCheck,Clock,Search } from "lucide-react";
 import { Brand,Status,Metric,Section,Empty,Pagination } from "@/components/ui";
 import { dateTime,vnd } from "@/lib/domain";
@@ -12,9 +11,9 @@ import { publicQuery } from "@/lib/public-query";
 import type { PublicFundDTO } from "@/lib/public-data";
 const PUBLIC_PAGE_SIZE=100;
 export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:PublicFundDTO;initialKey:string}) {
-  const params=useSearchParams(),query=publicQuery({page:params.get("page"),type:params.get("type"),q:params.get("q")});
+  const params=new URLSearchParams(usePublicSearch()),query=publicQuery({page:params.get("page"),type:params.get("type"),q:params.get("q")});
   const {direction,search}=query,key=JSON.stringify(query),base=`/t/${slug}`;
-  const [initialAt]=useState(()=>Date.now());
+  const [initialAt]=useState(()=>Math.min(Date.now(),Date.parse(initial.generatedAt)||0));
   const cached=useRef(new Map([[initialKey,{fund:initial,at:initialAt}]]));
   const [state,setState]=useState({key:initialKey,fund:initial,loading:false,error:""}),[retry,setRetry]=useState(0);
   useEffect(()=>{
@@ -116,7 +115,7 @@ export function PublicFundLedger({slug,initial,initialKey}:{slug:string;initial:
               Khoản chi
             </Link>
           </div>
-          <form action={base} method="get" key={key} onSubmit={event=>{event.preventDefault();const params=new URLSearchParams();for(const [name,value] of new FormData(event.currentTarget))if(typeof value==="string"&&value)params.set(name,value);window.history.pushState(null,"",`${base}?${params}`)}} className="public-search" role="search">
+          <form action={base} method="get" key={key} onSubmit={event=>{event.preventDefault();const params=new URLSearchParams();for(const [name,value] of new FormData(event.currentTarget))if(typeof value==="string"&&value)params.set(name,value);publicNavigate(`${base}?${params}`)}} className="public-search" role="search">
             <input type="hidden" name="type" value={direction} />
             <label htmlFor="public-transaction-search">Tìm khoản hùn phước / khoản chi</label>
             <div className="public-search-controls">

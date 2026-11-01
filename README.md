@@ -377,6 +377,18 @@ Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản tr
 - Đã gỡ trang tổng hợp `/minh-bach`, lối vào cũ `/t` và endpoint danh mục `/api/public/funds`; giữ trang công khai từng thiện pháp `/t/[slug]` và REST chi tiết `/api/public/funds/[slug]`. Không còn liên kết quay về danh mục từ trang chi tiết.
 - Danh sách quản trị không còn nút Trang tổng hợp công khai hoặc icon mắt. Nút Trang công khai của từng thiện pháp dùng viền mảnh, nền trong suốt và chữ nhỏ nhẹ. Dữ liệu giao dịch và cấu hình công khai cũ giữ nguyên.
 
+### Tốc độ trang công khai
+
+- `/t/[slug]` dùng HTML ISR tạo theo nhu cầu, revalidate 30 giây; cache số liệu/chi tiết 30 giây, cập nhật nền khi cron có giao dịch mới. Tải lần đầu không chờ dựng lại toàn bộ trang khi cache còn dùng được. Lần đầu chưa có cache vẫn cần truy vấn dữ liệu; các chỉnh sửa quản trị tiếp tục vô hiệu hóa cache ngay.
+- HTML mặc định có sẵn tổng và 100 dòng hùn phước đầu tiên; tham số tìm kiếm/chi/trang của URL áp dụng qua REST sau hydration. History API cùng sự kiện public:navigate giữ chuyển tab, phân trang, tìm kiếm, Back/Forward phía client, không dùng điều hướng RSC hay reload. Không dùng useSearchParams để tránh làm mất SSR nội dung trong trang tĩnh.
+- Tiêu đề chỉ đọc danh tính thiện pháp; tổng tiền dùng cùng fundTotals với phạm vi một fundId, giữ nguyên công thức allocations, số dư đầu kỳ và điều chuyển. Không tính lại tất cả quỹ chỉ để mở một trang chi tiết.
+- `tests/public-cache-http.mts` kiểm tra HTML có dữ liệu SSR và cache HIT, số liệu phạm vi một quỹ khớp tính toàn sổ, lọc/chi/phân trang/tìm kiếm, che thông tin riêng và cache mới sau điều chỉnh phân bổ. Đã kiểm tra trực tiếp trên trình duyệt URL bộ lọc, xóa tìm kiếm và Back/Forward.
+
+### Vercel Web Analytics
+
+- Tích hợp `@vercel/analytics/next` trong root layout qua SiteAnalytics; Suspense riêng cho analytics giữ trang công khai tiếp tục xuất HTML ISR. Ghi nhận lượt truy cập trang, không gửi custom events hoặc dữ liệu giao dịch.
+- beforeSend loại toàn bộ query string và hash khỏi URL để không ghi nhận nội dung tìm kiếm, bộ lọc hay tham số đăng nhập trong analytics. Xem lượt truy cập tại Vercel → dự án → Analytics; dữ liệu bắt đầu từ khi bản tích hợp được triển khai.
+
 ### Mở lại đồng bộ ngân hàng từ 00:00 ngày 01/11/2026
 
 - Theo yêu cầu quản trị, cho phép đồng bộ tự động lấy các giao dịch ngân hàng phát sinh từ 00:00 ngày 01/11/2026 (giờ Việt Nam).

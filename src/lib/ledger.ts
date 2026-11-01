@@ -3,30 +3,31 @@ import {splitBalance,summarizeBalances} from "./balance-summary";
 import { db } from "./db";
 import type { Prisma } from "@/generated/prisma/client";
 export type LedgerClient = Prisma.TransactionClient;
-export async function fundTotals(client: LedgerClient = db) {
+export async function fundTotals(client: LedgerClient = db, fundId?: string) {
   const [funds, baseMovements, sent, received, allocations] = await Promise.all([
     client.fund.findMany({
+      where: fundId ? { id: fundId } : undefined,
       include: { account: true },
       orderBy: [{ status: "asc" }, { code: "asc" }],
     }),
     client.bankTransaction.groupBy({
       by: ["fundId", "accountId", "direction", "entryStatus"],
-      where: { fundId: { not: null }, entryStatus: {in:["POSTED","OPENING"]}, allocations:{none:{}} },
+      where: { fundId: fundId ?? { not: null }, entryStatus: {in:["POSTED","OPENING"]}, allocations:{none:{}} },
       _sum: { amount: true },
       _min: {occurredAt:true},
       _count: true,
     }),
     client.transfer.groupBy({
       by: ["fromFundId", "accountId"],
-      where:{mode:"BALANCE"},
+      where:{mode:"BALANCE", ...(fundId ? {fromFundId:fundId} : {})},
       _sum: { amount: true },
     }),
     client.transfer.groupBy({
       by: ["toFundId", "accountId"],
-      where:{mode:"BALANCE"},
+      where:{mode:"BALANCE", ...(fundId ? {toFundId:fundId} : {})},
       _sum: { amount: true },
     }),
-    client.fundAllocation.groupBy({by:["fundId","accountId"],where:{transaction:{entryStatus:"POSTED",direction:"CREDIT"}},_sum:{amount:true},_count:true}),
+    client.fundAllocation.groupBy({by:["fundId","accountId"],where:{...(fundId?{fundId}:{}),transaction:{entryStatus:"POSTED",direction:"CREDIT"}},_sum:{amount:true},_count:true}),
   ]);
   const grouped=new Map<string,{fundId:string|null;accountId:string;direction:"CREDIT"|"DEBIT";entryStatus:string;openingAt:Date|null;_sum:{amount:bigint};_count:number}>();
   for(const row of [...baseMovements,...allocations.map(a=>({...a,direction:"CREDIT" as const,entryStatus:"POSTED",_min:{occurredAt:null}}))]){

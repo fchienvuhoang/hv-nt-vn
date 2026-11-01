@@ -1,4 +1,5 @@
 "use client";
+import { fundOptionLabel } from "@/lib/account-label";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
 import { useState } from "react";
@@ -16,9 +17,11 @@ import type { BankTransaction, Fund } from "@/generated/prisma/client";
 export function EntryReview({
   entry,
   funds,
+  accounts,
 }: {
   entry: Pick<BankTransaction,"id"|"occurredAt"|"accountId"|"direction"|"amount"|"origin"|"narrative"|"fundId">;
   funds: Pick<Fund,"id"|"code"|"name"|"accountId"|"accountIds">[];
+  accounts: {id:string;number:string}[];
 }) {
   const [opened,setOpened]=useState(false);
   const {data:candidates=[],loading,error}=useAdminResource<ReviewCandidates>(`review-candidates?id=${encodeURIComponent(entry.id)}`,15000,opened);
@@ -83,7 +86,7 @@ export function EntryReview({
               .filter((f) => fundUsesAccount(f, entry.accountId))
               .map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.code} · {f.name}
+                  {fundOptionLabel(f,accounts)}
                 </option>
               ))}
           </select>

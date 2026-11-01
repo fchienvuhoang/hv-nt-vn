@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { ToastProvider } from "@/components/toasts";
+import { SiteAnalytics } from "@/components/site-analytics";
 export const metadata: Metadata = {
   title: {
     default: "Học viện nguyên thủy Việt Nam",
@@ -21,7 +23,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="vi">
-      <body><ToastProvider>{children}</ToastProvider></body>
+      <body><ToastProvider>{children}</ToastProvider><Suspense fallback={null}><SiteAnalytics /></Suspense></body>
     </html>
   );
 }

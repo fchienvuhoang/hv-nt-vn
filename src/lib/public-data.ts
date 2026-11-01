@@ -8,8 +8,8 @@ import { maskPhones,normalize } from "./domain";
 import { matchesPublicTransaction } from "./public-search";
 export const PUBLIC_PAGE_SIZE = 100;
 export const PUBLIC_TAG = "public-ledger";
-const options = { revalidate: 1200, tags: [PUBLIC_TAG] };
-const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true}}),["public-fund-identity-v1"],options);
+const options = { revalidate: 30, tags: [PUBLIC_TAG] };
+const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true,code:true,name:true}}),["public-fund-identity-v2"],options);
 async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
  const identity=await publicIdentity(slug);if(!identity)return null;
  return unstable_cache(async()=>{
@@ -21,7 +21,7 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
     const bankAccounts = await db.bankAccount.findMany({where:{id:{in:[fund.accountId,...fund.accountIds]}},select:{id:true,number:true}});
     const where = { ...fundMembership(fund.id), direction, entryStatus: {in:["POSTED","OPENING"]} };
     const [summary, count, transfers, sync] = await Promise.all([
-      fundTotals(),
+      fundTotals(db,fund.id),
       db.bankTransaction.count({ where }),
       db.transfer.findMany({
         where: { OR: [{ fromFundId: fund.id }, { toFundId: fund.id }] },
@@ -81,7 +81,7 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v11",slug,direction],
+  ["public-fund-summary-v12",slug,direction],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }
@@ -119,7 +119,8 @@ export async function publicFund(slug: string, page: number, direction: "CREDIT"
 
 export type PublicFundDTO=Omit<NonNullable<Awaited<ReturnType<typeof publicFund>>>,"id"|"cutover">;
 export async function publicFundTitle(slug:string){
-  const fund=await publicFundSummary(slug,"CREDIT");
+  const identity=await publicIdentity(slug);
+  const fund=identity?{...identity,name:maskPhones(identity.name)}:null;
   if(!fund)return null;
   const name=fund.name.trim();
   const hasCode=new RegExp(`^${fund.code}(?=$|[\\s:–—-])`,"i").test(name);

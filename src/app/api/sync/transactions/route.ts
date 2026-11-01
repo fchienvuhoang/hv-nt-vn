@@ -20,7 +20,8 @@ export async function POST(request: Request) {
     if(result.inserted||result.updated)revalidateTag(ADMIN_LEDGER_TAG,{expire:0});
     if(result.affectedFundIds?.length){
       revalidateTag(PUBLIC_DIRECTORY_TAG,{expire:0});
-      for(const id of result.affectedFundIds)revalidateTag(publicFundTag(id),{expire:0});
+      // Keep the public page fast while changed bank data regenerates in the background.
+      for(const id of result.affectedFundIds)revalidateTag(publicFundTag(id),"max");
     }
     return NextResponse.json({ ok: true, minimumSyncDate:BANK_SYNC_MIN_DATE, minimumSyncAt:BANK_SYNC_MIN_ISO, timezone:"Asia/Ho_Chi_Minh", ...result });
   } catch (error) {
