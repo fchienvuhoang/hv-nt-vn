@@ -104,7 +104,7 @@ export function FundForm({
         Ghi chú nội bộ
         <textarea name="adminNote" rows={3} maxLength={3000} placeholder="Ghi chú theo dõi thiện pháp…" value={values.adminNote} onChange={event=>change("adminNote",event.target.value)} {...errorProps("adminNote")} />
         {errorMessage("adminNote")}
-        <small>Hiển thị cạnh Hùn phước trong danh sách quản trị.</small>
+        <small>Hiển thị dưới số tiền Hùn phước trong danh sách quản trị.</small>
       </label>
       <label>
         Từ khóa mở rộng

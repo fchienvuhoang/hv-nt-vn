@@ -363,13 +363,13 @@ Tủ thuốc SK đã giới hạn riêng TK Trâm 0856 theo yêu cầu quản tr
 
 ### Mục tiêu thành tựu của thiện pháp
 
-- Trường `goalAmount` tùy chọn, nhập trong Cấu hình bằng số nguyên VND lớn hơn 0, tối đa 15 chữ số; để trống để bỏ mục tiêu. Lưu qua REST API hiện có, kiểm tra quyền và nguồn yêu cầu như các cấu hình khác. Cột Mục tiêu thành tựu trong danh sách hiển thị số tiền hoặc dấu — khi chưa đặt; số này độc lập với tiền và trạng thái hoạt động của quỹ.
+- Trường `goalAmount` tùy chọn, nhập trong Cấu hình bằng số nguyên VND lớn hơn 0, tối đa 15 chữ số; để trống để bỏ mục tiêu. Lưu qua REST API hiện có, kiểm tra quyền và nguồn yêu cầu như các cấu hình khác. Mục tiêu thành tựu hiển thị dưới tên thiện pháp, có nhãn riêng, chỉ hiện khi đã đặt; số này độc lập với tiền và trạng thái hoạt động của quỹ.
 - Thay đổi mục tiêu được ghi lịch sử cấu hình, biểu diễn số tiền chính xác bằng BigInt và audit bằng chuỗi VND. Form cũ không gửi trường này vẫn giữ mục tiêu hiện tại. Các quỹ hiện có mặc định chưa có mục tiêu, không suy đoán từ mô tả hoặc file Excel.
 - `tests/fund-goal-http.mts` kiểm tra REST tạo/sửa/xóa, số lớn, dữ liệu sai, tương thích form cũ, audit và ledger giữ nguyên trên database QA riêng.
 
 ### Ghi chú nội bộ theo thiện pháp
 
-- `adminNote` là ghi chú riêng trong quản trị, tối đa 3.000 ký tự, chỉnh ở Cấu hình và hiển thị cột Ghi chú ngay sau Hùn phước. Giữ xuống dòng, nội dung được render như văn bản; không đưa vào trang hoặc REST API công khai. Độc lập với mô tả công khai và các ghi chú giao dịch.
+- `adminNote` là ghi chú riêng trong quản trị, tối đa 3.000 ký tự, chỉnh ở Cấu hình và hiển thị dưới tên thiện pháp cùng khu vực thông tin mục tiêu, tách khỏi các cột thu/chi/số dư. Giữ xuống dòng, nội dung được render như văn bản; không đưa vào trang hoặc REST API công khai. Độc lập với mô tả công khai và các ghi chú giao dịch.
 - Lưu qua REST hiện có, ghi FUND_UPDATED/FUND_CREATED; form cũ không gửi adminNote vẫn giữ ghi chú hiện tại, gửi chuỗi trống để xóa. Quỹ cũ mặc định trống. Kiểm thử HTTP trên database QA riêng gồm lưu nhiều dòng, giới hạn độ dài, giữ ghi chú qua form cũ, xóa và kiểm tra không lộ ở API công khai.
 
 ### Gỡ danh mục Minh bạch theo yêu cầu quản trị
