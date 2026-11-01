@@ -132,7 +132,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       <div className="fund-identity">
                         <FundPinButton fundId={f.id} code={f.code} pinned={!!f.pinnedAt}/>
                         <span className="code">{f.code}</span>
-                        <h3 className="table-fund-name" title={`Từ khóa: ${f.keywords.join(" · ") || f.code}`}>{f.name}</h3>
+                        <h3 className="table-fund-name" title={`${f.code} · ${f.name}${f.keywords.length ? ` (Từ khóa: ${f.keywords.join(" · ")})` : ""}`}>{f.name}</h3>
                       </div>
                       {f.keywords.length > 0 && <div className="fund-aliases" aria-label="Mã phụ và từ khóa">{f.keywords.map(keyword=><span key={keyword}>{keyword}</span>)}</div>}
                       {f.goalAmount != null && <div className="fund-context">
