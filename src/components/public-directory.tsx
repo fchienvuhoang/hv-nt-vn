@@ -1,6 +1,8 @@
 "use client";
 import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator } from "@/components/loading-indicator";
+import { PublicFundGoal } from "@/components/public-fund-goal";
+import { PublicTransferContent } from "@/components/public-transfer-content";
 
 import {useEffect,useState} from "react";
 import {useSearchParams} from "next/navigation";
@@ -31,6 +33,8 @@ export function PublicDirectory({initial}:{initial:PublicDirectoryDTO}){
    {!data.funds.length?<Empty title="Không tìm thấy kết quả">Thử nội dung khác hoặc ba số cuối điện thoại. Giao dịch chưa phân loại chưa xuất hiện tại thiện pháp.</Empty>:<div className="public-fund-grid">{data.funds.map(f=>{
     const detail=`/t/${f.slug}`,resultLink=q&&f.previews.length?`${detail}?${new URLSearchParams({type:f.previews[0].direction,q})}`:detail;
     return <article className="public-fund-card" key={f.slug}><div className="public-fund-card-top"><span className="code">{f.code}</span><span className="public-active-label"><Sprout size={12}/>Đang hoạt động</span></div><h2><Link href={detail}>{f.name}</Link></h2>
+     <PublicTransferContent code={f.code}/>
+     <PublicFundGoal goalAmount={f.goalAmount} income={f.income}/>
      <dl className="directory-fund-totals"><div><dt>Hùn phước</dt><dd>{vnd(f.income)}</dd></div><div><dt>Đã chi</dt><dd>{vnd(f.expense)}</dd></div><div><dt>Khả dụng</dt><dd>{vnd(f.availableBalance)}</dd></div><div className={BigInt(f.excessExpense)>0n?"fund-overdrawn":""}><dt>Chi vượt quỹ</dt><dd>{vnd(f.excessExpense)}</dd></div></dl>
      {BigInt(f.openingBalance)!==0n&&<small className="fund-opening-note">Trong tổng thu/chi có khoản chuyển từ Excel: {vnd(f.openingBalance)}</small>}
      {f.previews.length>0&&<div className="directory-matches"><strong>{f.matches} giao dịch phù hợp</strong>{f.previews.map((r,i)=><Link className="directory-match" key={i} href={`${detail}?${new URLSearchParams({type:r.direction,q})}`}><span>{r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.at)} · TK {accountLabel(r.account)}<b className={r.direction==="CREDIT"?"positive":"negative"}>{r.direction==="CREDIT"?"+":"−"}{vnd(r.amount)}</b></span><p>{r.narrative||"Không có nội dung chuyển khoản"}</p>{r.name&&<small>{r.name}</small>}{r.notes.map((n,i)=><small key={i} className="directory-note">Ghi chú: {n.text}</small>)}</Link>)}{f.matches>f.previews.length&&<small>Còn {f.matches-f.previews.length} khoản phù hợp; mở chi tiết để xem thêm.</small>}</div>}

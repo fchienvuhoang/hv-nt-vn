@@ -47,6 +47,8 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
     return {
       isLongTerm:fund.isLongTerm,month:period,carryBalance:prior?.balance.toString()??"0",
       code: fund.code,
+      goalAmount: fund.goalAmount?.toString() ?? null,
+      goalIncome: total.income.toString(),
       name: maskPhones(fund.name),
       slug,
       description: maskPhones(fund.description),
@@ -88,7 +90,7 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v14",slug,direction,month],
+  ["public-fund-summary-v15",slug,direction,month],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }
@@ -144,8 +146,8 @@ export function publicFundDTO(fund:NonNullable<Awaited<ReturnType<typeof publicF
 const DIRECTORY_PAGE_SIZE=12;
 const directoryFunds=unstable_cache(async()=>{
   const totals=await fundTotals();
-  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,name:maskPhones(f.name),description:maskPhones(f.description),income:f.income.toString(),expense:f.expense.toString(),balance:f.balance.toString(),availableBalance:f.availableBalance.toString(),excessExpense:f.excessExpense.toString(),openingBalance:f.openingBalance.toString(),count:f.statementCount,incomeCount:f.statementIncomeCount,expenseCount:f.statementExpenseCount}));
-},["public-directory-funds-v8"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
+  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,goalAmount:f.goalAmount?.toString()??null,name:maskPhones(f.name),description:maskPhones(f.description),income:f.income.toString(),expense:f.expense.toString(),balance:f.balance.toString(),availableBalance:f.availableBalance.toString(),excessExpense:f.excessExpense.toString(),openingBalance:f.openingBalance.toString(),count:f.statementCount,incomeCount:f.statementIncomeCount,expenseCount:f.statementExpenseCount}));
+},["public-directory-funds-v9"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
 export async function publicDirectory(search="",requestedPage=1){
  const funds=await directoryFunds(),query=search.trim().slice(0,100);
  type Preview=Omit<Awaited<ReturnType<typeof publicTransactionPage>>[number],"id">&{direction:"CREDIT"|"DEBIT"};

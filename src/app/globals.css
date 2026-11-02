@@ -4069,6 +4069,22 @@ tfoot td {
 .public-active-label { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: #627443; }
 .public-fund-card h2 { font-size: 15px; line-height: 1.5; margin: 9px 0 12px; color: #563630; overflow-wrap: anywhere; }
 .public-fund-card h2 a:hover { color: #8b3148; text-decoration: underline; }
+.public-transfer-content { margin: 0 0 14px; padding: 12px; border: 1px solid #ddcbb7; border-radius: 8px; background: #faf6ef; font-size: 13px; line-height: 1.5; }
+.public-transfer-content > span { display: block; margin-top: 5px; }
+.public-transfer-content > span:empty { display: none; }
+.public-transfer-content small { display: block; color: #68584b; }
+.public-transfer-copy { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 5px 0; }
+.public-transfer-copy code { font-size: 16px; font-weight: 700; color: #563630; user-select: all; overflow-wrap: anywhere; min-width: 0; }
+.public-fund-goal { margin: 0 0 14px; padding: 13px; border: 1px solid #ddcbb7; border-radius: 8px; background: #faf6ef; font-size: 13px; }
+.public-goal-target, .public-goal-raised { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 5px 12px; }
+.public-goal-target { color: #563630; margin-bottom: 8px; }
+.public-goal-target > strong { font-size: 20px; }
+.public-goal-raised { font-size: 12px; }
+.public-fund-goal progress { display: block; width: 100%; height: 9px; margin: 9px 0; border: 0; border-radius: 9px; overflow: hidden; background: #e8dfd1; accent-color: #52764b; }
+.public-fund-goal progress::-webkit-progress-bar { background: #e8dfd1; border-radius: 9px; }
+.public-fund-goal progress::-webkit-progress-value { background: #52764b; border-radius: 9px; }
+.public-fund-goal progress::-moz-progress-bar { background: #52764b; border-radius: 9px; }
+.public-fund-goal small { color: #68584b; }
 .directory-fund-totals { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; padding: 9px 0; margin: 0 0 10px; border-top: 1px solid #eee4d7; border-bottom: 1px solid #eee4d7; }
 .directory-fund-totals dt { font-size: 10px; color: #94785f; }
 .directory-fund-totals dd { font-size: 12px; font-weight: 700; margin: 4px 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }

@@ -1,5 +1,7 @@
 "use client";
 import {PwaAdminReturn} from "@/components/pwa-admin-return";
+import { PublicFundGoal } from "@/components/public-fund-goal";
+import { PublicTransferContent } from "@/components/public-transfer-content";
 import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
 
@@ -69,6 +71,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)}
           </div>
         </div>
+        {fund.status === "ACTIVE" && <PublicTransferContent code={fund.code}/>}
         {fund.pendingImports > 0 && (
           <div className="notice">
             <LoadingSpinner size={20}/> Đang nhập lịch sử Excel; số liệu có thể chưa đầy đủ cho tới khi nhập
@@ -76,6 +79,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
           </div>
         )}
         {fund.isLongTerm&&<div className="public-month-picker">Thống kê tháng {fund.month.slice(5,7)}/{fund.month.slice(0,4)} · Tháng hiện tại</div>}
+        <PublicFundGoal goalAmount={fund.goalAmount} income={fund.goalIncome}/>
         {fund.isLongTerm?<div className="metrics">
           <Metric label="Dư / thiếu tháng trước chuyển sang" value={fund.carryBalance} note="Giữ nguyên cả số dư dương và âm"/>
           <Metric label="Hùn phước trong tháng" value={fund.income} note="Chỉ các khoản ghi nhận trong tháng" accent/>
