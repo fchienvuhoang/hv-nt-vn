@@ -29,12 +29,12 @@ function resourceRevision(path:string,version:Revision){
  if(path==="bootstrap"||path==="transaction-summary")return version.ledger+version.source+version.day;
  return version.ledger+version.day;
 }
-export function useAdminResource<T>(path:string,ttl=15000,enabled=true){
+export function useAdminResource<T>(path:string,ttl=15000,enabled=true,keepPreviousData=false){
   const [state,setState]=useState<{key:string;data?:T;error?:string;loading:boolean}>(()=>({key:path,data:entries.get(path)?.data as T|undefined,loading:true}));
   useEffect(()=>{
     if(!enabled)return;
     let alive=true,sequence=0,lastRevision:string|undefined,checking=false;
-    async function load(force=false){const current=++sequence;setState(previous=>({key:path,data:previous.key===path?previous.data:entries.get(path)?.data as T|undefined,loading:true}));try{const data=await read<T>(path,ttl,force);if(alive&&current===sequence)setState({key:path,data,loading:false});return true}catch(cause){if(alive&&current===sequence)setState(previous=>({...previous,loading:false,error:cause instanceof Error?cause.message:"Không tải được dữ liệu"}));return false}}
+    async function load(force=false){const current=++sequence;setState(previous=>({key:path,data:previous.key===path?previous.data:(entries.get(path)?.data as T|undefined)??(keepPreviousData?previous.data:undefined),loading:true}));try{const data=await read<T>(path,ttl,force);if(alive&&current===sequence)setState({key:path,data,loading:false});return true}catch(cause){if(alive&&current===sequence)setState(previous=>({...previous,loading:false,error:cause instanceof Error?cause.message:"Không tải được dữ liệu"}));return false}}
     void load();
     async function check(){
       if(document.hidden||checking)return;checking=true;
@@ -53,8 +53,8 @@ export function useAdminResource<T>(path:string,ttl=15000,enabled=true){
     window.addEventListener("admin:data-changed",refresh);document.addEventListener("visibilitychange",visible);
     const timer=setInterval(visible,60000);
     return()=>{alive=false;clearInterval(timer);window.removeEventListener("admin:data-changed",refresh);document.removeEventListener("visibilitychange",visible)};
-  },[path,ttl,enabled]);
-  return state.key===path?state:{key:path,data:entries.get(path)?.data as T|undefined,loading:true,error:undefined};
+  },[path,ttl,enabled,keepPreviousData]);
+  return state.key===path?state:{key:path,data:(entries.get(path)?.data as T|undefined)??(keepPreviousData?state.data:undefined),loading:true,error:undefined};
 }
 export function refreshAdminData(){for(const entry of entries.values())entry.at=0;window.dispatchEvent(new Event("admin:data-changed"))}
 async function write<T>(path:string,method:string,body:FormData|object,notify=true):Promise<T>{

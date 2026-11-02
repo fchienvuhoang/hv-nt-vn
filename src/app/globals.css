@@ -4457,3 +4457,17 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
 .admin-workspace:has(.statistics-workspace) { height:auto; min-height:100dvh; overflow:visible; }
 .workspace-main:has(.statistics-workspace) { overflow:visible; padding-top:8px; }
 .statistics-workspace { flex:1 0 auto; }
+
+/* Keep the calendar inline despite the shared form-label column layout. */
+.activity-toolbar .activity-calendar { display:inline-flex; flex-direction:row; align-items:center; flex:0 0 auto; width:auto; margin:0; gap:6px; white-space:nowrap; }
+.activity-toolbar .activity-calendar > span { display:inline; margin:0; font-size:11px; line-height:30px; }
+.activity-toolbar .activity-calendar input { flex:0 0 138px; width:138px; min-width:138px; max-width:138px; margin:0; }
+.activity-table .activity-code-col { width:160px; }
+.activity-table td.activity-code { overflow:hidden; }
+.activity-table td.activity-code > strong { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.activity-table-caption { min-height:24px; }
+.activity-updating { margin-left:auto; white-space:nowrap; font-size:11px; color:var(--muted); }
+@media (max-width:600px) {
+ .activity-toolbar .activity-calendar > span { display:none; }
+ .activity-table .activity-code-col { display:none; width:0; }
+}
