@@ -1,3 +1,4 @@
+import {SITE_ORIGIN} from "@/lib/site-url";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
@@ -10,6 +11,7 @@ export const viewport: Viewport = {
   themeColor: "#803345",
 };
 export const metadata: Metadata = {
+  metadataBase:new URL(SITE_ORIGIN),
   title: {
     default: "Học viện nguyên thủy Việt Nam",
     template: "%s · Học viện nguyên thủy Việt Nam",

@@ -21,14 +21,14 @@ Mở http://localhost:3000 sẽ chuyển thẳng đến `/login`. Quản trị t
 - `AUTH_SECRET`: chuỗi ngẫu nhiên tối thiểu 32 ký tự (`openssl rand -base64 32`).
 - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`: OAuth client của Google.
 - `ADMIN_EMAILS`: danh sách email quản trị, phân cách dấu phẩy. Bỏ trống sẽ từ chối tất cả đăng nhập. Chỉ chấp nhận Google email đã xác minh; quyền được kiểm tra lại trên từng trang/thao tác, không chỉ lúc đăng nhập.
-- `AUTH_URL`: origin chính thức, ví dụ `https://your-app.vercel.app`.
+- `AUTH_URL`: origin chính thức, ví dụ `https://hvntvn.danasangha.org`.
 - `SYNC_SECRET`: chuỗi ngẫu nhiên riêng, tối thiểu 32 ký tự.
 
 Google OAuth authorized redirect URI:
 
 ```text
 http://localhost:3000/api/auth/callback/google
-https://your-app.vercel.app/api/auth/callback/google
+https://hvntvn.danasangha.org/api/auth/callback/google
 ```
 
 Không có tài khoản mặc định hoặc cơ chế bỏ qua đăng nhập. Không đưa `.env` lên Git. Seed chỉ tạo hai tài khoản, không tạo thiện pháp hoặc số liệu giả.
@@ -46,7 +46,7 @@ Google SSO cần cấu hình thật và kiểm thử tài khoản được cấp
 ## Đồng bộ mỗi phút từ cron-job.org
 
 ```text
-URL: https://your-app.vercel.app/api/sync/transactions
+URL: https://hvntvn.danasangha.org/api/sync/transactions
 Method: POST
 Schedule: * * * * *
 Timeout: 30 seconds
@@ -430,3 +430,5 @@ Webhook đồng bộ mỗi phút cũng kiểm tra lịch email: 07:00 giờ Vi�
 Email tiến độ: các mốc 80%, 90%, 95%, 100%, mỗi mốc tối đa một lần với cùng thiện pháp và mục tiêu. Mỗi lần kiểm tra chỉ tạo mốc cao nhất vừa đạt (ví dụ 75% lên 96% chỉ tạo 95%). Các mốc thấp hơn sẽ không gửi lại dù thu điều chỉnh giảm rồi tăng; thay mục tiêu sang giá trị khác mở bộ mốc riêng. Push hiện có vẫn gửi khi đạt 100%. Tổng thu dùng cùng cách tính lũy kế trên trang công khai. Email báo cáo sáng độc lập với tối đa bốn email tiến độ cho mỗi mục tiêu.
 
 Hàng đợi gửi riêng từng quản trị viên; gỡ email khỏi ADMIN_EMAILS sẽ ngừng thư còn chờ của địa chỉ đó. Thử lại tối đa sáu lần với khóa idempotency Resend; dừng sau 23 giờ từ lần thử đầu để không gửi trùng ngoài cửa sổ bảo vệ 24 giờ. Lưu lỗi ở lastError. Kiểm thử tích hợp: node --conditions=react-server --import tsx tests/scheduled-emails-integration.mts (chỉ DATABASE_URL localhost bắt đầu hvntvn_test, email giả lập).
+
+Domain chính: `https://hvntvn.danasangha.org`. Production `AUTH_URL` và `VAPID_SUBJECT` dùng origin này; Google OAuth callback: `https://hvntvn.danasangha.org/api/auth/callback/google`. Domain Vercel cũ chuyển hướng các trang web, giữ các API/worker để scheduler và thiết bị cũ không bị gián đoạn. PWA đã cài trên domain cũ cần cài lại từ domain chính để đăng nhập và bật push ở origin mới.

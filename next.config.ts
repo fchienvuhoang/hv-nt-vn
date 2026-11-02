@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   experimental: { serverActions: { bodySizeLimit: "6mb" } },
   async redirects() {
     return [
+      {source:"/:path((?!api(?:/|$)|_next(?:/|$)|sw[.]js$|manifest[.]webmanifest$).*)",has:[{type:"host",value:"hocviennguyenthuy-vietnam.vercel.app"}],destination:"https://hvntvn.danasangha.org/:path",permanent:true},
       {source:"/t/0572-tdts",destination:"/t/0572-ttts",permanent:true},
       {source:"/api/public/funds/0572-tdts",destination:"/api/public/funds/0572-ttts",permanent:true},
     ];

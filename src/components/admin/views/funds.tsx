@@ -1,4 +1,5 @@
 "use client";
+import {SITE_ORIGIN} from "@/lib/site-url";
 import { useToast } from "@/components/toasts";
 import { accountLabel } from "@/lib/account-label";
 import {summarizeBalances} from "@/lib/balance-summary";
@@ -23,7 +24,7 @@ import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
 export default function Funds({ params = {},bootstrap }: { params?: AdminParams;bootstrap?:AdminBootstrap }) {
   const toast=useToast();
   async function copyPublicLink(slug:string){
-    try{await navigator.clipboard.writeText(new URL(`/t/${slug}`,window.location.origin).href);toast("Đã sao chép link trang công khai.");}
+    try{await navigator.clipboard.writeText(new URL(`/t/${slug}`,SITE_ORIGIN).href);toast("Đã sao chép link trang công khai.");}
     catch{toast("Không sao chép được. Vui lòng cho phép truy cập bộ nhớ tạm rồi thử lại.","error");}
   }
   const all=[...(bootstrap?.funds??[])].sort((a,b)=>(b.pinnedAt?.getTime()??0)-(a.pinnedAt?.getTime()??0)),balances=bootstrap?.balances??[];
