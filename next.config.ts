@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   // Data Cache is used explicitly; keep route-segment auth/runtime controls available.
   cacheComponents: false,
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/api/admin/*": ["./public/branding/hoc-vien-nguyen-thuy-viet-nam.png"],
+    "/api/sync/transactions": ["./public/branding/hoc-vien-nguyen-thuy-viet-nam.png"],
+  },
   experimental: { serverActions: { bodySizeLimit: "6mb" } },
   async redirects() {
     return [
