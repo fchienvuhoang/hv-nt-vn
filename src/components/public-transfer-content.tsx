@@ -16,13 +16,11 @@ export function PublicTransferContent({ code }: { code: string }) {
   }
 
   return <div className="public-transfer-content">
-    <div>Mã thiện pháp: <strong>{code}</strong></div>
-    <span>Cú pháp chuyển khoản</span>
     <div className="public-transfer-copy">
+      <span>Mã thiện pháp / Nội dung CK</span>
       <code>{code}</code>
-      <button type="button" className="button subtle small" onClick={copy} aria-label={`Sao chép nội dung chuyển khoản ${code}`}><Copy size={14}/>Sao chép</button>
+      <button type="button" className="button subtle small" onClick={copy} title="Sao chép nội dung chuyển khoản" aria-label={`Sao chép nội dung chuyển khoản ${code}`}><Copy size={14}/><span>Sao chép</span></button>
     </div>
-    <small>Ghi đúng mã này trong nội dung chuyển khoản để ghi nhận hùn phước vào thiện pháp.</small>
     <span role="status">{result?.code === code ? result.message : ""}</span>
   </div>;
 }

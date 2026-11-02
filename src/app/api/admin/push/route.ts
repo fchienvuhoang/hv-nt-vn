@@ -6,7 +6,7 @@ import {db} from "@/lib/db";
 import {pushConfigured,sendAdminPush} from "@/lib/admin-push";
 import {defaultPushPreferences,validPushEndpoint} from "@/lib/push-policy";
 export const runtime="nodejs";
-const preferences=z.object({wrongAccount:z.boolean(),needsClassification:z.boolean(),syncError:z.boolean()}).strict();
+const preferences=z.object({wrongAccount:z.boolean(),needsClassification:z.boolean(),syncError:z.boolean(),fundGoalReached:z.boolean().optional()}).strict();
 const endpoint=z.string().max(2048).refine(validPushEndpoint,"Dịch vụ thông báo không được hỗ trợ.");
 const key=(bytes:number)=>z.string().regex(/^[A-Za-z0-9_-]+={0,2}$/).max(128).refine(s=>Buffer.from(s,"base64url").length===bytes,"Khóa thông báo không hợp lệ.");
 const subscription=z.object({endpoint,keys:z.object({p256dh:key(65),auth:key(16)}),expirationTime:z.number().nullable().optional()});
@@ -20,7 +20,7 @@ async function handle(request:NextRequest){
     if(request.method==="GET"){
       const pref=await db.pushPreference.findUnique({where:{email}});
       const devices=await db.adminPushSubscription.findMany({where:{email},select:{endpoint:true}});
-      return json({preferences:pref?{wrongAccount:pref.wrongAccount,needsClassification:pref.needsClassification,syncError:pref.syncError}:defaultPushPreferences,publicKey:pushConfigured()?process.env.VAPID_PUBLIC_KEY:null,devices:devices.map(s=>createHash("sha256").update(s.endpoint).digest("hex"))});
+      return json({preferences:pref?{wrongAccount:pref.wrongAccount,needsClassification:pref.needsClassification,syncError:pref.syncError,fundGoalReached:pref.fundGoalReached}:defaultPushPreferences,publicKey:pushConfigured()?process.env.VAPID_PUBLIC_KEY:null,devices:devices.map(s=>createHash("sha256").update(s.endpoint).digest("hex"))});
     }
     const body=await request.json();
     if(request.method==="PUT"){

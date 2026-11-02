@@ -354,6 +354,7 @@ model PushPreference {
   wrongAccount Boolean @default(false)
   needsClassification Boolean @default(false)
   syncError Boolean @default(false)
+  fundGoalReached Boolean @default(true)
   subscriptions AdminPushSubscription[]
   updatedAt DateTime @updatedAt
 }
@@ -393,4 +394,30 @@ model PublicCacheRefresh {
   dailyKey String @default("")
   lastSlug String @default("")
   error String?
+}
+
+// Permanent milestone record: delivery queue cleanup must not reannounce a goal.
+model FundGoalAchievement {
+  id String @id
+  fundId String
+  goalAmount BigInt
+  income BigInt
+  code String
+  name String
+  slug String
+  createdAt DateTime @default(now())
+  emails FundGoalEmail[]
+}
+model FundGoalEmail {
+  id String @id @default(cuid())
+  achievementId String
+  achievement FundGoalAchievement @relation(fields:[achievementId],references:[id],onDelete:Cascade)
+  email String
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  firstAttemptAt DateTime?
+  finishedAt DateTime?
+  lastError String?
+  @@unique([achievementId,email])
+  @@index([finishedAt,nextAttemptAt])
 }

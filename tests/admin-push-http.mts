@@ -11,7 +11,7 @@ const path=origin+"/api/admin/push";
 async function request(method:string,cookie:string,body?:unknown,from=origin){return fetch(path,{method,headers:{Cookie:cookie,Origin:from,"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});}
 assert.equal((await fetch(path)).status,401);
 assert.equal((await request("GET",outsider)).status,403);
-const pref={wrongAccount:true,needsClassification:false,syncError:true};
+const pref={wrongAccount:true,needsClassification:false,syncError:true,fundGoalReached:true};
 assert.equal((await request("PUT",admin,pref,"https://evil.example")).status,403);
 assert.equal((await request("PUT",admin,{...pref,email:"outside@example.test"})).status,400);
 assert.equal((await request("PUT",admin,pref)).status,200);

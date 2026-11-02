@@ -49,7 +49,7 @@ export async function dispatchAdminPush(){
       if(!active.length){await db.adminPushDelivery.updateMany({where:{id:{in:ids}},data:{finishedAt:new Date()}});return;}
       await db.adminPushDelivery.updateMany({where:{id:{in:ids}},data:{attempts:{increment:1},nextAttemptAt:new Date(Date.now()+Math.min(3600000,60000*2**rows[0].attempts))}});
       try{
-        await sendAdminPush(subscription,{title:pushLabels[kind],body:kind==="syncError"?"Đồng bộ gặp lỗi. Mở nhật ký quản trị để kiểm tra.":`Có ${active.length} giao dịch mới cần kiểm tra. Mở trang quản trị để xem.`,url:pushDestination(kind),tag:`admin-${kind}`});
+        await sendAdminPush(subscription,{title:pushLabels[kind],body:kind==="fundGoalReached"?`Có ${active.length} thiện pháp đã đạt mục tiêu thành tựu. Mở trang Thiện pháp để xem.`:kind==="syncError"?"Đồng bộ gặp lỗi. Mở nhật ký quản trị để kiểm tra.":`Có ${active.length} giao dịch mới cần kiểm tra. Mở trang quản trị để xem.`,url:pushDestination(kind),tag:`admin-${kind}`});
         await db.adminPushDelivery.updateMany({where:{id:{in:ids}},data:{finishedAt:new Date()}});
       }catch(error){
         const status=(error as {statusCode?:number}).statusCode;

@@ -1,11 +1,12 @@
-export const pushKinds = ["wrongAccount", "needsClassification", "syncError"] as const;
+export const pushKinds = ["wrongAccount", "needsClassification", "syncError", "fundGoalReached"] as const;
 export type PushKind = typeof pushKinds[number];
 export const pushLabels: Record<PushKind,string> = {
   wrongAccount: "Giao dịch sai tài khoản nhận",
   needsClassification: "Giao dịch cần phân loại",
   syncError: "Đồng bộ lỗi",
+  fundGoalReached: "Thiện pháp thành tựu",
 };
-export const defaultPushPreferences = {wrongAccount:false, needsClassification:false, syncError:false};
+export const defaultPushPreferences = {wrongAccount:false, needsClassification:false, syncError:false, fundGoalReached:true};
 export function transactionPushKind(row:{fundId?:string|null;assignment?:string;entryStatus?:string;matchReason?:string}):PushKind|null {
   if(row.entryStatus==="MERGED"||row.entryStatus==="REJECTED")return null;
   if(row.matchReason?.startsWith("Sai tài khoản nhận:"))return "wrongAccount";
@@ -21,4 +22,4 @@ export function validPushEndpoint(endpoint:string){
       host.endsWith(".notify.windows.com"));
   }catch{return false;}
 }
-export function pushDestination(kind:PushKind){return kind==="syncError"?"/admin?view=sync":"/admin?view=transactions&pending=1";}
+export function pushDestination(kind:PushKind){return kind==="fundGoalReached"?"/admin?view=funds":kind==="syncError"?"/admin?view=sync":"/admin?view=transactions&pending=1";}
