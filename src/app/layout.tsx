@@ -20,10 +20,10 @@ export const metadata: Metadata = {
     "Theo dõi hùn phước, thu chi và điều chuyển thiện pháp của Học Viện Nguyên Thủy Việt Nam.",
   icons: {
     icon: {
-      url: "/branding/hoc-vien-nguyen-thuy-viet-nam.png",
+      url: "/branding/hoc-vien-nguyen-thuy-viet-nam.png?v=2",
       type: "image/png",
     },
-    apple: "/branding/hoc-vien-nguyen-thuy-viet-nam.png",
+    apple: "/branding/hoc-vien-nguyen-thuy-viet-nam.png?v=2",
   },
 };
 export default function RootLayout({

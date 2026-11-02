@@ -15,7 +15,8 @@ export function Brand({
   return (
     <BrandLink href={href} className={`brand${featured ? " brand-featured" : ""}`}>
       <Image
-        src="/branding/hoc-vien-nguyen-thuy-viet-nam.png"
+        unoptimized
+        src="/branding/hoc-vien-nguyen-thuy-viet-nam.png?v=2"
         alt="Logo Học Viện Nguyên Thủy Việt Nam"
         width={featured ? 112 : 52}
         height={featured ? 112 : 52}
