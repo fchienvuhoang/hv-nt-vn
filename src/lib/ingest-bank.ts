@@ -1,3 +1,5 @@
+import {enqueuePush} from "./admin-push";
+import {transactionPushKind} from "./push-policy";
 import {allowedBankSyncTime} from "./sync-boundary";
 import "server-only";
 import { actorStamp, createdStamp, updatedStamp, type Actor } from "./actor";
@@ -135,6 +137,7 @@ export async function ingestBankPage(
   }
   if (additions.length)
     await tx.bankTransaction.createMany({ data: additions });
+  await enqueuePush(tx, additions.flatMap(row=>{const kind=transactionPushKind(row);return kind?[{key:`transaction:${row.id}:${kind}`,kind,transactionId:row.id}]:[]}));
   for (const link of links) {
     await tx.transactionNote.updateMany({where:{transactionId:link.excelId},data:{transactionId:link.bankId}});
     await tx.fundAllocation.updateMany({where:{transactionId:link.excelId},data:{transactionId:link.bankId}});

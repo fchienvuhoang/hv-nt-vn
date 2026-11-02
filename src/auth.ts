@@ -1,8 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-export function allowedAdmin(email?: string | null) {
-  return !!email && (process.env.ADMIN_EMAILS ?? "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean).includes(email.toLowerCase());
-}
+import {allowedAdmin} from "@/lib/admin-allowlist";
+export {allowedAdmin} from "@/lib/admin-allowlist";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
   session: { strategy: "jwt", maxAge: 90 * 24 * 60 * 60 },

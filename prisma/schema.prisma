@@ -345,3 +345,38 @@ model TransferItem {
  @@unique([transferId,transactionId])
  @@index([transactionId])
 }
+
+model PushPreference {
+  email String @id
+  wrongAccount Boolean @default(false)
+  needsClassification Boolean @default(false)
+  syncError Boolean @default(false)
+  subscriptions AdminPushSubscription[]
+  updatedAt DateTime @updatedAt
+}
+model AdminPushSubscription {
+  id String @id @default(cuid())
+  endpoint String @unique
+  p256dh String
+  auth String
+  email String
+  preference PushPreference @relation(fields:[email],references:[email],onDelete:Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deliveries AdminPushDelivery[]
+  @@index([email])
+}
+model AdminPushDelivery {
+  id String @id @default(cuid())
+  subscriptionId String
+  subscription AdminPushSubscription @relation(fields:[subscriptionId],references:[id],onDelete:Cascade)
+  eventKey String
+  kind String
+  transactionId String?
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  finishedAt DateTime?
+  createdAt DateTime @default(now())
+  @@unique([subscriptionId,eventKey])
+  @@index([finishedAt,nextAttemptAt])
+}

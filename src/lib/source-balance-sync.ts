@@ -1,3 +1,4 @@
+import {enqueueSyncFailure} from "./admin-push";
 import "server-only";
 import { db } from "./db";
 import { balanceProfiles,fetchSourceBalance } from "./source-balance";
@@ -16,6 +17,7 @@ export async function refreshSourceBalances(accounts:BalanceAccount[],now=new Da
       const error=(cause instanceof Error?cause.message:"Không tải được tổng thu/chi nguồn").slice(0,250);
       const persisted=account.sourceError!==error||!account.sourceAttemptAt||now.getTime()-account.sourceAttemptAt.getTime()>=HEARTBEAT_MS;
       if(persisted)await db.bankAccount.update({where:{id:account.id},data:{sourceAttemptAt:now,sourceError:error}});
+      await enqueueSyncFailure();
       return {number:account.number,ok:false,error,persisted};
     }
   }));

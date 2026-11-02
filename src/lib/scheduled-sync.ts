@@ -1,3 +1,4 @@
+import {enqueueSyncFailure} from "./admin-push";
 import {BANK_SYNC_MIN_DATE,effectiveSyncStart} from "./sync-boundary";
 import "server-only";
 import { refreshSourceBalances } from "./source-balance-sync";
@@ -156,6 +157,7 @@ export async function scheduledSync(now = new Date()) {
     await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: "FAILED", quickPages, fullPages, inserted, updated, error: message, finishedAt: new Date() } });
     // Preserve cursor; retry the unfinished batch on the next valid webhook.
     if (jobIds.length) await db.syncJob.updateMany({ where: { id: jobIds.at(-1), status: "RUNNING" }, data: { status: "FAILED", error: message } });
+    await enqueueSyncFailure();
     throw error;
   } finally {
     if (acquired) await db.syncLease.deleteMany({ where: { id: "bank-sync", token } });

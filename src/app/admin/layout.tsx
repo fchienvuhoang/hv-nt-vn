@@ -1,3 +1,4 @@
+import {PushSettings} from "@/components/admin/push-settings";
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
 import { signOut } from "@/auth";
@@ -19,6 +20,7 @@ export default async function AdminLayout({
           <Brand href="/admin" />
           <span className="workspace-label">KHÔNG GIAN QUẢN TRỊ</span>
           <div className="workspace-header-actions">
+            <PushSettings/>
             <span className="workspace-user" title={email}>
               <span className="avatar">{email[0].toUpperCase()}</span>
               <span>

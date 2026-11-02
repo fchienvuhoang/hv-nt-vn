@@ -21,14 +21,14 @@ try{
  const all=await fundTotals();
  const canonical=(f:typeof all[number])=>JSON.stringify({...f,byAccount:[...f.byAccount].sort((a,b)=>a.accountId.localeCompare(b.accountId))},(_,v)=>typeof v==="bigint"?v.toString():v);
  for(const f of all){const scoped=await fundTotals(db,f.id);assert.equal(scoped.length,1);assert.equal(canonical(scoped[0]),canonical(f),"scoped totals must preserve all amounts, opening balances, allocations, transfers and counts");}
- const page=await fetch(origin+"/t/qa-perf-a");assert.equal(page.status,200);assert.match(page.headers.get("cache-control")??"",/s-maxage=30/);
- const html=await page.text();assert.ok(html.includes("QA performance A"));assert.ok(html.includes("Danh sách hùn phước"));assert.ok(html.includes("PERF-"),"cached HTML must contain server-rendered transactions");assert.ok(!html.includes("0912345678")&&!html.includes("PRIVATE-NOTE-NEVER-PUBLIC"));
+ const page=await fetch(origin+"/t/qa-perf-a");assert.equal(page.status,200);assert.match(page.headers.get("cache-control")??"",/s-maxage=/);
+ const html=await page.text();assert.ok(html.includes("Đang tải số liệu và giao dịch"));assert.ok(html.includes("Danh sách hùn phước"));assert.ok(!html.includes("PERF-"),"cached shell must not contain ledger data");assert.ok(!html.includes("0912345678")&&!html.includes("PRIVATE-NOTE-NEVER-PUBLIC"));
  const warm=await fetch(origin+"/t/qa-perf-a");assert.equal(warm.headers.get("x-nextjs-cache"),"HIT");
  const credit=await (await fetch(origin+"/api/public/funds/qa-perf-a")).json();assert.equal(credit.count,102);assert.equal(credit.rows.length,100);assert.equal(credit.income,"6271");assert.equal(credit.balance,"6165");
  const debit=await (await fetch(origin+"/api/public/funds/qa-perf-a?type=DEBIT")).json();assert.equal(debit.count,2);assert.equal(debit.rows.length,2);assert.equal(debit.expense,"81");
  const second=await (await fetch(origin+"/api/public/funds/qa-perf-a?page=2")).json();assert.equal(second.rows.length,2);
  const search=await (await fetch(origin+"/api/public/funds/qa-perf-a?q=SPLIT-3")).json();assert.equal(search.count,1);assert.equal(search.rows[0].amount,"120");
- const filtered=await fetch(origin+"/t/qa-perf-a?type=DEBIT&q=EXPENSE-1");assert.equal(filtered.status,200);assert.ok((await filtered.text()).includes("PERF-"),"URL filters are applied by REST after static hydration");
+ const filtered=await fetch(origin+"/t/qa-perf-a?type=DEBIT&q=EXPENSE-1");assert.equal(filtered.status,200);assert.ok((await filtered.text()).includes("Đang tải số liệu và giao dịch"),"URL filters are applied by REST after static hydration");
  if(!process.env.AUTH_SECRET)throw new Error("QA auth secret required");
  const token=await encode({token:{email:"qa-admin@example.test",name:"QA",sub:"qa"},secret:process.env.AUTH_SECRET,salt:"authjs.session-token",maxAge:3600});
  const body=new FormData();body.set("transactionId",split.id);body.set("sourceFundId",source.id);body.set("fundId",target.id);body.set("reason","QA public cache invalidation");

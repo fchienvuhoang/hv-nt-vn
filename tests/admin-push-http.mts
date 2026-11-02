@@ -1,0 +1,33 @@
+import assert from "node:assert/strict";
+import {randomBytes,createECDH} from "node:crypto";
+import {encode} from "next-auth/jwt";
+const origin=process.env.QA_ORIGIN??"http://localhost:3004";
+if(!origin.startsWith("http://localhost:"))throw new Error("Localhost only");
+const secret=process.env.AUTH_SECRET;
+if(!secret)throw new Error("QA AUTH_SECRET required");
+async function cookie(email:string){return `authjs.session-token=${await encode({token:{email,name:"QA",sub:email},secret:secret!,salt:"authjs.session-token",maxAge:3600})}`;}
+const admin=await cookie("qa-admin@example.test"),other=await cookie("qa-other@example.test"),outsider=await cookie("outside@example.test");
+const path=origin+"/api/admin/push";
+async function request(method:string,cookie:string,body?:unknown,from=origin){return fetch(path,{method,headers:{Cookie:cookie,Origin:from,"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});}
+assert.equal((await fetch(path)).status,401);
+assert.equal((await request("GET",outsider)).status,403);
+const pref={wrongAccount:true,needsClassification:false,syncError:true};
+assert.equal((await request("PUT",admin,pref,"https://evil.example")).status,403);
+assert.equal((await request("PUT",admin,{...pref,email:"outside@example.test"})).status,400);
+assert.equal((await request("PUT",admin,pref)).status,200);
+assert.deepEqual((await (await request("GET",admin)).json()).preferences,pref);
+const key=createECDH("prime256v1");key.generateKeys();
+const sub={endpoint:"https://fcm.googleapis.com/fcm/send/http-qa",keys:{p256dh:key.getPublicKey().toString("base64url"),auth:randomBytes(16).toString("base64url")}};
+assert.equal((await request("POST",admin,{action:"subscribe",subscription:{...sub,endpoint:"https://localhost/push"}})).status,400);
+assert.equal((await request("POST",admin,{action:"subscribe",subscription:sub})).status,200);
+assert.equal((await (await request("GET",admin)).json()).devices.length,1);
+assert.equal((await (await request("GET",other)).json()).devices.length,0);
+assert.equal((await request("DELETE",other,{endpoint:sub.endpoint})).status,200);
+assert.equal((await (await request("GET",admin)).json()).devices.length,1,"cannot unsubscribe another admin's endpoint");
+assert.equal((await request("POST",other,{action:"subscribe",subscription:sub})).status,200);
+assert.equal((await (await request("GET",admin)).json()).devices.length,0,"shared device is rebound");
+assert.equal((await request("DELETE",other,{endpoint:sub.endpoint})).status,200);
+const manifest=await (await fetch(origin+"/manifest.webmanifest")).json();assert.equal(manifest.display,"standalone");assert.equal(manifest.start_url,"/admin");
+for(const icon of manifest.icons)assert.equal((await fetch(origin+icon.src)).status,200);
+const worker=await fetch(origin+"/sw.js");assert.equal(worker.status,200);assert.match(worker.headers.get("cache-control")??"",/no-store/);
+console.log("PASS: admin-only API, origin checks, strict preferences, endpoint validation, device ownership, manifest/icons/SW");

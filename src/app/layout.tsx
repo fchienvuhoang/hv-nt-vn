@@ -1,3 +1,4 @@
+import {PwaInstall} from "@/components/pwa-install";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
@@ -7,12 +8,14 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#803345",
 };
 export const metadata: Metadata = {
   title: {
     default: "Học viện nguyên thủy Việt Nam",
     template: "%s · Học viện nguyên thủy Việt Nam",
   },
+  appleWebApp: {capable:true, title:"Hùn phước", statusBarStyle:"default"},
   description:
     "Theo dõi hùn phước, thu chi và điều chuyển thiện pháp của Học Viện Nguyên Thủy Việt Nam.",
   icons: {
@@ -28,7 +31,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="vi">
-      <body><ToastProvider>{children}</ToastProvider><Suspense fallback={null}><SiteAnalytics /></Suspense></body>
+      <body><ToastProvider>{children}<PwaInstall/></ToastProvider><Suspense fallback={null}><SiteAnalytics /></Suspense></body>
     </html>
   );
 }
