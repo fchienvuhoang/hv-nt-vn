@@ -1,0 +1,5 @@
+CREATE TABLE "PublicCacheRefresh" (
+ "fundId" TEXT PRIMARY KEY, "requestedVersion" INTEGER NOT NULL DEFAULT 1,
+ "builtVersion" INTEGER NOT NULL DEFAULT 0, "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "builtAt" TIMESTAMP(3), "dailyKey" TEXT NOT NULL DEFAULT '', "lastSlug" TEXT NOT NULL DEFAULT '', "error" TEXT
+);

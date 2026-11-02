@@ -18,6 +18,6 @@ export function PwaInstall(){
   },[]);
   if(installed)return null;
   return <aside className="pwa-install">
-    {prompt?<button className="button subtle small" onClick={async()=>{await prompt.prompt();await prompt.userChoice;setPrompt(null);}}><Download size={15}/>Cài ứng dụng Hùn phước</button>:<details><summary>Cài ứng dụng lên điện thoại</summary><p>{ios?'Mở bằng Safari → Chia sẻ → Thêm vào Màn hình chính. Sau đó mở ứng dụng từ biểu tượng để bật thông báo quản trị.':'Trong menu trình duyệt, chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”.'}</p></details>}
+    {prompt?<button className="button subtle small" onClick={async()=>{await prompt.prompt();await prompt.userChoice;setPrompt(null);}}><Download size={15}/>Cài ứng dụng hvntvn</button>:<details><summary>Cài ứng dụng lên điện thoại</summary><p>{ios?'Mở bằng Safari → Chia sẻ → Thêm vào Màn hình chính. Sau đó mở ứng dụng từ biểu tượng để bật thông báo quản trị.':'Trong menu trình duyệt, chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”.'}</p></details>}
   </aside>;
 }

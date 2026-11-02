@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     default: "Học viện nguyên thủy Việt Nam",
     template: "%s · Học viện nguyên thủy Việt Nam",
   },
-  appleWebApp: {capable:true, title:"Hùn phước", statusBarStyle:"default"},
+  appleWebApp: {capable:true, title:"hvntvn", statusBarStyle:"default"},
   description:
     "Theo dõi hùn phước, thu chi và điều chuyển thiện pháp của Học Viện Nguyên Thủy Việt Nam.",
   icons: {

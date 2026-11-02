@@ -1,3 +1,5 @@
+import {after} from "next/server";
+import {queuePublicRefresh,refreshPublicSafely} from "@/lib/public-snapshot";
 import {loadFundHistory} from "@/lib/fund-history";
 import {loadAdminRevision} from "@/lib/admin-revision";
 import { loadTransactionSummary } from "@/lib/transaction-summary";
@@ -9,7 +11,7 @@ import * as actions from "@/app/admin/actions";
 import { encodeAdmin } from "@/lib/admin-codec";
 import { loadAdminBootstrap,loadAdminTransactions,loadAdminTransfers,loadAdminSync,loadReviewCandidates,loadTransferDetails } from "@/lib/admin-read-model";
 export const runtime="nodejs";
-export const maxDuration=60;
+export const maxDuration=300;
 const json=(data:unknown,status=200)=>NextResponse.json(encodeAdmin(data),{status,headers:{"Cache-Control":"private, no-store"}});
 async function handle(request:NextRequest,context:{params:Promise<{resource:string[]}>}){
   const session=await auth();
@@ -55,6 +57,8 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
       case "PATCH reclassification":result=await actions.advanceReclassification(z.object({id:z.string().min(1).max(100),phase:z.enum(["CHECK","APPLY"])}).parse(await request.json()));break;
       default:return json({error:"Phương thức hoặc API không hợp lệ."},405);
     }
+    await queuePublicRefresh();
+    after(refreshPublicSafely);
     return json(result);
   }catch(error){
     if(error instanceof AllocationTransferError)return json({error:error.message},400);

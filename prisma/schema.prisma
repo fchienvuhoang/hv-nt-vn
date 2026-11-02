@@ -381,3 +381,14 @@ model AdminPushDelivery {
   @@unique([subscriptionId,eventKey])
   @@index([finishedAt,nextAttemptAt])
 }
+
+model PublicCacheRefresh {
+  fundId String @id
+  requestedVersion Int @default(1)
+  builtVersion Int @default(0)
+  requestedAt DateTime @default(now())
+  builtAt DateTime?
+  dailyKey String @default("")
+  lastSlug String @default("")
+  error String?
+}
