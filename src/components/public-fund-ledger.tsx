@@ -75,7 +75,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             xong.
           </div>
         )}
-        {fund.isLongTerm&&<label className="public-month-picker">Thống kê theo tháng<input type="month" value={fund.month} onChange={e=>{if(e.target.value)publicNavigate(`${base}?${new URLSearchParams({type:direction,month:e.target.value,...(search?{q:search}:{})})}`)}}/></label>}
+        {fund.isLongTerm&&<div className="public-month-picker">Thống kê tháng {fund.month.slice(5,7)}/{fund.month.slice(0,4)} · Tháng hiện tại</div>}
         {fund.isLongTerm?<div className="metrics">
           <Metric label="Dư / thiếu tháng trước chuyển sang" value={fund.carryBalance} note="Giữ nguyên cả số dư dương và âm"/>
           <Metric label="Hùn phước trong tháng" value={fund.income} note="Chỉ các khoản ghi nhận trong tháng" accent/>

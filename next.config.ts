@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   poweredByHeader: false,
   experimental: { serverActions: { bodySizeLimit: "6mb" } },
+  async redirects() {
+    return [
+      {source:"/t/0572-tdts",destination:"/t/0572-ttts",permanent:true},
+      {source:"/api/public/funds/0572-tdts",destination:"/api/public/funds/0572-ttts",permanent:true},
+    ];
+  },
   async headers() {
     return [
       {source:"/sw.js",headers:[{key:"Cache-Control",value:"no-cache, no-store, must-revalidate"},{key:"Content-Type",value:"application/javascript; charset=utf-8"}]},

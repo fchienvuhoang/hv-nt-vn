@@ -10,7 +10,7 @@ export const PUBLIC_PAGE_SIZE = 100;
 export const PUBLIC_TAG = "public-ledger";
 // Keep public ledger data until a committed mutation invalidates its tag.
 const options = { revalidate: false as const, tags: [PUBLIC_TAG] };
-const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true,code:true,name:true}}),["public-fund-identity-v2"],options);
+const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true,code:true,name:true}}),["public-fund-identity-v3"],options);
 async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:string){
  const identity=await publicIdentity(slug);if(!identity)return null;
  return unstable_cache(async()=>{
@@ -88,7 +88,7 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v13",slug,direction,month],
+  ["public-fund-summary-v14",slug,direction,month],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }
@@ -106,7 +106,9 @@ const publicTransactionPage = async (fundId: string, direction: "CREDIT" | "DEBI
 
 export async function publicFund(slug: string, page: number, direction: "CREDIT" | "DEBIT", search = "", month = "") {
   const current=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit"}).format(new Date());
-  const selected=/^20\d{2}-(0[1-9]|1[0-2])$/.test(month)?month:current;
+  // Public long-term funds only expose the current Vietnam month, regardless of URL input.
+  void month;
+  const selected=current;
   const fund=await publicFundSummary(slug,direction,selected);
   if(!fund)return null;
   const query=search.trim().slice(0,100);
