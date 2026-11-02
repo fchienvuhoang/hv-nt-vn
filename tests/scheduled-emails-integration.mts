@@ -1,0 +1,71 @@
+import assert from "node:assert/strict";
+const url = new URL(process.env.DATABASE_URL ?? "https://invalid");
+if (url.hostname !== "localhost" || !url.pathname.startsWith("/hvntvn_test")) throw new Error("QA database only");
+process.env.ADMIN_EMAILS = "admin@example.test,other@example.test";
+process.env.RESEND_API_KEY = "test";
+process.env.NOTIFICATION_EMAIL_FROM = "test@example.test";
+delete process.env.AUTH_URL;
+const { db } = await import("../src/lib/db");
+const { enqueueFundGoalNotifications, dispatchFundGoalEmails } = await import("../src/lib/fund-goal-notifications");
+const { dispatchMorningReports } = await import("../src/lib/morning-report");
+const originalFetch = globalThis.fetch;
+const sent: { key: string; body: { to: string[]; subject: string; html: string; text: string } }[] = [];
+let status = 200;
+globalThis.fetch = async (input, init) => {
+  assert.equal(String(input), "https://api.resend.com/emails");
+  sent.push({ key: new Headers(init?.headers).get("Idempotency-Key")!, body: JSON.parse(String(init?.body)) });
+  return Response.json(status === 200 ? { id: "qa" } : { message: "QA retry" }, { status });
+};
+if (await db.bankAccount.count()) throw new Error("Empty QA database required");
+try {
+  const account = await db.bankAccount.create({ data: { number: "EMAIL-QA", owner: "QA", label: "QA" } });
+  const fund = await db.fund.create({ data: { accountId: account.id, code: "TPMAIL", name: "Email QA", slug: "email-qa", keywords: [], goalAmount: 1000n, openingIncome: 799n } });
+  await enqueueFundGoalNotifications();
+  assert.equal(await db.fundGoalAchievement.count(), 0);
+  for (const income of [800n, 800n, 750n, 850n, 960n, 1100n, 1100n]) {
+    await db.fund.update({ where: { id: fund.id }, data: { openingIncome: income } });
+    await Promise.all([enqueueFundGoalNotifications(), enqueueFundGoalNotifications()]);
+  }
+  assert.deepEqual((await db.fundGoalAchievement.findMany({ orderBy: { milestone: "asc" } })).map(event => event.milestone), [80, 95, 100], "skip crossed intermediate milestones, dedupe concurrent scans and income corrections");
+  await dispatchFundGoalEmails();
+  assert.equal(sent.length, 6, "three milestones, two admins, no AUTH_URL dependency");
+  assert.ok(sent.some(message => message.body.subject.includes("80%")));
+  assert.ok(sent.some(message => message.body.subject.includes("95%")));
+  await dispatchFundGoalEmails();
+  assert.equal(sent.length, 6);
+  await db.dailyReportSchedule.update({ where: { id: "morning-7h" }, data: { activatedAt: new Date("2026-11-02T10:00:00Z") } });
+  await dispatchMorningReports(new Date("2026-11-02T11:00:00Z"));
+  assert.equal(await db.dailyReport.count(), 0, "do not announce a past activation-day slot");
+  await dispatchMorningReports(new Date("2026-11-02T23:59:59Z"));
+  assert.equal(await db.dailyReport.count(), 0, "not before Vietnam 07:00");
+  status = 503;
+  const morning = new Date("2026-11-03T00:00:00Z");
+  await Promise.all([dispatchMorningReports(morning), dispatchMorningReports(morning)]);
+  assert.equal(await db.dailyReport.count(), 1);
+  assert.equal(await db.dailyReportEmail.count(), 2);
+  assert.equal(sent.length, 8, "one failed attempt per recipient, no concurrent duplicate");
+  const first = sent.slice(6);
+  await db.fund.update({ where: { id: fund.id }, data: { openingIncome: 9999n } });
+  await db.dailyReportEmail.updateMany({ data: { nextAttemptAt: new Date(0) } });
+  status = 200;
+  await dispatchMorningReports(new Date("2026-11-03T01:00:00Z"));
+  assert.equal(sent.length, 10);
+  for (const attempt of sent.slice(8)) assert.deepEqual(attempt, first.find(message => message.key === attempt.key), "retry reuses stored content and idempotency key despite changed ledger");
+  assert.equal(await db.dailyReportEmail.count({ where: { finishedAt: { not: null }, lastError: null } }), 2);
+  await dispatchMorningReports(new Date("2026-11-03T02:00:00Z"));
+  assert.equal(sent.length, 10, "no repeated daily email");
+  await dispatchMorningReports(new Date("2026-11-04T00:00:00Z"));
+  assert.equal(await db.dailyReport.count(), 2);
+  assert.equal(sent.length, 12, "next morning creates exactly one new report per admin");
+  assert.ok(sent[11].body.text.includes("07:00"));
+  console.log("PASS: 80/95/100 milestones, jump coalescing, concurrent dedupe, morning 07:00 boundary, activation, immutable retries, exactly one daily report and next-day scheduling");
+} finally {
+  globalThis.fetch = originalFetch;
+  await db.dailyReport.deleteMany();
+  await db.dailyReportSchedule.update({ where: { id: "morning-7h" }, data: { activatedAt: new Date() } });
+  await db.fundGoalAchievement.deleteMany();
+  await db.fund.deleteMany();
+  await db.bankAccount.deleteMany();
+  await db.syncLease.deleteMany();
+  await db.$disconnect();
+}

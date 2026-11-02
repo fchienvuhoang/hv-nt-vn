@@ -4,7 +4,8 @@ import { db } from "./db";
 import { fundTotals } from "./ledger";
 import { enqueuePush, dispatchAdminPushSafely } from "./admin-push";
 import { allowedAdmin } from "./admin-allowlist";
-import { goalAchievementKey, adminNotificationEmails } from "./fund-goal-policy";
+import { goalAchievementKey, goalEmailMilestone, adminNotificationEmails } from "./fund-goal-policy";
+import { dispatchMorningReports } from "./morning-report";
 import { vnd } from "./domain";
 import { brandedEmail } from "./email-template";
 import { emailLogoAttachments } from "./email-logo";
@@ -13,15 +14,19 @@ import { emailConfigured, sendNotificationEmail } from "./email-service";
 export async function enqueueFundGoalNotifications() {
   const emails = adminNotificationEmails(process.env.ADMIN_EMAILS ?? "");
   await db.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('fund-goal-notifications'))`;
     const funds = await fundTotals(tx);
+    const previous = await tx.fundGoalAchievement.findMany({ select: { fundId: true, goalAmount: true, milestone: true } });
     const data = funds.flatMap(fund => {
-      const id = goalAchievementKey(fund);
-      return id ? [{ id, fundId: fund.id, goalAmount: fund.goalAmount!, income: fund.income, code: fund.code, name: fund.name, slug: fund.slug }] : [];
+      const highest = previous.filter(event => event.fundId === fund.id && event.goalAmount === fund.goalAmount).reduce((max, event) => Math.max(max, event.milestone), 0);
+      const milestone = goalEmailMilestone(fund, highest);
+      const id = milestone === 100 ? goalAchievementKey(fund) : milestone ? `fund-goal:${fund.id}:${fund.goalAmount}:${milestone}` : null;
+      return id ? [{ id, milestone: milestone!, fundId: fund.id, goalAmount: fund.goalAmount!, income: fund.income, code: fund.code, name: fund.name, slug: fund.slug }] : [];
     });
     if (!data.length) return;
     // Unique milestone IDs serialize concurrent scans; queue both channels in the same commit.
     const created = await tx.fundGoalAchievement.createManyAndReturn({ data, skipDuplicates: true });
-    await enqueuePush(tx, created.map(event => ({ key: event.id, kind: "fundGoalReached" })));
+    await enqueuePush(tx, created.filter(event => event.milestone === 100).map(event => ({ key: event.id, kind: "fundGoalReached" })));
     if (created.length && emails.length) await tx.fundGoalEmail.createMany({
       data: created.flatMap(event => emails.map(email => ({ achievementId: event.id, email }))), skipDuplicates: true,
     });
@@ -29,7 +34,7 @@ export async function enqueueFundGoalNotifications() {
 }
 
 export async function dispatchFundGoalEmails() {
-  if (!emailConfigured() || !process.env.AUTH_URL) return;
+  if (!emailConfigured()) return;
   const token = randomUUID();
   const locked = await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('fund-goal-email',${token},(NOW() AT TIME ZONE 'UTC')+INTERVAL '120 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`;
   if (!locked) return;
@@ -47,17 +52,20 @@ export async function dispatchFundGoalEmails() {
         continue;
       }
       const event = row.achievement;
+      const complete = event.milestone === 100;
+      const title = complete ? `${event.code} đã thành tựu` : `${event.code} đã đạt mốc ${event.milestone}% mục tiêu`;
+      const remaining = event.goalAmount > event.income ? event.goalAmount - event.income : 0n;
       const content = brandedEmail({
-        label: "THIỆN PHÁP THÀNH TỰU",
-        title: `${event.code} đã thành tựu`,
-        paragraphs: [`Thiện pháp ${event.code} — ${event.name} đã đạt mục tiêu thành tựu. Kính báo quý quản trị viên cùng ghi nhận và hoan hỷ.`],
+        label: complete ? "THIỆN PHÁP THÀNH TỰU" : "THIỆN PHÁP SẮP THÀNH TỰU",
+        title,
+        paragraphs: [complete ? `Thiện pháp ${event.code} — ${event.name} đã đạt mục tiêu thành tựu. Kính báo quý quản trị viên cùng ghi nhận và hoan hỷ.` : `Thiện pháp ${event.code} — ${event.name} đã đạt mốc ${event.milestone}% mục tiêu. Còn cần hùn phước ${vnd(remaining)} để thành tựu.`],
         metrics: [{ label: "Đã hùn phước khi ghi nhận", value: vnd(event.income) }, { label: "Mục tiêu thành tựu", value: vnd(event.goalAmount) }],
-        link: { label: "Xem thiện pháp", url: new URL(`/t/${encodeURIComponent(event.slug)}`, process.env.AUTH_URL).href },
+        ...(process.env.AUTH_URL ? { link: { label: "Xem thiện pháp", url: new URL(`/t/${encodeURIComponent(event.slug)}`, process.env.AUTH_URL).href } } : {}),
         note: "Số tiền là số liệu tại thời điểm hệ thống ghi nhận mốc thành tựu.",
       });
       await db.fundGoalEmail.update({ where: { id: row.id }, data: { attempts: { increment: 1 }, firstAttemptAt: row.firstAttemptAt ?? new Date(), nextAttemptAt: new Date(Date.now() + 60000 * 2 ** row.attempts) } });
       try {
-        await sendNotificationEmail({ to: row.email, subject: `${event.code} đã thành tựu`, ...content, attachments: InlinedAttachments, idempotencyKey: `fund-goal/${row.id}` });
+        await sendNotificationEmail({ to: row.email, subject: title, ...content, attachments: InlinedAttachments, idempotencyKey: `fund-goal/${row.id}` });
         await db.fundGoalEmail.update({ where: { id: row.id }, data: { finishedAt: new Date(), lastError: null } });
       } catch (error) {
         await db.fundGoalEmail.update({ where: { id: row.id }, data: { lastError: error instanceof Error ? error.message : "Không gửi được email" } });
@@ -70,5 +78,5 @@ export async function dispatchFundGoalEmails() {
 
 export async function dispatchAdminNotificationsSafely() {
   try { await enqueueFundGoalNotifications(); } catch { console.error("Fund goal notification queue unavailable"); }
-  await Promise.allSettled([dispatchAdminPushSafely(), dispatchFundGoalEmails()]);
+  await Promise.allSettled([dispatchAdminPushSafely(), dispatchFundGoalEmails(), dispatchMorningReports()]);
 }

@@ -31,11 +31,11 @@ globalThis.fetch = async (input, init) => {
 webpush.sendNotification = async (_sub, payload) => { pushes.push(JSON.parse(String(payload))); return { statusCode: 201, headers: {}, body: "" }; };
 try {
   const account = await db.bankAccount.create({ data: { number: "GOAL-TEST", owner: "TEST", label: "TEST" } });
-  const fund = await db.fund.create({ data: { accountId: account.id, code: "TPGOAL", slug: "test-goal", name: "Kiểm thử thành tựu", keywords: [], goalAmount: 154000000n, openingIncome: 153999999n } });
+  const fund = await db.fund.create({ data: { accountId: account.id, code: "TPGOAL", slug: "test-goal", name: "Kiểm thử thành tựu", keywords: [], goalAmount: 154000000n, openingIncome: 123199999n } });
   await db.pushPreference.create({ data: { email: "admin@example.test" } });
   await db.adminPushSubscription.create({ data: { email: "admin@example.test", endpoint: "https://fcm.googleapis.com/fcm/send/goal-test", p256dh: "test", auth: "test" } });
   await enqueueFundGoalNotifications();
-  assert.equal(await db.fundGoalAchievement.count(), 0, "below target");
+  assert.equal(await db.fundGoalAchievement.count(), 0, "below first milestone");
   await db.fund.update({ where: { id: fund.id }, data: { openingIncome: 154000000n, openingExpense: 100000000n } });
   await Promise.all([enqueueFundGoalNotifications(), enqueueFundGoalNotifications()]);
   assert.equal(await db.fundGoalAchievement.count(), 1, "concurrent detection is idempotent and uses income before expenses");

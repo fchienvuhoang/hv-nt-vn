@@ -10,7 +10,7 @@ export function fundReportEmail(input: {
   funds: Fund[]; generatedAt: Date; syncAt: Date | null; yesterday: string;
   yesterdayIncome: bigint; yesterdayExpense: bigint;
   yesterdayFunds?: { code: string; name: string; income: bigint; expense: bigint }[];
-  expenses?: Expense[]; website?: string;
+  expenses?: Expense[]; website?: string; automated?: boolean;
 }) {
   const { funds } = input;
   const date = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", dateStyle: "short", timeStyle: "short" });
@@ -42,6 +42,6 @@ export function fundReportEmail(input: {
       ] },
     ],
     ...(input.website ? { link: { label: "Mở trang quản trị", url: new URL("/admin?view=funds", input.website).href } } : {}),
-    note: "Thu/chi hôm qua tính theo ngày giao dịch đã ghi nhận, gồm cả khoản chưa phân loại (có dòng riêng); không tính số dư chuyển sang, nghi trùng hoặc điều chuyển nội bộ. Cú pháp chi là nội dung chuyển khoản gốc, không suy diễn nội dung mới. Bảng lũy kế gồm khoản chuyển sang từ Excel, không bao gồm tiền chưa phân loại vào thiện pháp và không phải số dư ngân hàng. Khoản thu phân bổ chỉ tính phần tiền của từng thiện pháp. Số dư sổ giữ cả phần âm và điều chuyển. Tiến độ dùng tổng thu lũy kế, không trừ chi. Email gửi theo yêu cầu; lịch gửi tự động buổi sáng chưa được bật.",
+    note: "Thu/chi hôm qua tính theo ngày giao dịch đã ghi nhận, gồm cả khoản chưa phân loại (có dòng riêng); không tính số dư chuyển sang, nghi trùng hoặc điều chuyển nội bộ. Cú pháp chi là nội dung chuyển khoản gốc, không suy diễn nội dung mới. Bảng lũy kế gồm khoản chuyển sang từ Excel, không bao gồm tiền chưa phân loại vào thiện pháp và không phải số dư ngân hàng. Khoản thu phân bổ chỉ tính phần tiền của từng thiện pháp. Số dư sổ giữ cả phần âm và điều chuyển. Tiến độ dùng tổng thu lũy kế, không trừ chi. " + (input.automated ? "Báo cáo hằng ngày lúc 07:00, giờ Việt Nam; thu/chi hôm qua và lũy kế tại thời điểm trích xuất." : "Email gửi theo yêu cầu."),
   }) };
 }

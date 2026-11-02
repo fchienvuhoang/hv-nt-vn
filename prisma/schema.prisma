@@ -399,6 +399,7 @@ model PublicCacheRefresh {
 // Permanent milestone record: delivery queue cleanup must not reannounce a goal.
 model FundGoalAchievement {
   id String @id
+  milestone Int @default(100)
   fundId String
   goalAmount BigInt
   income BigInt
@@ -419,5 +420,31 @@ model FundGoalEmail {
   finishedAt DateTime?
   lastError String?
   @@unique([achievementId,email])
+  @@index([finishedAt,nextAttemptAt])
+}
+
+model DailyReportSchedule {
+  id String @id
+  activatedAt DateTime @default(now())
+}
+model DailyReport {
+  date String @id
+  subject String
+  text String
+  html String
+  createdAt DateTime @default(now())
+  emails DailyReportEmail[]
+}
+model DailyReportEmail {
+  id String @id @default(cuid())
+  reportDate String
+  report DailyReport @relation(fields:[reportDate],references:[date],onDelete:Cascade)
+  email String
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  firstAttemptAt DateTime?
+  finishedAt DateTime?
+  lastError String?
+  @@unique([reportDate,email])
   @@index([finishedAt,nextAttemptAt])
 }
