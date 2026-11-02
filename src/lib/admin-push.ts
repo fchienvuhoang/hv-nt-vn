@@ -1,3 +1,4 @@
+import {SITE_ORIGIN} from "./site-url";
 import "server-only";
 import webpush from "web-push";
 import { randomUUID } from "node:crypto";
@@ -21,7 +22,7 @@ export async function enqueueSyncFailure(){
 export async function sendAdminPush(subscription:{endpoint:string;p256dh:string;auth:string},payload:{title:string;body:string;url:string;tag:string}){
   if(!pushConfigured())throw new Error("Chưa cấu hình thông báo đẩy.");
   if(!validPushEndpoint(subscription.endpoint))throw new Error("Dịch vụ thông báo không hợp lệ.");
-  return webpush.sendNotification({endpoint:subscription.endpoint,keys:{p256dh:subscription.p256dh,auth:subscription.auth}},JSON.stringify(payload),{
+  return webpush.sendNotification({endpoint:subscription.endpoint,keys:{p256dh:subscription.p256dh,auth:subscription.auth}},JSON.stringify({...payload,url:new URL(payload.url,SITE_ORIGIN).href,icon:new URL("/pwa/icon-192.png",SITE_ORIGIN).href}),{
     TTL:3600,urgency:"normal",timeout:3000,
     vapidDetails:{subject:process.env.VAPID_SUBJECT!,publicKey:process.env.VAPID_PUBLIC_KEY!,privateKey:process.env.VAPID_PRIVATE_KEY!},
   });
