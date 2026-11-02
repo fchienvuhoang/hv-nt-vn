@@ -4334,3 +4334,21 @@ tfoot td {
  .public-site:has(.public-compact)>.public-header .academy-logo{width:30px;height:30px}
  .public-site:has(.public-compact)>.public-header .pwa-admin-return{padding:7px 8px;font-size:11px;min-height:34px;margin:0}
 }
+
+/* Keep PWA navigation below the iOS status-bar material, on its own row. */
+@media(display-mode:standalone){
+ .public-site{overflow-x:clip}
+ .public-site:has(.public-compact)>.public-header{position:sticky;top:0;z-index:40;background:#fcf8f1;isolation:isolate;backdrop-filter:none;-webkit-backdrop-filter:none;grid-template-columns:minmax(0,1fr);row-gap:8px}
+ .public-site:has(.public-compact)>.public-header .pwa-admin-return{grid-column:1;justify-self:end;margin:0;min-height:40px;padding:8px 12px;background:#fffdf9;opacity:1;filter:none}
+}
+
+/* Use native touch scrolling; avoid nested vertical scrollers and dynamic-height jumps on phones. */
+.admin-client-workspace:has(.fund-workspace),.fund-workspace,.fund-list-panel{min-width:0;max-width:100%}
+.fund-list-scroll{width:100%;min-width:0;max-width:100%;scroll-behavior:auto;scroll-snap-type:none;overscroll-behavior-x:none;overflow-anchor:none;touch-action:pan-x pan-y pinch-zoom;-webkit-overflow-scrolling:touch}
+@media(max-width:680px),(hover:none) and (pointer:coarse){
+ .fund-list-scroll.table-scroll{flex:0 0 auto;max-height:none;min-height:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-y:auto}
+ .fund-list-scroll.table-card tbody tr:hover,.fund-list-scroll.table-card tbody tr:hover td:first-child{background:inherit}
+ .fund-list-scroll.table-card tbody td:first-child{background:#fff}
+ .fund-list-scroll.table-card tbody tr:nth-child(even) td:first-child{background:#fdfbf8}
+ .fund-list-scroll.table-card tbody tr.fund-pinned-row td:first-child{background:#fffbef}
+}

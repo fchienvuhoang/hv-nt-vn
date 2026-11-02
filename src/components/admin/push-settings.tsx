@@ -49,7 +49,7 @@ export function PushSettings(){
     await api("PUT",preferences);setSettings(previous=>previous?{...previous,preferences:{...preferences}}:previous);
     const registration=await navigator.serviceWorker.ready;
     const sub=await registration.pushManager.getSubscription()??await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:applicationKey(settings!.publicKey!)});
-    await api("POST",{action:"subscribe",subscription:sub.toJSON()});setEnabled(true);setMessage("Đã bật thông báo trên thiết bị này.");
+    await api("POST",{action:"subscribe",subscription:sub.toJSON()});setEnabled(true);setMessage("Đã lưu lựa chọn và bật thông báo trên thiết bị này.");
   }
   const receiving=enabled&&pushKinds.some(kind=>settings?.preferences[kind]);
   return <>{standalone&&cardTarget&&createPortal(<aside className={`admin-push-card ${receiving?"is-enabled":""}`} aria-label="Thông báo trên thiết bị này">
@@ -61,18 +61,19 @@ export function PushSettings(){
     <button className="button primary small" onClick={()=>{setOpen(true);void load();}}>{receiving||enabled?"Cấu hình thông báo":"Bật thông báo"}</button>
   </aside>,cardTarget)}<Modal title="Bước 2/2 · Thông báo quản trị" open={open} onDismiss={dismiss} trigger={<><Bell size={16}/><span>Thông báo</span></>} triggerClassName="button subtle small" onOpen={()=>{setOpen(true);void load();}} footerNote="Lựa chọn áp dụng cho tài khoản quản trị của bạn; bật nhận riêng trên từng thiết bị.">
     {!settings&&busy?<LoadingIndicator label="Đang tải cài đặt…"/>:<>
-      <p>Ứng dụng đã cài xong. Chọn loại thông báo, bấm <strong>Bật trên thiết bị này</strong> rồi chọn <strong>Cho phép</strong> khi thiết bị hỏi quyền. Sau đó dùng <strong>Gửi thử</strong> để kiểm tra.</p><p>Chọn các thông báo bạn muốn nhận:</p>
+      <p>{enabled?"Thiết bị này đã bật thông báo. Chọn lại các loại muốn nhận rồi bấm Lưu lựa chọn.":<>Chọn loại muốn nhận, bấm <strong>Lưu lựa chọn và bật thông báo</strong>, rồi chọn <strong>Cho phép</strong> nếu thiết bị hỏi quyền. Chỉ cần thực hiện một lần.</>}</p><p>Chọn các thông báo bạn muốn nhận:</p>
       <div className="push-options">{pushKinds.map(kind=><label key={kind}><input type="checkbox" checked={preferences[kind]} disabled={busy||!settings} onChange={e=>setPreferences({...preferences,[kind]:e.target.checked})}/><span>{pushLabels[kind]}{kind==="needsClassification"&&<small>Chưa xác định được thiện pháp; không gồm nhóm sai tài khoản.</small>}{kind==="syncError"&&<small>Lỗi lặp lại được gộp, tối đa một thông báo mỗi 30 phút.</small>}</span></label>)}</div>
       <p className="muted">Chỉ thông báo các sự kiện mới sau khi bật. Nội dung chuyển khoản và số tiền không xuất hiện trong thông báo.</p>
       {settings&&!settings.publicKey&&<p className="notice">Máy chủ chưa sẵn sàng gửi thông báo.</p>}
       {!supported&&<p className="notice">Trên iPhone/iPad (iOS 16.4+), hãy thêm ứng dụng vào Màn hình chính rồi mở từ biểu tượng. Nếu vẫn không hỗ trợ, hãy dùng trình duyệt mới hơn.</p>}
+      {!enabled&&!Object.values(preferences).some(Boolean)&&<p className="muted">Chọn ít nhất một loại thông báo để bật.</p>}
       <div className="push-actions">
+        <button className="button primary" disabled={busy||!settings||(!enabled&&(!supported||!settings.publicKey||!Object.values(preferences).some(Boolean)))} onClick={()=>void run(enabled?async()=>{await api("PUT",preferences);setSettings(previous=>previous?{...previous,preferences:{...preferences}}:previous);setMessage("Đã lưu các loại thông báo.");}:enable)}>{busy?"Đang xử lý…":enabled?"Lưu lựa chọn":"Lưu lựa chọn và bật thông báo"}</button>
         <button className="button subtle" disabled={busy} onClick={dismiss}>Để sau</button>
-        <button className="button primary" disabled={busy||!settings} onClick={()=>void run(async()=>{await api("PUT",preferences);setSettings(previous=>previous?{...previous,preferences:{...preferences}}:previous);setMessage("Đã lưu các loại thông báo.");})}>Lưu lựa chọn</button>
         {enabled?<>
           <button className="button subtle" disabled={busy} onClick={()=>void run(async()=>{const sub=await (await navigator.serviceWorker.ready).pushManager.getSubscription();if(sub){await api("DELETE",{endpoint:sub.endpoint});await sub.unsubscribe();}setEnabled(false);setMessage("Đã tắt thông báo trên thiết bị này.");})}>Tắt trên thiết bị này</button>
           <button className="button subtle" disabled={busy} onClick={()=>void run(async()=>{const sub=await (await navigator.serviceWorker.ready).pushManager.getSubscription();if(!sub)throw new Error("Cần bật lại thông báo trên thiết bị này.");await api("POST",{action:"test",endpoint:sub.endpoint});setMessage("Đã gửi thông báo thử tới thiết bị này.");})}>Gửi thử</button>
-        </>:<button className="button subtle" disabled={busy||!supported||!settings?.publicKey||!Object.values(preferences).some(Boolean)} onClick={()=>void run(enable)}>Bật trên thiết bị này</button>}
+        </>:null}
       </div>
     </>}
     {error&&<p className="notice danger" role="alert">{error} <button className="button subtle small" disabled={busy} onClick={()=>void load()}>Tải lại</button></p>}

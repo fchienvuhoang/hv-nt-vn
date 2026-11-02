@@ -74,7 +74,7 @@ export function Modal({
       >
         <div className="modal-header">
           <div>
-            <span className="eyebrow">HÙN PHƯỚC · THAO TÁC</span>
+            <span className="eyebrow">HVNTVN</span>
             <h2 id={titleId}>{title}</h2>
             {description && <p id={descriptionId}>{description}</p>}
           </div>
