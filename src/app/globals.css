@@ -4352,3 +4352,17 @@ tfoot td {
  .fund-list-scroll.table-card tbody tr:nth-child(even) td:first-child{background:#fdfbf8}
  .fund-list-scroll.table-card tbody tr.fund-pinned-row td:first-child{background:#fffbef}
 }
+
+/* Contain horizontal overflow at the document edge; only the table owns horizontal scrolling. */
+html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;overflow-x:clip;overscroll-behavior-x:none}
+.admin-workspace{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+.admin-workspace>.workspace-header{width:100%;max-width:100%;min-width:0}
+.workspace-header-inner,.workspace-nav-wrap,.workspace-main,.admin-client-workspace{min-width:0;max-width:100%}
+.fund-list-panel{width:100%;min-width:0;overflow-x:clip}
+.fund-list-scroll.table-scroll{contain:inline-size;box-sizing:border-box;max-width:100%;overscroll-behavior-x:none}
+@media(max-width:680px){
+ .fund-workspace .filter-bar{width:100%;min-width:0}
+ .fund-workspace .filter-bar label:first-of-type,.fund-workspace .filter-bar label:not(:first-of-type){min-width:0;max-width:100%;flex:1 1 140px}
+ .fund-workspace .filter-bar .button{min-width:0;max-width:100%;flex:1 1 100%}
+ .fund-reconciliation,.fund-reconciliation-card,.reconciliation-difference{min-width:0;max-width:100%;overflow-wrap:anywhere}
+}
