@@ -24,7 +24,6 @@ export function FundForm({
   const [values, setValues] = useState({
     code: fund?.code ?? "", name: fund?.name ?? "", status: fund?.status ?? "ACTIVE",
     keywords: fund?.keywords.join("\n") ?? "", description: fund?.description ?? "",
-    sourceUrl: fund?.sourceUrl ?? "",
     goalAmount: fund?.goalAmount?.toString() ?? "",
     adminNote: fund?.adminNote ?? "",
   });
@@ -132,13 +131,6 @@ export function FundForm({
           {...errorProps("description")}
         />
         {errorMessage("description")}
-      </label>
-      <label>
-        Link Excel nguồn
-        <input name="sourceUrl" type="url" maxLength={2000} placeholder="https://docs.google.com/spreadsheets/d/…" value={values.sourceUrl} onChange={event => change("sourceUrl", event.target.value)} {...errorProps("sourceUrl")} />
-        {errorMessage("sourceUrl")}
-        <small>Link sổ Excel/Google Sheets cũ để quản trị viên mở lại đối chiếu.</small>
-        {fund?.sourceUrl && <a href={fund.sourceUrl} target="_blank" rel="noopener noreferrer">Mở Excel nguồn ↗</a>}
       </label>
       <div className="notice">
         Chỉ thiện pháp đang hoạt động nhận phân loại tự động. Thay đổi cấu hình

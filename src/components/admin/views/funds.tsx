@@ -1,4 +1,5 @@
 "use client";
+import { useToast } from "@/components/toasts";
 import { accountLabel } from "@/lib/account-label";
 import {summarizeBalances} from "@/lib/balance-summary";
 import { LoadingIndicator } from "@/components/loading-indicator";
@@ -10,6 +11,7 @@ import { RecordAuthor } from "@/components/admin/record-author";
 import { AdminLink as Link } from "@/components/admin/admin-link";
 import {
   ExternalLink,
+  Copy,
   Settings2,
   Plus,
   List,
@@ -19,6 +21,11 @@ import { Status, Empty } from "@/components/ui";
 import { vnd, fundUsesAccount } from "@/lib/domain";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
 export default function Funds({ params = {},bootstrap }: { params?: AdminParams;bootstrap?:AdminBootstrap }) {
+  const toast=useToast();
+  async function copyPublicLink(slug:string){
+    try{await navigator.clipboard.writeText(new URL(`/t/${slug}`,window.location.origin).href);toast("Đã sao chép link trang công khai.");}
+    catch{toast("Không sao chép được. Vui lòng cho phép truy cập bộ nhớ tạm rồi thử lại.","error");}
+  }
   const all=[...(bootstrap?.funds??[])].sort((a,b)=>(b.pinnedAt?.getTime()??0)-(a.pinnedAt?.getTime()??0)),balances=bootstrap?.balances??[];
   const query = (params.q ?? "").trim().toLocaleLowerCase("vi");
   const status = ["ACTIVE", "COMPLETED", "PAUSED", "ALL"].includes(params.status ?? "")
@@ -122,7 +129,6 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                   <th className="align-right">Thao tác</th>
                   <th>Người tạo</th>
                   <th>Người cập nhật</th>
-                  <th>Excel nguồn</th>
                 </tr>
               </thead>
               <tbody>
@@ -153,7 +159,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </td>
                     <td>
                       <Status status={f.status} />
-                      <div className="fund-status-public-link"><Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={13} /><span>Trang công khai</span></Link></div>
+                      <div className="fund-status-public-link"><Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={13} /><span>Trang công khai</span></Link><button type="button" className="fund-copy-link" onClick={()=>void copyPublicLink(f.slug)} title={`Sao chép link công khai ${f.code}`} aria-label={`Sao chép link công khai ${f.code}`}><Copy size={13}/></button></div>
                     </td>
                     <td className="money align-right nowrap">
                       {vnd(f.income)}
@@ -178,7 +184,6 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </td>
                     <td><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
                     <td><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
-                    <td className="fund-source-cell">{f.sourceUrl ? <a className="button subtle small" href={f.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`Mở Excel nguồn ${f.code} (tab mới)`}><ExternalLink size={13}/>Excel nguồn</a> : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -199,9 +204,9 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     {vnd(totals.availableBalance)}
                   </td>
                   <td className={`money align-right nowrap${totals.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(totals.excessExpense)}</td>
-                  <td colSpan={4} />
+                  <td colSpan={3} />
                 </tr>
-                <tr><td colSpan={11} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
+                <tr><td colSpan={10} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
               </tfoot>
             </table>
           </div>

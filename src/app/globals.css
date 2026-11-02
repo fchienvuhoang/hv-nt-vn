@@ -4313,3 +4313,7 @@ tfoot td {
   .workspace-nav a{flex:0 0 auto;white-space:nowrap;font-size:11px;line-height:18px;min-height:34px;padding:7px 9px;gap:5px}
   .workspace-nav a svg{width:14px;height:14px;flex-shrink:0}
 }
+
+.fund-status-public-link{display:flex;align-items:center;gap:5px}
+.fund-copy-link{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:28px;height:28px;padding:5px;border:1px solid #dfcfc3;border-radius:5px;background:transparent;color:#803345;cursor:pointer}
+.fund-copy-link:hover{background:#f5e9df}.fund-copy-link:focus-visible{outline:2px solid #803345;outline-offset:2px}
