@@ -4366,3 +4366,4 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
  .fund-workspace .filter-bar .button{min-width:0;max-width:100%;flex:1 1 100%}
  .fund-reconciliation,.fund-reconciliation-card,.reconciliation-difference{min-width:0;max-width:100%;overflow-wrap:anywhere}
 }
+.daily-column-scroll{min-width:0;width:100%;overscroll-behavior-x:contain;scroll-behavior:auto}.daily-column-chart{grid-template-columns:repeat(10,minmax(120px,1fr))}

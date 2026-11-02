@@ -127,6 +127,8 @@ model BankTransaction {
   matchReason    String      @default("")
   importedAt     DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+  @@index([narrative(ops: raw("gin_trgm_ops"))], type: Gin, map: "BankTransaction_narrative_trgm_idx")
+  @@index([refId(ops: raw("gin_trgm_ops"))], type: Gin, map: "BankTransaction_refId_trgm_idx")
   @@unique([accountId, sourceId])
   @@index([accountId, occurredAt])
   @@index([fundId, direction, occurredAt])

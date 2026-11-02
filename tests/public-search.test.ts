@@ -19,3 +19,12 @@ test("public search includes already-masked administrator notes",()=>{
  assert.equal(matchesPublicTransaction(annotated,"321"),true);
  assert.equal(matchesPublicTransaction(annotated,"0987654321"),false);
 });
+
+test("prepared search index preserves matching and contains only masked public text",async()=>{
+ const {publicSearchText,publicSearchTerms,matchesPublicSearchText}=await import("../src/lib/public-search");
+ const text=publicSearchText(row);
+ assert.ok(!text.includes("0912345678"));
+ for(const query of ["nguyen mai","150.000","678","0912345678","31/10/26","TP999",""]){
+  assert.equal(matchesPublicSearchText(text,publicSearchTerms(query)),matchesPublicTransaction(row,query),query);
+ }
+});

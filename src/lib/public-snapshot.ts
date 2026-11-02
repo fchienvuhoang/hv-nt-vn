@@ -5,8 +5,8 @@ import {revalidateTag} from "next/cache";
 import {db} from "./db";
 import {publicFund,publicFundDTO,PUBLIC_PAGE_SIZE} from "./public-data";
 import {publicFundTag} from "./cache-tags";
-import {matchesPublicTransaction} from "./public-search";
-export type PublicSnapshot={credit:NonNullable<Awaited<ReturnType<typeof publicFund>>>;debit:NonNullable<Awaited<ReturnType<typeof publicFund>>>};
+import {publicSearchText,publicSearchTerms,matchesPublicSearchText} from "./public-search";
+export type PublicSnapshot={searchIndex?:{credit:string[];debit:string[]};credit:NonNullable<Awaited<ReturnType<typeof publicFund>>>;debit:NonNullable<Awaited<ReturnType<typeof publicFund>>>};
 const cache=()=>getCache({namespace:"hvntvn-public-snapshot-v1"});
 const key=(slug:string)=>`fund:${slug}`;
 export function vietnamMonth(){return new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit"}).format(new Date());}
@@ -19,7 +19,7 @@ async function buildSnapshot(slug:string):Promise<PublicSnapshot|null>{
    }
    return {...first,rows};
  };
- const credit=await load("CREDIT"),debit=await load("DEBIT");return credit&&debit?{credit,debit}:null;
+ const credit=await load("CREDIT"),debit=await load("DEBIT");return credit&&debit?{credit,debit,searchIndex:{credit:credit.rows.map(publicSearchText),debit:debit.rows.map(publicSearchText)}}:null;
 }
 /** Publish immutable chunks first, then atomically swap the manifest. Readers retain the old complete version. */
 async function publish(slug:string,snapshot:PublicSnapshot){
@@ -46,7 +46,8 @@ export async function snapshotResponse(slug:string,page:number,direction:"CREDIT
  }
  if(!snapshot)return null;
  const fund=direction==="CREDIT"?snapshot.credit:snapshot.debit;
- const rows=search?fund.rows.filter(row=>matchesPublicTransaction(row,search)):fund.rows;
+ const terms=publicSearchTerms(search),index=direction==="CREDIT"?snapshot.searchIndex?.credit:snapshot.searchIndex?.debit;
+ const rows=terms.length?fund.rows.filter((row,i)=>matchesPublicSearchText(index?.[i]??publicSearchText(row),terms)):fund.rows;
  const currentPage=Math.min(Math.max(1,Math.floor(page)||1),Math.max(1,Math.ceil(rows.length/PUBLIC_PAGE_SIZE)));
  return {hit,data:publicFundDTO({...fund,page:currentPage,count:rows.length,rows:rows.slice((currentPage-1)*PUBLIC_PAGE_SIZE,currentPage*PUBLIC_PAGE_SIZE)})};
 }
