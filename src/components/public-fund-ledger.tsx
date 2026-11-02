@@ -1,4 +1,5 @@
 "use client";
+import {PwaAdminReturn} from "@/components/pwa-admin-return";
 import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
 
@@ -37,7 +38,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
   useEffect(()=>{if(state.fund)document.title=`${state.fund.code} · ${state.fund.name} - Học viện nguyên thủy Việt Nam`;},[state.fund]);
   const fund=state.fund,loading=state.key!==key||state.loading,error=state.key===key?state.error:"";
   if(!fund)return <div className="public-site">
-    <header className="public-header"><Brand href={base}/></header>
+    <header className="public-header"><Brand href={base}/><PwaAdminReturn/></header>
     <main className="public-detail public-compact" aria-busy={loading}>
       <div className="fund-intro"><div className="eyebrow">HÀNH TRÌNH THIỆN LÀNH</div><h1>Sao kê thiện pháp</h1></div>
       <div className="metrics">{["Tổng hùn phước","Tổng chi","Số dư khả dụng","Chi vượt quỹ"].map(label=><div className="metric" key={label}><span>{label}</span><strong aria-label="Đang tải">—</strong></div>)}</div>
@@ -51,6 +52,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
     <div className="public-site">
       <header className="public-header">
         <Brand href={`/t/${slug}`} />
+        <PwaAdminReturn/>
       </header>
       <main className="public-detail public-compact">
         <div className="fund-intro">
