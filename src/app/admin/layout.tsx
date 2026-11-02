@@ -1,3 +1,4 @@
+import {PwaInstall} from "@/components/pwa-install";
 import {PushSettings} from "@/components/admin/push-settings";
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
@@ -58,6 +59,7 @@ export default async function AdminLayout({
         <span>Hùn phước · Rõ từng khoản hùn, trọn vẹn niềm tin.</span>
         <span>Đơn vị tiền tệ: VND</span>
       </footer>
+      <PwaInstall/>
     </div>
   );
 }

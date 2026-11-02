@@ -40,7 +40,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
   if(!fund)return <div className="public-site">
     <header className="public-header"><Brand href={base}/><PwaAdminReturn/></header>
     <main className="public-detail public-compact" aria-busy={loading}>
-      <div className="fund-intro"><div className="eyebrow">HÀNH TRÌNH THIỆN LÀNH</div><h1>Sao kê thiện pháp</h1></div>
+      <div className="fund-intro"><h1>Sao kê thiện pháp</h1></div>
       <div className="metrics">{["Tổng hùn phước","Tổng chi","Số dư khả dụng","Chi vượt quỹ"].map(label=><div className="metric" key={label}><span>{label}</span><strong aria-label="Đang tải">—</strong></div>)}</div>
       <div className="public-ledger-card"><Section title="Danh sách hùn phước & khoản chi" note="Số điện thoại được che, giữ 3 số cuối để đối chiếu.">
         {error?<div className="notice danger" role="alert">{error}<button className="button subtle" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:<LoadingIndicator label="Đang tải số liệu và giao dịch…" className="public-data-status"/>}
@@ -56,13 +56,11 @@ export function PublicFundLedger({slug}:{slug:string}) {
       </header>
       <main className="public-detail public-compact">
         <div className="fund-intro">
-          <div className="eyebrow">HÀNH TRÌNH THIỆN LÀNH · {fund.code}</div>
           <h1>{fund.name}</h1>
           <div className="intro-meta">
             <Status status={fund.status} />
             <span>Tài khoản {accountLabel(fund.account)}</span>
           </div>
-          {fund.description && <p>{fund.description}</p>}
           <div className="public-update">
             <Clock size={14} />
             {fund.syncAt
@@ -104,18 +102,6 @@ export function PublicFundLedger({slug}:{slug:string}) {
         </div>}
         {!fund.isLongTerm&&BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
         {!fund.isLongTerm&&BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
-        <div className="public-transfers-summary">
-          <span>
-            Điều chuyển vào: <strong>{vnd(fund.transferIn)}</strong>
-          </span>
-          <span>
-            Điều chuyển ra: <strong>{vnd(fund.transferOut)}</strong>
-          </span>
-          <span>
-            {fund.isLongTerm?"Điều chuyển ròng tháng:":"Điều chuyển ròng lịch sử:"}{" "}
-            <strong>{fund.isLongTerm?vnd((BigInt(fund.transferIn)-BigInt(fund.transferOut)).toString()):vnd(fund.openingTransferNet)}</strong>
-          </span>
-        </div>
         <div className="public-ledger-card">
         <Section
           title="Danh sách hùn phước & khoản chi"

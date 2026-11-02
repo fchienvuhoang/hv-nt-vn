@@ -1,4 +1,3 @@
-import {PwaInstall} from "@/components/pwa-install";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
@@ -31,7 +30,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="vi">
-      <body><ToastProvider>{children}<PwaInstall/></ToastProvider><Suspense fallback={null}><SiteAnalytics /></Suspense></body>
+      <body><ToastProvider>{children}</ToastProvider><Suspense fallback={null}><SiteAnalytics /></Suspense></body>
     </html>
   );
 }
