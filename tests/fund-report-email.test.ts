@@ -19,8 +19,8 @@ test("report keeps deficits separate, includes funds without goals and identifie
 test("report lists yesterday by fund and preserves expense narratives and assignment destinations", () => {
   const content = fundReportEmail({
     funds: [{ code: "TP1", name: "Thiện pháp A", status: "ACTIVE", income: 500000n, expense: 100000n, balance: 400000n, goalAmount: null }],
-    generatedAt: new Date("2026-11-02T01:00:00Z"), syncAt: null, yesterday: "01/11/2026", yesterdayIncome: 500000n, yesterdayExpense: 100000n,
-    yesterdayFunds: [{ code: "TP1", name: "Thiện pháp A", income: 500000n, expense: 100000n }],
+    generatedAt: new Date("2026-11-02T01:00:00Z"), syncAt: null, yesterday: "01/11/2026", yesterdayIncome: 500000n, yesterdayExpense: 100000n, yesterdayIncomeCount: 8, yesterdayExpenseCount: 1,
+    yesterdayFunds: [{ code: "TP1", name: "Thiện pháp A", income: 500000n, expense: 100000n, incomeCount: 8, expenseCount: 1 }],
     expenses: [{ at: new Date("2026-11-01T02:30:00Z"), account: "0572", amount: 100000n, narrative: "TP1 mua <vật tư>", assignment: "AUTO", reason: "Khớp mã TP1", funds: [{ code: "TP1", amount: 100000n }] }],
   });
   assert.match(content.TextPart, /Cú pháp chi \/ Nội dung gốc/);
@@ -28,6 +28,9 @@ test("report lists yesterday by fund and preserves expense narratives and assign
   assert.match(content.TextPart, /Gán tự động/);
   assert.match(content.TextPart, /Khớp mã TP1/);
   assert.match(content.TextPart, /09:30/);
+  assert.match(content.TextPart, /500\.000.* · 8 GD/);
+  assert.match(content.HTMLPart, /Thu · 8 GD/);
+  assert.match(content.HTMLPart, /class="cell-value"/);
   assert.match(content.HTMLPart, /&lt;vật tư&gt;/);
   assert.match(content.HTMLPart, /max-width:1000px/);
   assert.ok(content.TextPart.indexOf("Khoản chi hôm qua") < content.TextPart.indexOf("Danh sách toàn bộ"));

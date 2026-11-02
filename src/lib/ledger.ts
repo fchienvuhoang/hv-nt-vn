@@ -89,6 +89,8 @@ export async function fundTotals(client: LedgerClient = db, fundId?: string, bef
       transferIn: byAccount.reduce((n, a) => n + a.transferIn, 0n),
       transferOut: byAccount.reduce((n, a) => n + a.transferOut, 0n),
       count: byAccount.reduce((n, a) => n + a.count, 0),
+      postedIncomeCount:txs.filter(t=>t.direction==="CREDIT"&&t.entryStatus==="POSTED").reduce((n,t)=>n+t._count,0),
+      postedExpenseCount:txs.filter(t=>t.direction==="DEBIT"&&t.entryStatus==="POSTED").reduce((n,t)=>n+t._count,0),
       statementCount:txs.reduce((n,t)=>n+t._count,0),
       statementIncomeCount:txs.filter(t=>t.direction==="CREDIT").reduce((n,t)=>n+t._count,0),
       statementExpenseCount:txs.filter(t=>t.direction==="DEBIT").reduce((n,t)=>n+t._count,0),
