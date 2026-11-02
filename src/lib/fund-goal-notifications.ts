@@ -8,6 +8,7 @@ import { goalAchievementKey, adminNotificationEmails } from "./fund-goal-policy"
 import { vnd } from "./domain";
 import { brandedEmail } from "./email-template";
 import { emailLogoAttachments } from "./email-logo";
+import { emailConfigured, sendNotificationEmail } from "./email-service";
 
 export async function enqueueFundGoalNotifications() {
   const emails = adminNotificationEmails(process.env.ADMIN_EMAILS ?? "");
@@ -28,7 +29,7 @@ export async function enqueueFundGoalNotifications() {
 }
 
 export async function dispatchFundGoalEmails() {
-  if (!process.env.MAILJET_API_KEY || !process.env.MAILJET_SECRET_KEY || !process.env.NOTIFICATION_EMAIL_FROM || !process.env.AUTH_URL) return;
+  if (!emailConfigured() || !process.env.AUTH_URL) return;
   const token = randomUUID();
   const locked = await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('fund-goal-email',${token},(NOW() AT TIME ZONE 'UTC')+INTERVAL '120 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`;
   if (!locked) return;
@@ -40,7 +41,7 @@ export async function dispatchFundGoalEmails() {
         await db.fundGoalEmail.update({ where: { id: row.id }, data: { finishedAt: new Date() } });
         continue;
       }
-      // Bound automatic retries; Mailjet also deduplicates recipients within this delivery campaign.
+      // Resend retains idempotency keys for 24 hours; stop ambiguous retries before they expire.
       if (row.firstAttemptAt && Date.now() - row.firstAttemptAt.getTime() > 23 * 3600000) {
         await db.fundGoalEmail.update({ where: { id: row.id }, data: { finishedAt: new Date(), lastError: "Đã hết thời hạn gửi lại an toàn" } });
         continue;
@@ -56,17 +57,7 @@ export async function dispatchFundGoalEmails() {
       });
       await db.fundGoalEmail.update({ where: { id: row.id }, data: { attempts: { increment: 1 }, firstAttemptAt: row.firstAttemptAt ?? new Date(), nextAttemptAt: new Date(Date.now() + 60000 * 2 ** row.attempts) } });
       try {
-        const response = await fetch("https://api.mailjet.com/v3.1/send", {
-          method: "POST", signal: AbortSignal.timeout(8000),
-          headers: { Authorization: `Basic ${Buffer.from(`${process.env.MAILJET_API_KEY}:${process.env.MAILJET_SECRET_KEY}`).toString("base64")}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ Messages: [{ From: { Email: process.env.NOTIFICATION_EMAIL_FROM, Name: process.env.NOTIFICATION_EMAIL_FROM_NAME || "Học viện Nguyên Thủy Việt Nam" }, To: [{ Email: row.email }], CustomCampaign: `fund-goal-${row.id}`, DeduplicateCampaign: true, CustomID: row.id, Subject: `${event.code} đã thành tựu`, ...content, InlinedAttachments }] }),
-        });
-        if (!response.ok) throw new Error(`Mailjet HTTP ${response.status}`);
-        const result = await response.json() as { Messages?: { Status?: string; Errors?: { ErrorCode?: string }[] }[] };
-        if (result.Messages?.length !== 1 || result.Messages[0].Status !== "success") {
-          const code = result.Messages?.[0]?.Errors?.[0]?.ErrorCode;
-          throw new Error(`Mailjet từ chối email${code ? ` (${code})` : ""}`);
-        }
+        await sendNotificationEmail({ to: row.email, subject: `${event.code} đã thành tựu`, ...content, attachments: InlinedAttachments, idempotencyKey: `fund-goal/${row.id}` });
         await db.fundGoalEmail.update({ where: { id: row.id }, data: { finishedAt: new Date(), lastError: null } });
       } catch (error) {
         await db.fundGoalEmail.update({ where: { id: row.id }, data: { lastError: error instanceof Error ? error.message : "Không gửi được email" } });
