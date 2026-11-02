@@ -8,7 +8,8 @@ import { maskPhones,normalize } from "./domain";
 import { matchesPublicTransaction } from "./public-search";
 export const PUBLIC_PAGE_SIZE = 100;
 export const PUBLIC_TAG = "public-ledger";
-const options = { revalidate: 30, tags: [PUBLIC_TAG] };
+// Keep public ledger data until a committed mutation invalidates its tag.
+const options = { revalidate: false as const, tags: [PUBLIC_TAG] };
 const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true,code:true,name:true}}),["public-fund-identity-v2"],options);
 async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
  const identity=await publicIdentity(slug);if(!identity)return null;
