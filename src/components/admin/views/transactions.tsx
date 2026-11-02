@@ -86,7 +86,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
         <SyncRecency initial={accounts} initialNow={accounts[0]?.checkedAt ?? 0} />
       </div>
       <TransactionSummaryPanel />
-      <FundActivityPanel fundId={params.pending==="1"?undefined:params.fund} account={params.account}/>
+      {params.fund&&params.pending!=="1"&&<FundActivityPanel fundId={params.fund} account={params.account}/>}
       {error&&<div className="notice danger" role="alert">{error}</div>}
       {loading&&data&&<LoadingIndicator label="Đang tải dữ liệu giao dịch…" compact className="admin-data-loading"/>}
       {range.error && <div className="notice danger" role="alert">{range.error}</div>}

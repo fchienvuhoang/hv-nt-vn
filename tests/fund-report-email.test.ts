@@ -15,3 +15,20 @@ test("report keeps deficits separate, includes funds without goals and identifie
   assert.match(content.TextPart, /không bao gồm tiền chưa phân loại/);
   assert.ok(!content.HTMLPart.includes("/admin?view=funds"));
 });
+
+test("report lists yesterday by fund and preserves expense narratives and assignment destinations", () => {
+  const content = fundReportEmail({
+    funds: [{ code: "TP1", name: "Thiện pháp A", status: "ACTIVE", income: 500000n, expense: 100000n, balance: 400000n, goalAmount: null }],
+    generatedAt: new Date("2026-11-02T01:00:00Z"), syncAt: null, yesterday: "01/11/2026", yesterdayIncome: 500000n, yesterdayExpense: 100000n,
+    yesterdayFunds: [{ code: "TP1", name: "Thiện pháp A", income: 500000n, expense: 100000n }],
+    expenses: [{ at: new Date("2026-11-01T02:30:00Z"), account: "0572", amount: 100000n, narrative: "TP1 mua <vật tư>", assignment: "AUTO", reason: "Khớp mã TP1", funds: [{ code: "TP1", amount: 100000n }] }],
+  });
+  assert.match(content.TextPart, /Cú pháp chi \/ Nội dung gốc/);
+  assert.match(content.TextPart, /TP1 mua <vật tư>/);
+  assert.match(content.TextPart, /Gán tự động/);
+  assert.match(content.TextPart, /Khớp mã TP1/);
+  assert.match(content.TextPart, /09:30/);
+  assert.match(content.HTMLPart, /&lt;vật tư&gt;/);
+  assert.match(content.HTMLPart, /max-width:1000px/);
+  assert.ok(content.TextPart.indexOf("Khoản chi hôm qua") < content.TextPart.indexOf("Danh sách toàn bộ"));
+});

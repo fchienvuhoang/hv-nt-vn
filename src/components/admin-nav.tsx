@@ -6,11 +6,13 @@ import {
   Sprout,
   Shuffle,
   RefreshCw,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import { adminUrl, getAdminView } from "@/lib/admin-navigation";
 const items = [
   { view: "transactions", label: "Giao dịch", icon: ArrowLeftRight },
   { view: "funds", label: "Thiện pháp", icon: Sprout },
+  { view: "statistics", label: "Thống kê thu chi", icon: ChartNoAxesCombined },
   { view: "transfers", label: "Điều chuyển", icon: Shuffle },
   { view: "sync", label: "Đồng bộ & lịch sử", icon: RefreshCw },
 ] as const;

@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "./db";
+import type { LedgerClient } from "./ledger";
 import { ADMIN_LEDGER_TAG } from "./cache-tags";
 import { PUBLIC_TAG } from "./public-data";
 import { localDate, startOfVietnamDay } from "./domain";
@@ -22,10 +23,10 @@ function add(target: ReturnType<typeof summary>, row: Group) {
 }
 
 /** Aggregate the whole selected scope, independently of transaction pagination. */
-export async function fundActivity(filter: ActivityFilter) {
+export async function fundActivity(filter: ActivityFilter, client: LedgerClient = db) {
   const start = startOfVietnamDay(filter.date), end = new Date(start.getTime() + 86400000);
   const [groups, funds] = await Promise.all([
-    db.$queryRaw<Group[]>(Prisma.sql`
+    client.$queryRaw<Group[]>(Prisma.sql`
       WITH scoped AS (
         SELECT t.id, t."fundId", t.direction, t.assignment, t.amount
         FROM "BankTransaction" t
@@ -52,7 +53,7 @@ export async function fundActivity(filter: ActivityFilter) {
         COUNT(DISTINCT id)::bigint AS count,SUM(amount)::bigint AS amount
       FROM totals GROUP BY direction,assignment
     `),
-    db.fund.findMany({ where: filter.fundId ? { id: filter.fundId } : undefined, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
+    client.fund.findMany({ where: filter.fundId ? { id: filter.fundId } : undefined, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
   ]);
   const total = summary();
   for (const group of groups.filter(row => row.total)) add(total, group);

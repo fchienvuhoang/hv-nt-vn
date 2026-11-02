@@ -1,5 +1,4 @@
 "use client";
-import { FundActivityPanel } from "@/components/admin/fund-activity-panel";
 import { useToast } from "@/components/toasts";
 import { accountLabel } from "@/lib/account-label";
 import {summarizeBalances} from "@/lib/balance-summary";
@@ -65,7 +64,6 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
         </AdminDialogButton>
       </div>
       <FundBalanceComparison bootstrap={bootstrap} />
-      <FundActivityPanel account={params.account}/>
       <section className="fund-list-panel" aria-label="Danh sách thiện pháp">
         <nav className="fund-status-tabs" aria-label="Trạng thái thiện pháp">
           {tabs.map((tab) => (

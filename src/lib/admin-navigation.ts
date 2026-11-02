@@ -1,6 +1,7 @@
 export const adminViews = [
   "transactions",
   "funds",
+  "statistics",
   "transfers",
   "sync",
 ] as const;
