@@ -4285,4 +4285,31 @@ tfoot td {
 
 .pwa-install{padding:12px 20px;text-align:center;font-size:13px;color:#766454;background:#faf7f1}
 .pwa-install summary{cursor:pointer}.pwa-install p{max-width:560px;margin:10px auto}
-.push-options{display:grid;gap:14px;margin:18px 0}.push-options label{display:flex;align-items:flex-start;gap:10px;cursor:pointer}.push-options input{width:18px;height:18px;margin-top:3px;accent-color:#803345}.push-options small{display:block;color:#766454;font-size:12px;margin-top:3px}.push-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* Keep checkbox rows independent of the global stacked form-label styles. */
+.modal .push-options{display:grid;gap:8px;margin:14px 0}
+.modal .push-options label{display:flex;flex-direction:row;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #eadfd6;border-radius:8px;cursor:pointer;font-size:13px;line-height:1.45;color:#493b35}
+.modal .push-options label:has(input:checked){background:#f8f0ed;border-color:#d6b5b9}
+.modal .push-options input[type=checkbox]{flex:0 0 17px;width:17px;height:17px;min-height:0;margin:2px 0 0;padding:0;accent-color:#803345}
+.modal .push-options label>span{flex:1;min-width:0}
+.modal .push-options small{display:block;color:#766454;font-size:12px;line-height:1.45;margin-top:3px;font-weight:400}
+.push-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+@media(max-width:600px){.push-actions .button{flex:1 1 100%;justify-content:center}}
+
+/* Mobile header must grow with the academy name instead of clipping a fixed row. */
+@media(max-width:680px){
+  .workspace-header-inner{height:auto;min-height:64px;padding:10px 12px;gap:10px;flex-wrap:nowrap}
+  .workspace-header-inner .brand{flex:1;min-width:0;font-size:13px;line-height:1.3;gap:7px}
+  .workspace-header-inner .brand>span{min-width:0;overflow-wrap:break-word}
+  .workspace-header-inner .academy-logo{width:30px;height:30px;flex:0 0 30px}
+  .workspace-header-inner .brand small{display:block;font-size:8px;line-height:1.3;margin-top:3px;letter-spacing:0}
+  .workspace-header-actions{flex:0 0 auto;gap:7px;margin-left:0}
+  .workspace-header-actions .button,.workspace-header-actions .icon-button{width:30px;height:30px;min-height:30px;padding:6px;display:inline-flex;align-items:center;justify-content:center}
+  .workspace-header-actions form{margin:0}
+  .workspace-user .avatar{width:26px;height:26px}
+  .workspace-label,.workspace-secure{display:none}
+  .workspace-nav-wrap{padding:0 8px;overflow:hidden}
+  .workspace-nav{display:flex;width:100%;overflow-x:auto;gap:3px;padding:4px 0;scrollbar-width:none}
+  .workspace-nav::-webkit-scrollbar{display:none}
+  .workspace-nav a{flex:0 0 auto;white-space:nowrap;font-size:11px;line-height:18px;min-height:34px;padding:7px 9px;gap:5px}
+  .workspace-nav a svg{width:14px;height:14px;flex-shrink:0}
+}
