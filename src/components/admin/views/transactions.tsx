@@ -5,6 +5,7 @@ import { useToast } from "@/components/toasts";
 import { bulkAssignTransactions } from "@/lib/admin-api";
 import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
 
+import { FundActivityPanel } from "@/components/admin/fund-activity-panel";
 import { TransactionSummaryPanel } from "@/components/admin/transaction-summary";
 import { useAdminResource } from "@/lib/admin-api";
 import type { AdminTransactions,AdminBootstrap } from "@/lib/admin-read-model";
@@ -25,11 +26,12 @@ import { dateTime, localDate, vnd, fundUsesAccount } from "@/lib/domain";
 import {AdminLink as Link} from "@/components/admin/admin-link";
 import { ActionForm } from "@/components/action-form";
 import { assignTransaction } from "@/lib/admin-api";
-type TransactionParams={page?:string;pending?:string;account?:string;q?:string;type?:string;fund?:string;review?:string;from?:string;to?:string};
+type TransactionParams={page?:string;pending?:string;account?:string;q?:string;type?:string;fund?:string;review?:string;from?:string;to?:string;assignment?:string;posted?:string};
 export default function Transactions({params,bootstrap}:{params:TransactionParams;bootstrap?:AdminBootstrap}) {
   const range=transactionDates(params.from,params.to),page=pageNumber(params.page),pageSize=100,query=(params.q??"").slice(0,100);
   const direction=params.type==="CREDIT"||params.type==="DEBIT"?params.type:undefined;
   const apiParams=new URLSearchParams(Object.entries({...params,from:range.from,to:range.to}).filter(([,v])=>v!==undefined&&v!=="") as [string,string][]);
+  for(const key of ["reportDate","reportAll","reportType"])apiParams.delete(key);
   apiParams.delete("review");apiParams.delete("view");apiParams.delete("modal");apiParams.delete("fundId");apiParams.sort();
   const {data,loading,error}=useAdminResource<AdminTransactions>(`transactions?${apiParams}`);
   type SelectedRow=AdminTransactions["rows"][number];
@@ -66,6 +68,8 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
     ...(query ? { q: query } : {}),
     ...(direction ? { type: direction } : {}),
     ...(params.fund ? { fund: params.fund } : {}),
+    ...(params.assignment ? { assignment: params.assignment } : {}),
+    ...(params.posted ? { posted: params.posted } : {}),
   });
   const tabParams = new URLSearchParams(baseParams);
   tabParams.delete("pending"); tabParams.delete("fund");
@@ -73,7 +77,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
     tab: params.pending === "1" ? "PENDING" : "FUND", ...(params.pending === "1" ? {} : { fundId: params.fund }),
     from: range.from, to: range.to, account: params.account ?? "", type: direction ?? "", q: query,
   } : null;
-  const canReclassify = tabScope && !range.error;
+  const canReclassify = tabScope && !range.error && !params.assignment;
   const tabLabel = params.pending === "1" ? "Chưa phân loại" : funds.find(f=>f.id===params.fund)?.code ?? "Thiện pháp";
   return (
     <div className="transaction-sheet">
@@ -82,6 +86,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
         <SyncRecency initial={accounts} initialNow={accounts[0]?.checkedAt ?? 0} />
       </div>
       <TransactionSummaryPanel />
+      <FundActivityPanel fundId={params.pending==="1"?undefined:params.fund} account={params.account}/>
       {error&&<div className="notice danger" role="alert">{error}</div>}
       {loading&&data&&<LoadingIndicator label="Đang tải dữ liệu giao dịch…" compact className="admin-data-loading"/>}
       {range.error && <div className="notice danger" role="alert">{range.error}</div>}
@@ -89,11 +94,12 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
       <div className="transaction-filter-summary"><span>Đang hiển thị <strong>{data?(`${count.toLocaleString("vi-VN")}/${data.selectedTotal.toLocaleString("vi-VN")}`):"…"}</strong> giao dịch · {range.allTime?"Toàn bộ thời gian":range.from===range.to?`Ngày ${range.from.split("-").reverse().join("/")}`:`${range.from.split("-").reverse().join("/")} → ${range.to.split("-").reverse().join("/")}`}</span><div><Link className={`button subtle small${range.allTime?" selected":""}`} href={(()=>{const p=new URLSearchParams(baseParams);p.delete("from");p.delete("to");return `/admin?${p}`})()}>Toàn bộ thời gian</Link><Link className="button subtle small" href={(()=>{const p=new URLSearchParams(baseParams);p.set("from",today);p.set("to",today);return `/admin?${p}`})()}>Hôm nay</Link><Link className="button subtle small" href={`/admin?${new URLSearchParams({view:"transactions",...(params.pending?{pending:"1"}:params.fund?{fund:params.fund}:{})})}`}>Xóa bộ lọc</Link></div></div>
       {tabScope && <div className="transaction-tab-actions" aria-label={`Thao tác tab ${tabLabel}`}>
         <span>Tab <strong>{tabLabel}</strong> · {count.toLocaleString("vi-VN")} giao dịch theo bộ lọc</span>
-        {canReclassify ? <TabReclassification key={JSON.stringify(tabScope)} scope={tabScope} initial={null} label={tabLabel} count={count} filterLabel={`${params.account ? "TK " + accountLabel(accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Chỉ kiểm tra phân loại trong chế độ Đang ghi nhận.</small>}
+        {canReclassify ? <TabReclassification key={JSON.stringify(tabScope)} scope={tabScope} initial={null} label={tabLabel} count={count} filterLabel={`${params.account ? "TK " + accountLabel(accounts.find(a=>a.id===params.account)?.number ?? params.account) : "Cả hai tài khoản"} · ${direction === "CREDIT" ? "Thu" : direction === "DEBIT" ? "Chi" : "Thu và chi"}${query ? ` · Tìm kiếm: ${query}` : ""}`} /> : <small>Bỏ bộ lọc cách gán để kiểm tra phân loại toàn tab.</small>}
       </div>}
       <section className="sheet-panel" aria-label="Danh sách giao dịch">
         <form key={apiParams.toString()} className="filter-bar" action="/admin" method="get">
           <input type="hidden" name="view" value="transactions" />
+          {params.posted&&<input type="hidden" name="posted" value={params.posted}/>}
           {params.pending === "1" ? <input type="hidden" name="pending" value="1" /> : params.fund ? <input type="hidden" name="fund" value={params.fund} /> : null}
           <label>
             Tìm kiếm
@@ -124,6 +130,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
               <option value="DEBIT">Chi</option>
             </select>
           </label>
+          <label>Cách gán<select name="assignment" defaultValue={params.assignment??""}><option value="">Tất cả</option><option value="AUTO">Gán tự động</option><option value="MANUAL">Gán tay</option></select></label>
           <button className="button primary">Lọc</button>
         </form>
         <div className="sheet-record-count" role="status" aria-live="polite">

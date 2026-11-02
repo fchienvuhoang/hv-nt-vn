@@ -7,10 +7,11 @@ import { transactionDates } from "./transaction-scope";
 import { syncAccountStatus } from "./sync-status";
 import { PUBLIC_TAG } from "./public-data";
 import type { Prisma } from "@/generated/prisma/client";
-export type TransactionFilter = {from:string;to:string;account:string;q:string;type:string;review:string};
+export type TransactionFilter = {from:string;to:string;account:string;q:string;type:string;review:string;assignment?:string;posted?:string};
 export function transactionWhere(filter:TransactionFilter):Prisma.BankTransactionWhereInput {
   const range=transactionDates(filter.from,filter.to);
-  return {...(!range.allTime?{occurredAt:{gte:range.start,lt:range.end},notes:{none:{kind:"SOURCE_DATE_MISSING"}}}:{}),entryStatus:filter.review==="1"?"REVIEW":filter.review==="merged"?"MERGED":{not:"MERGED"},
+  return {...(!range.allTime?{occurredAt:{gte:range.start,lt:range.end},notes:{none:{kind:"SOURCE_DATE_MISSING"}}}:{}),entryStatus:filter.posted==="1"?"POSTED":filter.review==="1"?"REVIEW":filter.review==="merged"?"MERGED":{not:"MERGED"},
+    ...(["AUTO","MANUAL"].includes(filter.assignment??"")?{assignment:filter.assignment as "AUTO"|"MANUAL"}:{}),
     ...(filter.account?{accountId:filter.account}:{}),
     ...(filter.type==="CREDIT"||filter.type==="DEBIT"?{direction:filter.type}:{}),
     ...(filter.q?{OR:[{narrative:{contains:filter.q,mode:"insensitive"}},{refId:{contains:filter.q,mode:"insensitive"}}]}:{})};

@@ -1,4 +1,5 @@
 "use client";
+import { FundActivityPanel } from "./fund-activity-panel";
 import { accountLabel, fundOptionLabel } from "@/lib/account-label";
 import { LoadingSpinner, LoadingIndicator } from "@/components/loading-indicator";
 import { useEffect, useRef, useState } from "react";
@@ -7,7 +8,7 @@ import type { FundTransactionList } from "@/lib/transaction-management";
 import { dateTime, vnd, fundUsesAccount } from "@/lib/domain";
 import { useToast } from "@/components/toasts";
 type Row=FundTransactionList["rows"][number];
-export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;active:boolean;funds:{id:string;code:string;name:string;accountId:string;accountIds:string[]}[];accounts:{id:string;number:string}[]}) {
+export function FundTransactions({fundId,active,funds,accounts,onNavigate}:{fundId:string;active:boolean;onNavigate?:()=>void;funds:{id:string;code:string;name:string;accountId:string;accountIds:string[]}[];accounts:{id:string;number:string}[]}) {
   const [data,setData]=useState<FundTransactionList>({rows:[],count:0,page:1,summary:{total:{count:0,income:"0",expense:"0"},byAccount:[]}}),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
   const [page,setPage]=useState(1),[query,setQuery]=useState(""),[draft,setDraft]=useState(""),[type,setType]=useState(""),[account,setAccount]=useState(""),[reload,setReload]=useState(0);
   const [selected,setSelected]=useState<Map<string,Row>>(new Map()),[target,setTarget]=useState(""),[reason,setReason]=useState("");
@@ -80,6 +81,7 @@ export function FundTransactions({fundId,active,funds,accounts}:{fundId:string;a
     finally{setBusy(false)}
   }
   return <div className="fund-transaction-workspace">
+    <FundActivityPanel fundId={fundId} account={account} active={active} onNavigate={onNavigate}/>
     <div className="fund-transaction-account-tabs" role="tablist" aria-label="Giao dịch theo tài khoản">
       {[{id:"",label:"Tổng"},...accounts.map(a=>({id:a.id,label:`TK ${accountLabel(a.number)}`}))].map(tab=>{const total=tab.id?data.summary.byAccount.find(a=>a.accountId===tab.id):data.summary.total;return <button key={tab.id} type="button" role="tab" aria-selected={account===tab.id} aria-controls="fund-transaction-results" disabled={busy} onClick={()=>chooseAccount(tab.id)}><strong>{tab.label}</strong><span>{total?.count??0} giao dịch</span><span className="fund-tab-amounts"><span className="fund-tab-income"><small>Thu</small><b>{vnd(total?.income??"0")}</b></span><span className="fund-tab-expense"><small>Chi</small><b>{vnd(total?.expense??"0")}</b></span></span><span className={`fund-tab-balance${BigInt(total?.income??"0")<BigInt(total?.expense??"0")?" negative":""}`}><small>Số dư</small><b>{vnd(BigInt(total?.income??"0")-BigInt(total?.expense??"0"))}</b></span></button>})}
     </div>

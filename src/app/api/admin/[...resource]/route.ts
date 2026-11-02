@@ -1,3 +1,6 @@
+import {loadFundActivity} from "@/lib/fund-activity";
+import {transactionDates} from "@/lib/transaction-scope";
+import {localDate} from "@/lib/domain";
 import {dispatchAdminNotificationsSafely} from "@/lib/fund-goal-notifications";
 import {after} from "next/server";
 import {queuePublicRefresh,refreshPublicSafely} from "@/lib/public-snapshot";
@@ -26,6 +29,10 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
         case "fund-history":return json(await loadFundHistory(z.string().min(1).max(100).parse(query.fundId),z.coerce.number().int().min(1).max(100000).default(1).parse(query.page)));
         case "revision":return json(await loadAdminRevision());
         case "bootstrap":case "funds":return json(await loadAdminBootstrap());
+        case "fund-activity": {
+          const input=z.object({date:z.string().default(localDate()).refine(value=>!transactionDates(value,value).error,"Ngày thống kê không hợp lệ"),allTime:z.enum(["0","1"]).default("0"),fundId:z.string().max(100).default(""),account:z.string().max(100).default("")}).parse(query);
+          return json(await loadFundActivity({...input,allTime:input.allTime==="1"}));
+        }
         case "transaction-summary":return json(await loadTransactionSummary());
         case "transactions":return json(await loadAdminTransactions(query));
         case "transfer-details":return json(await loadTransferDetails(z.string().min(1).max(100).parse(query.id)));

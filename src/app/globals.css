@@ -4386,3 +4386,24 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
  .fund-reconciliation,.fund-reconciliation-card,.reconciliation-difference{min-width:0;max-width:100%;overflow-wrap:anywhere}
 }
 .daily-column-scroll{min-width:0;width:100%;overscroll-behavior-x:contain;scroll-behavior:auto}.daily-column-chart{grid-template-columns:repeat(10,minmax(120px,1fr))}
+
+.fund-activity-panel { margin: 12px 0; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; min-width: 0; }
+.fund-activity-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.fund-activity-heading > div { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.fund-activity-heading label { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.fund-activity-heading input { width: auto; padding: 5px; min-height: 30px; }
+.fund-activity-panel > small { display: block; font-size: 11px; color: var(--muted); line-height: 1.6; }
+.fund-activity-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 8px; margin: 12px 0; }
+.fund-activity-cards > a { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.fund-activity-cards > a:hover { border-color: var(--primary); }
+.fund-activity-cards strong { font-size: 18px; color: var(--primary); overflow-wrap: anywhere; }
+.fund-activity-cards span, .fund-activity-cards small { font-size: 11px; }
+.fund-activity-panel table { width: 100%; font-size: 12px; }
+.fund-activity-panel td, .fund-activity-panel th { padding: 8px; }
+.fund-activity-panel td small { display: block; max-width: 260px; color: var(--muted); font-size: 10px; }
+.fund-activity-panel td a:hover { text-decoration: underline; }
+.fund-activity-panel .table-scroll { max-height: 350px; overflow: auto; margin: 8px 0; }
+.fund-activity-panel .table-scroll thead { position: sticky; top: 0; background: #fff; z-index: 1; }
+.fund-activity-panel .tabs button { padding: 6px 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.fund-activity-panel .tabs button.selected { color: var(--primary); box-shadow: inset 0 -2px var(--primary); }
+@media (max-width: 600px) { .fund-activity-panel { padding: 10px; } .fund-activity-cards { grid-template-columns: repeat(2,minmax(0,1fr)); } .fund-activity-cards strong { font-size: 15px; } }

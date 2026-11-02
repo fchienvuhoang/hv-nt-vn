@@ -80,7 +80,7 @@ export function DialogWorkspace({children,funds,accounts,transferFunds,initial,i
       {importFund?<FundExcelImport key={importFund.id} active={selection?.kind==="import-fund"} fundId={importFund.id} legacy={{accountId:importFund.accountId,income:importFund.openingIncome.toString(),expense:importFund.openingExpense.toString(),transfer:importFund.openingTransferNet.toString()}} history={history}/>:<div className="notice danger">Không tìm thấy thiện pháp này.</div>}
     </Modal></div>
     <div data-admin-dialog="fund-transactions"><Modal wide open={selection?.kind==="fund-transactions"} onDismiss={dismiss} title={`Giao dịch · ${transactionFund?.code??"thiện pháp"}`} description={transactionFund?.name} footerNote="Lý do và ghi chú được hiển thị công khai; mọi thao tác đều lưu người thực hiện và thời gian.">
-      {transactionFund&&<FundTransactions key={`${transactionFund.id}-${revision}`} fundId={transactionFund.id} active={selection?.kind==="fund-transactions"} funds={funds} accounts={accounts}/>}
+      {transactionFund&&<FundTransactions key={`${transactionFund.id}-${revision}`} fundId={transactionFund.id} onNavigate={dismiss} active={selection?.kind==="fund-transactions"} funds={funds} accounts={accounts}/>}
     </Modal></div>
     <div data-admin-dialog="transfer"><Modal wide open={selection?.kind==="transfer"} onDismiss={dismiss} title="Điều chuyển giữa các thiện pháp" description="Ghi rõ lý do, giữ trọn lịch sử phân bổ.">
       <TransferFormFields key={`transfer-${revision}`} requestId={requestId} accounts={accounts} funds={transferFunds}/>
