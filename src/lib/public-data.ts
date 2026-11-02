@@ -11,7 +11,7 @@ export const PUBLIC_TAG = "public-ledger";
 // Keep public ledger data until a committed mutation invalidates its tag.
 const options = { revalidate: false as const, tags: [PUBLIC_TAG] };
 const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true,code:true,name:true}}),["public-fund-identity-v2"],options);
-async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
+async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:string){
  const identity=await publicIdentity(slug);if(!identity)return null;
  return unstable_cache(async()=>{
     const fund = await db.fund.findUnique({
@@ -20,12 +20,16 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
     });
     if (!fund) return null;
     const bankAccounts = await db.bankAccount.findMany({where:{id:{in:[fund.accountId,...fund.accountIds]}},select:{id:true,number:true}});
-    const where = { ...fundMembership(fund.id), direction, entryStatus: {in:["POSTED","OPENING"]} };
-    const [summary, count, transfers, sync] = await Promise.all([
-      fundTotals(db,fund.id),
+    const period=fund.isLongTerm?month:"";
+    const start=period?new Date(`${period}-01T00:00:00+07:00`):undefined;
+    const end=start?new Date(Date.UTC(Number(period.slice(0,4)),Number(period.slice(5,7)),1)-7*3600000):undefined;
+    const where = { ...fundMembership(fund.id), direction, entryStatus: {in:period?["POSTED"]:["POSTED","OPENING"]},...(start?{occurredAt:{gte:start,lt:end}}:{}) };
+    const [summary, previous, count, transfers, sync] = await Promise.all([
+      fundTotals(db,fund.id,end),
+      start?fundTotals(db,fund.id,start):Promise.resolve([]),
       db.bankTransaction.count({ where }),
       db.transfer.findMany({
-        where: { OR: [{ fromFundId: fund.id }, { toFundId: fund.id }] },
+        where: { ...(start?{createdAt:{gte:start,lt:end}}:{}),OR: [{ fromFundId: fund.id }, { toFundId: fund.id }] },
         include: {
           fromFund: { select: { code: true } },
           toFund: { select: { code: true } },
@@ -39,7 +43,9 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
       }),
     ]);
     const total = summary.find((f) => f.id === fund.id)!;
+    const prior=previous[0];
     return {
+      isLongTerm:fund.isLongTerm,month:period,carryBalance:prior?.balance.toString()??"0",
       code: fund.code,
       name: maskPhones(fund.name),
       slug,
@@ -49,15 +55,15 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
       pendingImports: await db.fundImport.count({
         where: { fundId: fund.id, status: "RUNNING" },
       }),
-      income: total.income.toString(),
-      expense: total.expense.toString(),
+      income: (total.income-(prior?.income??0n)).toString(),
+      expense: (total.expense-(prior?.expense??0n)).toString(),
       balance: total.balance.toString(),
       availableBalance:total.availableBalance.toString(),
       excessExpense:total.excessExpense.toString(),
       openingBalance:total.openingBalance.toString(),
       openingBalances:total.byAccount.filter(a=>a.openingBalance!==0n).map(a=>({account:bankAccounts.find(b=>b.id===a.accountId)?.number??"",amount:a.openingBalance.toString(),at:a.openingAt?.toISOString()??null})),
-      transferIn: total.transferIn.toString(),
-      transferOut: total.transferOut.toString(),
+      transferIn: (total.transferIn-(prior?.transferIn??0n)).toString(),
+      transferOut: (total.transferOut-(prior?.transferOut??0n)).toString(),
       openingTransferNet: fund.openingTransferNet.toString(),
       openingIncome: fund.openingIncome.toString(),
       openingExpense: fund.openingExpense.toString(),
@@ -82,36 +88,38 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT"){
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v12",slug,direction],
+  ["public-fund-summary-v13",slug,direction,month],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }
 
 // Cache public, masked rows by stable page, never by a visitor's search term.
-const publicTransactionPage = async (fundId: string, direction: "CREDIT" | "DEBIT", page: number) => unstable_cache(async()=>{
+const publicTransactionPage = async (fundId: string, direction: "CREDIT" | "DEBIT", page: number,month="") => unstable_cache(async()=>{
   const rows = await db.bankTransaction.findMany({
-    where:{...fundMembership(fundId),direction,entryStatus:{in:["POSTED","OPENING"]}},
+    where:{...fundMembership(fundId),direction,entryStatus:{in:month?["POSTED"]:["POSTED","OPENING"]},...(month?{occurredAt:{gte:new Date(`${month}-01T00:00:00+07:00`),lt:new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7)),1)-7*3600000)}}:{})},
     select:{id:true,entryStatus:true,fundId:true,allocations:{select:{fundId:true,amount:true}},amount:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{id:true,text:true,createdAt:true,kind:true},orderBy:[{createdAt:"asc"},{id:"asc"}]}},
     orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*PUBLIC_PAGE_SIZE,take:PUBLIC_PAGE_SIZE,
   });
   return rows.map(r=>({id:r.id,dateUnknown:r.notes.some(n=>n.kind==="SOURCE_DATE_MISSING"),opening:r.entryStatus==="OPENING",account:r.account.number,amount:fundShare(r,fundId).toString(),at:r.occurredAt.toISOString(),
     notes:r.notes.map(n=>({id:n.id,text:maskPhones(n.text),at:n.createdAt.toISOString()})),narrative:r.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(r.narrative),name:maskPhones(r.displayName)}));
-},["public-transaction-page-v5",fundId,direction,String(page)],{...options,tags:[PUBLIC_TAG,publicFundTag(fundId)]})();
+},["public-transaction-page-v6",fundId,direction,String(page),month],{...options,tags:[PUBLIC_TAG,publicFundTag(fundId)]})();
 
-export async function publicFund(slug: string, page: number, direction: "CREDIT" | "DEBIT", search = "") {
-  const fund=await publicFundSummary(slug,direction);
+export async function publicFund(slug: string, page: number, direction: "CREDIT" | "DEBIT", search = "", month = "") {
+  const current=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit"}).format(new Date());
+  const selected=/^20\d{2}-(0[1-9]|1[0-2])$/.test(month)?month:current;
+  const fund=await publicFundSummary(slug,direction,selected);
   if(!fund)return null;
   const query=search.trim().slice(0,100);
   const requestedPage=Math.max(1,Math.floor(page)||1);
   if(!query){
     const currentPage=Math.min(requestedPage,Math.max(1,Math.ceil(fund.count/PUBLIC_PAGE_SIZE)));
-    return {...fund,page:currentPage,rows:await publicTransactionPage(fund.id,direction,currentPage)};
+    return {...fund,page:currentPage,rows:await publicTransactionPage(fund.id,direction,currentPage,fund.month)};
   }
   const matches: Awaited<ReturnType<typeof publicTransactionPage>>=[];
   const pages=Math.ceil(fund.count/PUBLIC_PAGE_SIZE);
   // Bound parallel cache misses to protect the connection pool on a cold cache.
   for(let first=1;first<=pages;first+=3){
-    const batches=await Promise.all(Array.from({length:Math.min(3,pages-first+1)},(_,i)=>publicTransactionPage(fund.id,direction,first+i)));
+    const batches=await Promise.all(Array.from({length:Math.min(3,pages-first+1)},(_,i)=>publicTransactionPage(fund.id,direction,first+i,fund.month)));
     for(const rows of batches)matches.push(...rows.filter(row=>matchesPublicTransaction(row,query)));
   }
   const currentPage=Math.min(requestedPage,Math.max(1,Math.ceil(matches.length/PUBLIC_PAGE_SIZE)));

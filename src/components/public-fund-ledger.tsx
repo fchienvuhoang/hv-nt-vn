@@ -11,13 +11,13 @@ import { publicQuery } from "@/lib/public-query";
 import type { PublicFundDTO } from "@/lib/public-data";
 const PUBLIC_PAGE_SIZE=100;
 export function PublicFundLedger({slug}:{slug:string}) {
-  const params=new URLSearchParams(usePublicSearch()),query=publicQuery({page:params.get("page"),type:params.get("type"),q:params.get("q")});
-  const {direction,search}=query,key=JSON.stringify(query),base=`/t/${slug}`;
+  const params=new URLSearchParams(usePublicSearch()),query=publicQuery({page:params.get("page"),type:params.get("type"),q:params.get("q"),month:params.get("month")});
+  const {direction,search,month}=query,key=JSON.stringify(query),base=`/t/${slug}`;
   const cached=useRef(new Map<string,{fund:PublicFundDTO;at:number}>());
   const [state,setState]=useState<{key:string;fund:PublicFundDTO|null;loading:boolean;error:string}>({key:"",fund:null,loading:true,error:""}),[retry,setRetry]=useState(0);
   useEffect(()=>{
     const actual=new URLSearchParams(window.location.search);
-    if(JSON.stringify(publicQuery({page:actual.get("page"),type:actual.get("type"),q:actual.get("q")}))!==key)return;
+    if(JSON.stringify(publicQuery({page:actual.get("page"),type:actual.get("type"),q:actual.get("q"),month:actual.get("month")}))!==key)return;
     let alive=true;
     const controller=new AbortController();
     async function load(){
@@ -25,7 +25,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
       if(existing&&Date.now()-existing.at<30000&&!retry){setState({key,fund:existing.fund,loading:false,error:""});return;}
       setState(previous=>({key,fund:existing?.fund??previous.fund,loading:true,error:""}));
       try{
-        const response=await fetch(`/api/public/funds/${slug}?${new URLSearchParams({type:direction,q:search,page:String(query.page)})}`,{cache:"no-store",signal:controller.signal});
+        const response=await fetch(`/api/public/funds/${slug}?${new URLSearchParams({type:direction,q:search,month,page:String(query.page)})}`,{cache:"no-store",signal:controller.signal});
         const data=await response.json();if(!response.ok)throw new Error(data.error??"Không tải được giao dịch");
         if(!alive)return;
         cached.current.set(key,{fund:data,at:Date.now()});if(cached.current.size>20)cached.current.delete(cached.current.keys().next().value!);
@@ -33,7 +33,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
       }catch(cause){if(alive)setState(previous=>({key,fund:existing?.fund??previous.fund,loading:false,error:cause instanceof Error?cause.message:"Không tải được giao dịch"}))}
     }
     void load();return()=>{alive=false;controller.abort()};
-  },[key,slug,direction,search,query.page,retry]);
+  },[key,slug,direction,search,query.page,month,retry]);
   useEffect(()=>{if(state.fund)document.title=`${state.fund.code} · ${state.fund.name} - Học viện nguyên thủy Việt Nam`;},[state.fund]);
   const fund=state.fund,loading=state.key!==key||state.loading,error=state.key===key?state.error:"";
   if(!fund)return <div className="public-site">
@@ -75,7 +75,13 @@ export function PublicFundLedger({slug}:{slug:string}) {
             xong.
           </div>
         )}
-        <div className="metrics">
+        {fund.isLongTerm&&<label className="public-month-picker">Thống kê theo tháng<input type="month" value={fund.month} onChange={e=>{if(e.target.value)publicNavigate(`${base}?${new URLSearchParams({type:direction,month:e.target.value,...(search?{q:search}:{})})}`)}}/></label>}
+        {fund.isLongTerm?<div className="metrics">
+          <Metric label="Dư / thiếu tháng trước chuyển sang" value={fund.carryBalance} note="Giữ nguyên cả số dư dương và âm"/>
+          <Metric label="Hùn phước trong tháng" value={fund.income} note="Chỉ các khoản ghi nhận trong tháng" accent/>
+          <Metric label="Đã chi trong tháng" value={fund.expense} note="Chỉ các khoản chi trong tháng"/>
+          <Metric label="Số dư cuối tháng" value={fund.balance} note="Đầu kỳ + hùn phước − chi + điều chuyển ròng"/>
+        </div>:<div className="metrics">
           <Metric
             label="Tổng hùn phước"
             value={fund.income}
@@ -93,9 +99,9 @@ export function PublicFundLedger({slug}:{slug:string}) {
             note="Phần tiền còn lại, tối thiểu 0₫"
           />
           <Metric label="Chi vượt quỹ" value={fund.excessExpense} note="Phần chi vượt khoản hùn phước đã ghi nhận" />
-        </div>
-        {BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
-        {BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
+        </div>}
+        {!fund.isLongTerm&&BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
+        {!fund.isLongTerm&&BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
         <div className="public-transfers-summary">
           <span>
             Điều chuyển vào: <strong>{vnd(fund.transferIn)}</strong>
@@ -104,8 +110,8 @@ export function PublicFundLedger({slug}:{slug:string}) {
             Điều chuyển ra: <strong>{vnd(fund.transferOut)}</strong>
           </span>
           <span>
-            Điều chuyển ròng lịch sử:{" "}
-            <strong>{vnd(fund.openingTransferNet)}</strong>
+            {fund.isLongTerm?"Điều chuyển ròng tháng:":"Điều chuyển ròng lịch sử:"}{" "}
+            <strong>{fund.isLongTerm?vnd((BigInt(fund.transferIn)-BigInt(fund.transferOut)).toString()):vnd(fund.openingTransferNet)}</strong>
           </span>
         </div>
         <div className="public-ledger-card">
@@ -117,29 +123,29 @@ export function PublicFundLedger({slug}:{slug:string}) {
           <div className="tabs">
             <Link
               className={direction === "CREDIT" ? "selected" : ""}
-              href={`${base}?${new URLSearchParams({type:"CREDIT",...(search?{q:search}:{})})}`}
+              href={`${base}?${new URLSearchParams({type:"CREDIT",...(fund.month?{month:fund.month}:{}),...(search?{q:search}:{})})}`}
             >
               Khoản hùn phước
             </Link>
             <Link
               className={direction === "DEBIT" ? "selected" : ""}
-              href={`${base}?${new URLSearchParams({type:"DEBIT",...(search?{q:search}:{})})}`}
+              href={`${base}?${new URLSearchParams({type:"DEBIT",...(fund.month?{month:fund.month}:{}),...(search?{q:search}:{})})}`}
             >
               Khoản chi
             </Link>
           </div>
           <form action={base} method="get" key={key} onSubmit={event=>{event.preventDefault();const params=new URLSearchParams();for(const [name,value] of new FormData(event.currentTarget))if(typeof value==="string"&&value)params.set(name,value);publicNavigate(`${base}?${params}`)}} className="public-search" role="search">
-            <input type="hidden" name="type" value={direction} />
+            <input type="hidden" name="type" value={direction} />{fund.month&&<input type="hidden" name="month" value={fund.month}/>}
             <label htmlFor="public-transaction-search">Tìm khoản hùn phước / khoản chi</label>
             <div className="public-search-controls">
               <input id="public-transaction-search" type="search" name="q" defaultValue={search} maxLength={100} placeholder="Nội dung, tên thí chủ, số tiền hoặc 3 số cuối điện thoại…" />
               <button className="button primary" type="submit"><Search size={15} />Tìm kiếm</button>
-              {search&&<Link className="button subtle" href={`${base}?type=${direction}`}>Xóa tìm kiếm</Link>}
+              {search&&<Link className="button subtle" href={`${base}?${new URLSearchParams({type:direction,...(fund.month?{month:fund.month}:{})})}`}>Xóa tìm kiếm</Link>}
             </div>
             <small>{fund.count.toLocaleString("vi-VN")} giao dịch{search?` khớp “${search}”`:""} · 100 dòng/trang</small>
           </form>
           </div>
-          {(BigInt(fund.openingIncome) !== 0n ||
+          {!fund.isLongTerm&&(BigInt(fund.openingIncome) !== 0n ||
             BigInt(fund.openingExpense) !== 0n) && (
             <div className="notice historical-note">
               Tổng lịch sử cũ đã được tính: hùn phước {vnd(fund.openingIncome)},
@@ -155,7 +161,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                   : "Chưa có khoản chi mới"
               }
             >
-              {search?"Hãy thử tên, nội dung hoặc 3 số cuối điện thoại. Các tổng thu chi phía trên luôn là tổng toàn thiện pháp.":"Số liệu lịch sử đã được tính trong các tổng ở trên."}
+              {search?"Hãy thử tên, nội dung hoặc 3 số cuối điện thoại. Các tổng phía trên theo kỳ đang hiển thị.":"Số liệu lịch sử đã được tính trong các tổng ở trên."}
             </Empty>
           ) : (
             <div className="table-scroll table-card">
@@ -198,7 +204,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
           <Pagination
             page={fund.page}
             total={fund.count}
-            base={`${base}?${new URLSearchParams({type:direction,...(search?{q:search}:{})})}`}
+            base={`${base}?${new URLSearchParams({type:direction,...(fund.month?{month:fund.month}:{}),...(search?{q:search}:{})})}`}
             pageSize={PUBLIC_PAGE_SIZE}
           />
         </Section>
