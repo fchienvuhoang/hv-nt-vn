@@ -144,9 +144,7 @@ export async function publicFundTitle(slug:string){
   const identity=await publicIdentity(slug);
   const fund=identity?{...identity,name:maskPhones(identity.name)}:null;
   if(!fund)return null;
-  const name=fund.name.trim();
-  const hasCode=new RegExp(`^${fund.code}(?=$|[\\s:–—-])`,"i").test(name);
-  return `${hasCode?name:`${fund.code} ${name}`} - Học viện nguyên thủy Việt Nam`;
+  return fund.name.trim()||fund.code;
 }
 export function publicFundDTO(fund:NonNullable<Awaited<ReturnType<typeof publicFund>>>):PublicFundDTO {
   const {id,cutover,...result}=fund;void id;void cutover;return result;

@@ -46,7 +46,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
     window.addEventListener("focus",visible);document.addEventListener("visibilitychange",visible);
     return()=>{channel?.close();window.removeEventListener("focus",visible);document.removeEventListener("visibilitychange",visible)};
   },[key]);
-  useEffect(()=>{if(state.fund)document.title=`${state.fund.code} · ${state.fund.name} - Học viện nguyên thủy Việt Nam`;},[state.fund]);
+  useEffect(()=>{if(state.fund)document.title=state.fund.name;},[state.fund]);
   const fund=state.fund,loading=state.key!==key||state.loading,error=state.key===key?state.error:"";
   if(!fund)return <div className="public-site">
     <header className="public-header"><Brand href={base}/><PwaAdminReturn/></header>
