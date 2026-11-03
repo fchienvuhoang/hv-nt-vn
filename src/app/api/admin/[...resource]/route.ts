@@ -26,6 +26,7 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
   try{
     if(request.method==="GET"){
       switch(resource){
+        case "session":return json({isAdmin:true});
         case "fund-history":return json(await loadFundHistory(z.string().min(1).max(100).parse(query.fundId),z.coerce.number().int().min(1).max(100000).default(1).parse(query.page)));
         case "revision":return json(await loadAdminRevision());
         case "bootstrap":case "funds":return json(await loadAdminBootstrap());

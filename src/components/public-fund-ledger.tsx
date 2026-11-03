@@ -1,4 +1,5 @@
 "use client";
+import {PublicAdminRefresh} from "@/components/public-admin-refresh";
 import {PwaAdminReturn} from "@/components/pwa-admin-return";
 import { PublicFundGoal } from "@/components/public-fund-goal";
 import { PublicTransferContent } from "@/components/public-transfer-content";
@@ -76,7 +77,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             {fund.syncAt
               ? `Đã đồng bộ đầy đủ đến lượt ${dateTime(fund.syncAt)}`
               : "Đang chờ hoàn tất đồng bộ đầu tiên"}
-            <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)} <button type="button" className="button subtle small" disabled={loading} onClick={()=>{cached.current.clear();setRetry(n=>n+1)}}>Cập nhật số liệu</button>
+            <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)} <PublicAdminRefresh disabled={loading} onRefresh={()=>{cached.current.clear();setRetry(n=>n+1)}}/>
           </div>
         </div>
         {fund.status === "ACTIVE" && <PublicTransferContent code={fund.code}/>}
