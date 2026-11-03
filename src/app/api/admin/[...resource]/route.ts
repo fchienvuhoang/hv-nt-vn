@@ -65,8 +65,10 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
       case "PATCH reclassification":result=await actions.advanceReclassification(z.object({id:z.string().min(1).max(100),phase:z.enum(["CHECK","APPLY"])}).parse(await request.json()));break;
       default:return json({error:"Phương thức hoặc API không hợp lệ."},405);
     }
-    await queuePublicRefresh();
-    after(async()=>{await Promise.allSettled([refreshPublicSafely(),dispatchAdminNotificationsSafely()]);});
+    if(!["transfers/preview","funds/pin","imports"].includes(resource)){
+      await queuePublicRefresh();
+      after(async()=>{await Promise.allSettled([refreshPublicSafely(),dispatchAdminNotificationsSafely()]);});
+    }
     return json(result);
   }catch(error){
     if(error instanceof AllocationTransferError)return json({error:error.message},400);

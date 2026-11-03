@@ -35,6 +35,7 @@ export async function enqueueFundGoalNotifications() {
 
 export async function dispatchFundGoalEmails() {
   if (!emailConfigured()) return;
+  if (!await db.fundGoalEmail.findFirst({where:{finishedAt:null,attempts:{lt:6},nextAttemptAt:{lte:new Date()}},select:{id:true}})) return;
   const token = randomUUID();
   const locked = await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('fund-goal-email',${token},(NOW() AT TIME ZONE 'UTC')+INTERVAL '120 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`;
   if (!locked) return;
@@ -76,7 +77,7 @@ export async function dispatchFundGoalEmails() {
   }
 }
 
-export async function dispatchAdminNotificationsSafely() {
-  try { await enqueueFundGoalNotifications(); } catch { console.error("Fund goal notification queue unavailable"); }
+export async function dispatchAdminNotificationsSafely({checkGoals=true}:{checkGoals?:boolean}={}) {
+  try { if(checkGoals)await enqueueFundGoalNotifications(); } catch { console.error("Fund goal notification queue unavailable"); }
   await Promise.allSettled([dispatchAdminPushSafely(), dispatchFundGoalEmails(), dispatchMorningReports()]);
 }

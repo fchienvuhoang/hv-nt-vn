@@ -43,7 +43,7 @@ try {
   assert.equal(await db.adminPushDelivery.count(), 1);
   await dispatchAdminPush();
   assert.equal(pushes.length, 1);
-  assert.equal(pushes[0].url, "/admin?view=funds");
+  assert.equal(pushes[0].url, "https://hvntvn.danasangha.org/admin?view=funds");
   await db.adminPushDelivery.deleteMany();
   await enqueueFundGoalNotifications();
   assert.equal(await db.adminPushDelivery.count(), 0, "queue cleanup cannot repeat milestone");

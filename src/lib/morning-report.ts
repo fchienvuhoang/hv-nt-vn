@@ -11,6 +11,13 @@ import { fundReportEmail } from "./fund-report-email";
 /** The existing minute webhook drives this worker; report dates and recipients are durable. */
 export async function dispatchMorningReports(now = new Date()) {
   if (!emailConfigured()) return;
+  const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh"}).format(now);
+  const scheduled=new Date(`${day}T07:00:00+07:00`);
+  const [work]=await db.$queryRaw<{needed:boolean}[]>`SELECT
+    EXISTS(SELECT 1 FROM "DailyReportEmail" WHERE "finishedAt" IS NULL AND attempts<6 AND "nextAttemptAt"<=${now})
+    OR EXISTS(SELECT 1 FROM "DailyReportSchedule" WHERE id='morning-7h' AND "activatedAt"<=${scheduled} AND ${now}>=${scheduled}
+      AND NOT EXISTS(SELECT 1 FROM "DailyReport" WHERE date=${day})) AS needed`;
+  if(!work.needed)return;
   const token = randomUUID();
   const locked = await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('morning-report',${token},(NOW() AT TIME ZONE 'UTC')+INTERVAL '180 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`;
   if (!locked) return;

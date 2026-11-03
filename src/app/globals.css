@@ -4471,3 +4471,16 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
  .activity-toolbar .activity-calendar > span { display:none; }
  .activity-table .activity-code-col { display:none; width:0; }
 }
+
+@media (max-width: 680px) {
+  .daily-column-scroll { overflow-x: hidden; padding: 4px 10px; }
+  .daily-column-chart { display: flex; flex-direction: column-reverse; gap: 0; }
+  .daily-column-day { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 8px; padding: 8px 4px; text-align: left; }
+  .daily-column-day + .daily-column-day { border-bottom: 1px solid #eee8df; }
+  .daily-column-bars { display: none; }
+  .daily-column-day h2 { margin: 0; font-size: 12px; }
+  .daily-column-day h2 span { margin-top: 3px; }
+  .daily-column-values { font-size: 12px; gap: 4px; }
+  .daily-column-values > span { display: block; overflow-wrap: anywhere; }
+  .daily-column-values small { font-size: 10px; }
+}

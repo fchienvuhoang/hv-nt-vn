@@ -30,6 +30,7 @@ export async function sendAdminPush(subscription:{endpoint:string;p256dh:string;
 /** Durable delivery queue, bounded work per cron call; never holds up bank ingestion. */
 export async function dispatchAdminPush(){
   if(!pushConfigured())return;
+  if(!await db.adminPushDelivery.findFirst({where:{finishedAt:null,nextAttemptAt:{lte:new Date()},attempts:{lt:6}},select:{id:true}}))return;
   const token=randomUUID();
   const acquired=await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('admin-push',${token},(NOW() AT TIME ZONE 'UTC')+INTERVAL '45 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`;
   if(!acquired)return;

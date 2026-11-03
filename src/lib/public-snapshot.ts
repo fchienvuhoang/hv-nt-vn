@@ -63,11 +63,17 @@ export async function queuePublicRefresh(ids?:string[]){
 }
 export async function runPublicRefresh(limit=2){
  const token=randomUUID(),deadline=Date.now()+240000;
+ const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh"}).format(new Date());
+ const [work]=await db.$queryRaw<{needed:boolean}[]>`SELECT EXISTS (
+   SELECT 1 FROM "Fund" f LEFT JOIN "PublicCacheRefresh" r ON r."fundId"=f.id
+   WHERE (f.status='ACTIVE' AND (r."dailyKey" IS NULL OR r."dailyKey"<>${day}))
+      OR r."requestedVersion">r."builtVersion"
+ ) AS needed`;
+ if(!work.needed)return {busy:false,built:0,pending:0};
  const lock=await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('public-snapshot',${token},(NOW() AT TIME ZONE 'UTC')+INTERVAL '300 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`;
  if(!lock)return {busy:true,built:0};
  let built=0;
  try{
-   const now=new Date(),day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh"}).format(now);
    const funds=await db.fund.findMany({select:{id:true,slug:true,status:true}});
    // The existing minute webhook drains this durable queue, including daily reconciliation.
    const states=await db.publicCacheRefresh.findMany();
