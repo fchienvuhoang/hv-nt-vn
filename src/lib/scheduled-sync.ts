@@ -1,3 +1,6 @@
+import {measureOperations} from "./operation-metrics";
+import {saveSyncEvent} from "./sync-events";
+import type {SyncInvocation} from "@/generated/prisma/client";
 import {prepareBankPage} from "./bank-ingest-cache";
 import {enqueueSyncFailure} from "./admin-push";
 import {BANK_SYNC_MIN_DATE,effectiveSyncStart} from "./sync-boundary";
@@ -14,8 +17,9 @@ import type { Prisma } from "@/generated/prisma/client";
 type Progress = { accountId: string; number: string; direction: "CREDIT" | "DEBIT"; page: number; done: boolean }[];
 
 /** One authorized external call; skipped and interrupted calls remain observable. */
-export async function scheduledSync(now = new Date()) {
-  const invocation = await db.syncInvocation.create({ data: { receivedAt: now } });
+export async function scheduledSync(now = new Date()) {return measureOperations("bank-sync",()=>runScheduledSync(now));}
+async function runScheduledSync(now:Date) {
+  const invocation:SyncInvocation = {id:randomUUID(),receivedAt:now,finishedAt:null,status:"RECEIVED",quickPages:0,fullPages:0,inserted:0,updated:0,jobIds:[],error:null};
   const token = randomUUID();
   let acquired = false;
   let quickPages = 0, fullPages = 0, inserted = 0, updated = 0;
@@ -24,36 +28,9 @@ export async function scheduledSync(now = new Date()) {
   const deadline = Date.now() + Math.max(15000, Math.min(45000, Number(process.env.SYNC_BUDGET_MS) || 20000));
   const maxPages = Math.max(4, Math.min(30, Number(process.env.SYNC_MAX_PAGES) || 8));
   try {
-    const unpaused = await db.syncLease.deleteMany({
-      where: { id: "bank-sync", token: { startsWith: "excel-import-paused:" } }
-    });
-    if (unpaused.count > 0) {
-      await db.auditLog.create({
-        data: {
-          actor: "scheduler",
-          action: "BANK_SYNC_RESUMED",
-          entityId: "bank-sync",
-          details: {
-            reason: "Quản trị viên bật lại đồng bộ giao dịch từ 00:00 ngày 01/11/2026",
-            minimumSyncDate: BANK_SYNC_MIN_DATE,
-            unpausedCount: unpaused.count
-          }
-        }
-      });
-      const pausedJobs = await db.syncJob.findMany({
-        where: { targetDate: { gte: BANK_SYNC_MIN_DATE } }
-      });
-      for (const pj of pausedJobs) {
-        const reset = (pj.progress as unknown as Progress).map(stream => ({ ...stream, page: 1, done: false }));
-        await db.syncJob.update({
-          where: { id: pj.id },
-          data: { status: "QUEUED", progress: reset, calls: 0, pages: 0, inserted: 0, updated: 0, error: null }
-        });
-      }
-    }
     acquired = !!(await db.$executeRaw`INSERT INTO "SyncLease" (id,token,"expiresAt") VALUES ('bank-sync',${token},(NOW() AT TIME ZONE 'UTC') + INTERVAL '120 seconds') ON CONFLICT (id) DO UPDATE SET token=EXCLUDED.token,"expiresAt"=EXCLUDED."expiresAt" WHERE "SyncLease"."expiresAt" < (NOW() AT TIME ZONE 'UTC')`);
     if (!acquired) {
-      await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: "SKIPPED", finishedAt: new Date() } });
+      Object.assign(invocation,{status:"SKIPPED",finishedAt:new Date()});
       return { invocationId: invocation.id, skipped: true, reason: "Đang có lượt đồng bộ chạy" };
     }
     const accounts = await db.bankAccount.findMany({ orderBy: { number: "asc" }, include: { syncStates: { select: { completedTo: true, direction: true } } } });
@@ -95,7 +72,7 @@ export async function scheduledSync(now = new Date()) {
     for (const job of queue) {
       if (!job || Date.now() >= deadline - 6000 || quickPages + fullPages >= maxPages) continue;
       jobIds.push(job.id);
-      await db.syncInvocation.update({ where: { id: invocation.id }, data: { jobIds } });
+      invocation.jobIds=[...jobIds];
       const work = job.progress as unknown as Progress;
       await db.syncJob.update({ where: { id: job.id }, data: { status: "RUNNING", startedAt: job.startedAt ?? new Date(), lastCalledAt: new Date(), calls: { increment: 1 }, error: null } });
       const pageSize = job.kind === "QUICK" ? 20 : 100;
@@ -126,7 +103,7 @@ export async function scheduledSync(now = new Date()) {
             const completedTo=done&&job.kind==="HISTORY"?new Date(startOfVietnamDay(job.rangeTo??job.targetDate).getTime()+86400000):null;
             // Validate/renew the lease, persist the cursor/counters and touch recency
             // together. A lost lease rolls back ALL ingested money in this transaction.
-            const recorded=await tx.$executeRaw`
+            const recorded=await tx.$queryRaw<{count:number}[]>`
               WITH lease_saved AS (
                 UPDATE "SyncLease" SET "expiresAt"=${new Date(Date.now()+120000)}
                 WHERE id='bank-sync' AND token=${token} AND "expiresAt">${new Date()} RETURNING id
@@ -143,12 +120,8 @@ export async function scheduledSync(now = new Date()) {
                   "completedTo"=COALESCE(EXCLUDED."completedTo","SyncState"."completedTo")
                 RETURNING id
               )
-              UPDATE "SyncInvocation" AS i SET
-                "quickPages"=i."quickPages"+${job.kind==="QUICK"?1:0},
-                "fullPages"=i."fullPages"+${job.kind==="QUICK"?0:1},
-                inserted=i.inserted+${saved.inserted}, updated=i.updated+${saved.updated}
-              WHERE i.id=${invocation.id} AND EXISTS(SELECT 1 FROM job_saved)`;
-            if(recorded!==1)throw new Error("Lượt đồng bộ đã hết quyền xử lý hoặc không lưu được tiến độ đồng bộ");
+              SELECT count(*)::int FROM job_saved`;
+            if(recorded[0]?.count!==1)throw new Error("Lượt đồng bộ đã hết quyền xử lý hoặc không lưu được tiến độ đồng bộ");
             return saved;
           }, deadline);
           await prepared.committed();
@@ -159,19 +132,21 @@ export async function scheduledSync(now = new Date()) {
       }
       const complete = work.every(s => s.done);
       job.status=complete?"SUCCESS":"PARTIAL";
-      await db.syncJob.update({ where: { id: job.id }, data: { progress: work as unknown as Prisma.InputJsonValue, status: complete ? "SUCCESS" : "PARTIAL", finishedAt: complete ? new Date() : null } });
+      if(complete&&job.kind==="QUICK")await db.syncJob.delete({where:{id:job.id}});
+      else await db.syncJob.update({ where: { id: job.id }, data: { progress: work as unknown as Prisma.InputJsonValue, status: complete ? "SUCCESS" : "PARTIAL", finishedAt: complete ? new Date() : null } });
     }
     const pending = jobs.some(j=>openStatuses.includes(j.status));
-    await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: pending ? "PARTIAL" : "SUCCESS", quickPages, fullPages, inserted, updated, finishedAt: new Date() } });
+    Object.assign(invocation,{status:pending?"PARTIAL":"SUCCESS"});
     return { invocationId: invocation.id, quickPages, fullPages, inserted, updated, pending, balances, affectedFundIds:[...affectedFundIds] };
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0,500) : "Đồng bộ thất bại";
-    await db.syncInvocation.update({ where: { id: invocation.id }, data: { status: "FAILED", quickPages, fullPages, inserted, updated, error: message, finishedAt: new Date() } });
+    Object.assign(invocation,{status:"FAILED",error:message});
     // Preserve cursor; retry the unfinished batch on the next valid webhook.
     if (jobIds.length) await db.syncJob.updateMany({ where: { id: jobIds.at(-1), status: "RUNNING" }, data: { status: "FAILED", error: message } });
     await enqueueSyncFailure();
     throw Object.assign(error instanceof Error?error:new Error(message),{affectedFundIds:[...affectedFundIds]});
   } finally {
-    if (acquired) await db.syncLease.deleteMany({ where: { id: "bank-sync", token } });
+    try {if (acquired) await db.syncLease.deleteMany({ where: { id: "bank-sync", token } });}
+    finally {await saveSyncEvent({...invocation,quickPages,fullPages,inserted,updated,finishedAt:new Date()});}
   }
 }

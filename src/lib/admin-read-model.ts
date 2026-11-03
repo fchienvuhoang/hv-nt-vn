@@ -1,3 +1,4 @@
+import {recentSyncEvents} from "./sync-events";
 import "server-only";
 import {fundMembership,fundShare} from "./allocation";
 import {ADMIN_LEDGER_TAG} from "./cache-tags";
@@ -37,17 +38,24 @@ export type AdminTransactions=Awaited<ReturnType<typeof loadAdminTransactions>>;
 export async function loadAdminTransfers(){return db.transfer.findMany({include:{fromFund:{include:{account:true}},account:true,toFund:true,reversal:true,_count:{select:{items:true,balanceItems:true}}},orderBy:{createdAt:"desc"},take:100})}
 export type AdminTransfers=Awaited<ReturnType<typeof loadAdminTransfers>>;
 async function scheduleStats(){
-  const since=startOfVietnamDay(localDate()),kind={in:["FULL_DAY","PREVIOUS_DAY"]};
-  const [requestsToday,requestsAll,quickToday,grouped,lastCall,sweepsToday,sweepsDone,sweepsAll,lastSweep]=await Promise.all([
-    db.syncInvocation.count({where:{receivedAt:{gte:since}}}),db.syncInvocation.count(),db.syncInvocation.count({where:{receivedAt:{gte:since},quickPages:{gt:0}}}),db.syncInvocation.groupBy({by:["status"],where:{receivedAt:{gte:since}},_count:true}),db.syncInvocation.findFirst({orderBy:{receivedAt:"desc"},select:{receivedAt:true}}),db.syncJob.count({where:{kind,startedAt:{gte:since}}}),db.syncJob.count({where:{kind,finishedAt:{gte:since},status:"SUCCESS"}}),db.syncJob.count({where:{kind,startedAt:{not:null}}}),db.syncJob.findFirst({where:{kind,lastCalledAt:{not:null}},orderBy:{lastCalledAt:"desc"},select:{lastCalledAt:true}})]);
+  const since=startOfVietnamDay(localDate());
+  const events=await recentSyncEvents(),todayEvents=events.filter(e=>e.receivedAt>=since);
+  const requestsToday=todayEvents.length,requestsAll=events.length,quickToday=todayEvents.filter(e=>e.quickPages>0).length,lastCall=events[0]?{receivedAt:events[0].receivedAt}:null;
+  const grouped=[...new Set(todayEvents.map(e=>e.status))].map(status=>({status,_count:todayEvents.filter(e=>e.status===status).length}));
+  const [counts]=await db.$queryRaw<{today:number;done:number;all:number;last:Date|null}[]>`SELECT
+   count(*) FILTER (WHERE "startedAt">=${since})::int AS today,
+   count(*) FILTER (WHERE "finishedAt">=${since} AND status='SUCCESS')::int AS done,
+   count(*) FILTER (WHERE "startedAt" IS NOT NULL)::int AS all,
+   max("lastCalledAt") AS last FROM "SyncJob" WHERE kind IN ('FULL_DAY','PREVIOUS_DAY')`;
+  const sweepsToday=counts.today,sweepsDone=counts.done,sweepsAll=counts.all,lastSweep=counts.last?{lastCalledAt:counts.last}:null;
   return {requestsToday,requestsAll,quickToday,grouped,lastCall,sweepsToday,sweepsDone,sweepsAll,lastSweep};
 }
-const cachedStats=unstable_cache(async()=>encodeAdmin(await scheduleStats()),["admin-sync-stats-rest-v1"],{revalidate:5,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]});
+const cachedStats=unstable_cache(async()=>encodeAdmin(await scheduleStats()),["admin-sync-stats-rest-v2"],{revalidate:5,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]});
 export async function loadAdminSync(log:string){
   const [runs,audits,requests,sweeps,stats]=await Promise.all([
     log==="runs"?db.syncRun.findMany({orderBy:{startedAt:"desc"},take:30}):Promise.resolve([]),
     log==="audit"?db.auditLog.findMany({orderBy:{createdAt:"desc"},take:100}):Promise.resolve([]),
-    !["runs","audit","full"].includes(log)?db.syncInvocation.findMany({orderBy:{receivedAt:"desc"},take:100}):Promise.resolve([]),
+    !["runs","audit","full"].includes(log)?recentSyncEvents():Promise.resolve([]),
     log==="full"?db.syncJob.findMany({where:{kind:{in:["FULL_DAY","PREVIOUS_DAY"]}},orderBy:{scheduledAt:"desc"},take:100}):Promise.resolve([]),
     ["runs","audit"].includes(log)?Promise.resolve(null):cachedStats().then(v=>decodeAdmin<Awaited<ReturnType<typeof scheduleStats>>>(v)),
   ]);

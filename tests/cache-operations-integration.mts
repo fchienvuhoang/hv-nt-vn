@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+const url=new URL(process.env.DATABASE_URL??'https://invalid');if(url.hostname!=='localhost'||!url.pathname.startsWith('/hvntvn_test'))throw Error('QA DB only');
+const {db}=await import('../src/lib/db');
+const {getCache}=await import('@vercel/functions');
+const {readPublicSnapshot,vietnamMonth}=await import('../src/lib/public-snapshot');
+const {mutationFundScope}=await import('../src/lib/admin-mutation-scope');
+const {saveSyncEvent,recentSyncEvents}=await import('../src/lib/sync-events');
+const {measureOperations}=await import('../src/lib/operation-metrics');
+const store=getCache({namespace:'hvntvn-public-snapshot-v1'}),slug='qa-cache-ops',fundId='qa-cache-ops';
+const payload={id:fundId,fundingVersion:3,goalAmount:null,isLongTerm:true,month:vietnamMonth()};
+const snapshot={revision:2,credit:payload,debit:payload};
+await store.set(`fund:${slug}:chunk`,JSON.stringify(snapshot),{ttl:60});await store.set(`fund:${slug}`,{chunks:[`fund:${slug}:chunk`]},{ttl:60});await store.set(`revision:${fundId}`,2,{ttl:60});
+const lookup=db.publicCacheRefresh.findUnique;
+try{
+ db.publicCacheRefresh.findUnique=(()=>{throw Error('Cache HIT touched Postgres');}) as typeof lookup;
+ assert.ok(await readPublicSnapshot(slug));
+ await store.set(`revision:${fundId}`,3,{ttl:60});assert.equal(await readPublicSnapshot(slug),null);
+ await store.set(`revision:${fundId}`,2,{ttl:60});
+ await store.set(`fund:${slug}:chunk`,JSON.stringify({...snapshot,credit:{...payload,month:'2000-01'}}),{ttl:60});assert.equal(await readPublicSnapshot(slug),null);
+}finally{db.publicCacheRefresh.findUnique=lookup;await store.delete(`fund:${slug}`);await store.delete(`fund:${slug}:chunk`);await store.delete(`revision:${fundId}`);}
+const request=(data:object)=>new Request('https://example.test/api/admin/funds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+assert.deepEqual(await mutationFundScope('funds',request({id:'one'})),['one']);
+assert.deepEqual(await mutationFundScope('transfers/allocate',request({fromFundId:'one',toFundId:'two'})),['one','two']);
+assert.deepEqual(await mutationFundScope('reclassification',request({phase:'CHECK'})),[]);
+const at=Date.now();
+await measureOperations('qa',async()=>{await db.$queryRaw`SELECT 1`;await db.$queryRaw`SELECT 1`;});
+const metric=await getCache({namespace:'hvntvn-operation-metrics-v1'}).get(`qa:${Math.floor(at/60000)%200}`) as {queries:number};assert.equal(metric.queries,2);
+for(let i=0;i<201;i++)await saveSyncEvent({id:`qa-${i}`,receivedAt:new Date(at+i*60000),finishedAt:new Date(),status:'SUCCESS',quickPages:4,fullPages:0,inserted:0,updated:0,jobIds:[],error:null});
+const events=await recentSyncEvents();assert.equal(events.length,200);assert.equal(events[0].id,'qa-200');assert.ok(!events.some(e=>e.id==='qa-0'));
+await db.$disconnect();console.log('PASS public HIT uses no DB, revision and month guards, scoped refresh, operation counts and bounded journal');

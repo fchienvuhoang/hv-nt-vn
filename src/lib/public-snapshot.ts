@@ -1,3 +1,4 @@
+import {measureOperations} from "./operation-metrics";
 import "server-only";
 import {getCache} from "@vercel/functions";
 import {randomUUID} from "node:crypto";
@@ -28,7 +29,8 @@ async function buildSnapshotOnce(slug:string):Promise<PublicSnapshot|null>{
  if(latest!==revision)throw new SnapshotChangedError("Ledger changed while building snapshot");
  return credit&&debit?{revision,credit,debit,searchIndex:{credit:credit.rows.map(publicSearchText),debit:debit.rows.map(publicSearchText)}}:null;
 }
-async function buildSnapshot(slug:string):Promise<PublicSnapshot|null>{
+async function buildSnapshot(slug:string):Promise<PublicSnapshot|null>{return measureOperations("public-build",()=>buildMeasuredSnapshot(slug));}
+async function buildMeasuredSnapshot(slug:string):Promise<PublicSnapshot|null>{
  for(let attempt=0;;attempt++)try{return await buildSnapshotOnce(slug)}catch(error){if(!(error instanceof SnapshotChangedError)||attempt>=2)throw error;}
 }
 /** Publish immutable chunks first, then atomically swap the manifest. Readers retain the old complete version. */
@@ -44,8 +46,8 @@ export async function readPublicSnapshot(slug:string){
  const store=cache(),manifest=await store.get(key(slug)) as {chunks:string[]}|null;if(!manifest)return null;
  const parts=await Promise.all(manifest.chunks.map(name=>store.get(name) as Promise<string|null>));if(parts.some(p=>p===null))return null;
  const snapshot=JSON.parse(parts.join("")) as PublicSnapshot;
- const state=await db.publicCacheRefresh.findUnique({where:{fundId:snapshot.credit.id},select:{requestedVersion:true}});
- if(snapshot.revision!==(state?.requestedVersion??0))return null;
+ const revision=await store.get(`revision:${snapshot.credit.id}`) as number|null;
+ if(revision!==null&&(snapshot.revision??0)<revision)return null;
  if (snapshot.credit.fundingVersion!==3 || snapshot.debit.fundingVersion!==3) return null;
  if (!("goalAmount" in snapshot.credit) || !("goalAmount" in snapshot.debit)) return null;
  // Never disclose the previous month's rows, even if a daily warmup has not finished yet.
@@ -73,8 +75,11 @@ export async function queuePublicRefresh(ids?:string[]){
    await tx.publicCacheRefresh.createMany({data:funds.map(f=>({fundId:f.id,requestedVersion:0})),skipDuplicates:true});
    await tx.publicCacheRefresh.updateMany({where:{fundId:{in:funds.map(f=>f.id)}},data:{requestedVersion:{increment:1},requestedAt:new Date()}});
  });
+ const states=await db.publicCacheRefresh.findMany({where:{fundId:{in:funds.map(f=>f.id)}},select:{fundId:true,requestedVersion:true}});
+ await Promise.all(states.map(s=>cache().set(`revision:${s.fundId}`,s.requestedVersion,{ttl:7*86400})));
 }
-export async function runPublicRefresh(limit=2){
+export async function runPublicRefresh(limit=2){return measureOperations("public-worker",()=>runMeasuredRefresh(limit));}
+async function runMeasuredRefresh(limit:number){
  const token=randomUUID(),deadline=Date.now()+240000;
  const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh"}).format(new Date());
  const [work]=await db.$queryRaw<{needed:boolean}[]>`SELECT EXISTS (

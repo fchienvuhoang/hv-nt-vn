@@ -149,32 +149,32 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
         {loading&&!data?<LoadingIndicator label="Đang tải các giao dịch…"/>:!rows.length ? (
           <Empty title="Không có giao dịch phù hợp" />
         ) : (
-          <div className="table-scroll table-card sheet-scroll" tabIndex={0} role="region" aria-label="Bảng giao dịch">
-            <table className="sheet-table">
+          <div className="table-scroll table-card sheet-scroll transaction-mobile-list" tabIndex={0} role="region" aria-label="Bảng giao dịch">
+            <table className="sheet-table" role="table">
               <colgroup><col className="sheet-col-select"/><col className="sheet-col-index" /><col className="sheet-col-time" /><col className="sheet-col-account" /><col className="sheet-col-ref" /><col className="sheet-col-narrative" /><col className="sheet-col-money" /><col className="sheet-col-fund" /><col className="sheet-col-action" /></colgroup>
-              <thead>
-                <tr>
+              <thead role="rowgroup">
+                <tr role="row">
                   <th scope="col"><input type="checkbox" aria-label="Chọn tất cả giao dịch có thể gán trên trang này" disabled={busy||loading||!rows.some(eligible)} checked={rows.some(eligible)&&rows.filter(eligible).every(r=>selected.has(r.id))} onChange={e=>setSelection({scope:selectionScope,rows:e.target.checked?new Map(rows.filter(eligible).map(r=>[r.id,r])):new Map()})}/></th>
                   <th scope="col">#</th>
                   <th scope="col">Thời gian</th>
                   <th scope="col">TK</th>
                   <th scope="col">Mã giao dịch</th>
-                  <th scope="col">Nội dung gốc / người chuyển</th>
+                  <th scope="col"><span className="transaction-desktop-label">Nội dung gốc / người chuyển</span><span className="transaction-mobile-label">Giao dịch · Số tiền</span></th>
                   <th className="align-right">Số tiền</th>
                   <th scope="col">Thiện pháp</th>
                   <th scope="col">Thao tác</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {rows.map((r, index) => (
-                  <tr key={r.id} className={r.entryStatus === "REVIEW" ? "sheet-review" : undefined}>
+                  <tr role="row" key={r.id} className={r.entryStatus === "REVIEW" ? "sheet-review" : undefined}>
                     <td className={selected.has(r.id)?"sheet-selected-check":""}><input type="checkbox" aria-label={`Chọn giao dịch ${r.refId||r.id}`} checked={selected.has(r.id)} disabled={busy||loading||!eligible(r)} title={r.entryStatus==="OPENING"?"Số dư chuyển sang từ Excel":!eligible(r)?"Giao dịch tách: chọn tab thiện pháp để gán phần phân bổ":"Chọn để gán thủ công"} onChange={()=>toggleSelection(r)}/></td>
                     <td className="sheet-index">{(page - 1) * pageSize + index + 1}</td>
-                    <td className="nowrap">
+                    <td className="nowrap sheet-time-cell">
                       {r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.occurredAt)}
                     </td>
                     <td className="sheet-account-cell" title={r.account.owner}>{accountLabel(r.account.number)}</td>
-                    <td><span className="sheet-clip sheet-ref" title={r.refId}>{r.refId || "—"}</span></td>
+                    <td className="sheet-reference-cell"><span className="transaction-mobile-label">Mã GD: </span><span className="sheet-clip sheet-ref" title={r.refId}>{r.refId || "—"}</span></td>
                     <td className="sheet-content-cell">
                       <p className="sheet-narrative">{r.narrative || "Không có nội dung"}</p>
                       <div className="sheet-content-meta">

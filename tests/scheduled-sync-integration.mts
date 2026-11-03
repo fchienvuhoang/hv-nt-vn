@@ -38,7 +38,7 @@ try{
  process.env.SYNC_MAX_PAGES="8";
  await db.syncLease.create({data:{id:"bank-sync",token:"busy",expiresAt:new Date(Date.now()+120000)}});
  const skipped=await scheduledSync(now);assert.equal(skipped.skipped,true);
- assert.equal(await db.syncInvocation.count({where:{status:"SKIPPED"}}),1);assert.equal(calls.length,0);
+ assert.equal(await db.syncInvocation.count(),0);assert.equal(calls.length,0);
  await db.syncLease.deleteMany();
  for(let i=0;i<12;i++)await scheduledSync(now);
  assert.equal(await db.bankAccount.count({where:{sourceTotalCredit:1000n,sourceTotalDebit:200n,sourceError:""}}),2);
@@ -51,11 +51,11 @@ try{
  assert.equal((await db.syncJob.findUniqueOrThrow({where:{slotKey:"old-october"}})).status,"SUPERSEDED");
  assert.equal((await db.syncJob.findUniqueOrThrow({where:{slotKey:"crossing-history"}})).targetDate,"2026-11-01");
  const before=await db.bankTransaction.count();failure=true;await assert.rejects(scheduledSync(now),/test upstream/);
- assert.equal(await db.syncInvocation.count({where:{status:"FAILED"}}),1);assert.equal(await db.syncLease.count(),0);
+ assert.equal(await db.syncInvocation.count(),0);assert.equal(await db.syncLease.count(),0);
  failure=false;await scheduledSync(now);assert.equal(await db.bankTransaction.count(),before);
  const later=new Date(`${day}T12:01:00+07:00`);await scheduledSync(later);
  assert.equal(await db.syncJob.count({where:{kind:"FULL_DAY",status:{not:"SUPERSEDED"}}}),2,"next slot creates a new whole-day scan");
- assert.equal(await db.syncInvocation.count(),16,"all authenticated calls, including busy and failed, counted");
+ assert.equal(await db.syncInvocation.count(),0,"webhook journal must not write Postgres");
  // Losing the lease after upstream fetch must roll back even an inserted row.
  const upstream=globalThis.fetch;let revoke=true;
  globalThis.fetch=async(input,init)=>{

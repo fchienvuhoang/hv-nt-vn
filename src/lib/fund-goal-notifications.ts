@@ -1,3 +1,4 @@
+import {measureOperations} from "./operation-metrics";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
@@ -78,7 +79,15 @@ export async function dispatchFundGoalEmails() {
   }
 }
 
-export async function dispatchAdminNotificationsSafely({checkGoals=true}:{checkGoals?:boolean}={}) {
+export async function dispatchAdminNotificationsSafely(options:{checkGoals?:boolean}={}) {return measureOperations("notifications",()=>dispatchMeasuredNotifications(options));}
+async function dispatchMeasuredNotifications({checkGoals=true}:{checkGoals?:boolean}={}) {
   try { if(checkGoals)await enqueueFundGoalNotifications(); } catch { console.error("Fund goal notification queue unavailable"); }
-  await Promise.allSettled([dispatchAdminPushSafely(), dispatchFundGoalEmails(), dispatchMorningReports()]);
+  const now=new Date(),day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh"}).format(now),scheduled=new Date(`${day}T07:00:00+07:00`);
+  const [work]=await db.$queryRaw<{push:boolean;goals:boolean;morning:boolean}[]>`SELECT
+    EXISTS(SELECT 1 FROM "AdminPushDelivery" WHERE "finishedAt" IS NULL AND attempts<6 AND "nextAttemptAt"<=${now}) AS push,
+    EXISTS(SELECT 1 FROM "FundGoalEmail" WHERE "finishedAt" IS NULL AND attempts<6 AND "nextAttemptAt"<=${now}) AS goals,
+    (EXISTS(SELECT 1 FROM "DailyReportEmail" WHERE "finishedAt" IS NULL AND attempts<6 AND "nextAttemptAt"<=${now})
+    OR EXISTS(SELECT 1 FROM "DailyReportSchedule" WHERE id='morning-7h' AND "activatedAt"<=${scheduled} AND ${now}>=${scheduled}
+    AND NOT EXISTS(SELECT 1 FROM "DailyReport" WHERE date=${day}))) AS morning`;
+  await Promise.allSettled([work.push?dispatchAdminPushSafely():Promise.resolve(), work.goals?dispatchFundGoalEmails():Promise.resolve(), work.morning?dispatchMorningReports():Promise.resolve()]);
 }

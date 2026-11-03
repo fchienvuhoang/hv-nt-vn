@@ -12,11 +12,11 @@ export function ScheduledSyncHistory({full,data}:{full:boolean;data?:AdminSync})
   const {requests,sweeps,stats:{requestsToday,requestsAll,quickToday,grouped,lastCall,sweepsToday,sweepsDone,sweepsAll,lastSweep}}=data;
   return <>
     <div className="sync-call-stats">
-      <span>Webhook hôm nay <strong>{requestsToday}</strong> · tổng <b>{requestsAll}</b></span>
+      <span>Webhook hôm nay (trong cache) <strong>{requestsToday}</strong> · gần nhất <b>{requestsAll}</b></span>
       <span>Lượt có lấy mới <strong>{quickToday}</strong></span>
       <span>Bỏ qua <b>{grouped.find(g=>g.status==="SKIPPED")?._count ?? 0}</b> · lỗi <b>{grouped.find(g=>g.status==="FAILED")?._count ?? 0}</b></span>
       <span>Gọi gần nhất <strong>{lastCall ? preciseTime(lastCall.receivedAt) : "Chưa có"}</strong></span>
-      <span>Quét ngày hôm nay <strong>{sweepsToday}</strong> đợt bắt đầu · <b>{sweepsDone}</b> hoàn tất · tổng <b>{sweepsAll}</b></span>
+      <span>Quét ngày hôm nay <strong>{sweepsToday}</strong> đợt bắt đầu · <b>{sweepsDone}</b> hoàn tất · gần nhất <b>{sweepsAll}</b></span>
       <span>Quét ngày gọi gần nhất <strong>{lastSweep?.lastCalledAt ? preciseTime(lastSweep.lastCalledAt) : "Chưa có"}</strong></span>
       <Modal title="Lịch đồng bộ tự động" trigger="Xem lịch" triggerClassName="button subtle small">
         <p><strong>Giờ Việt Nam (UTC+7).</strong> Cron bên ngoài gọi POST mỗi phút. Một lượt có thể lấy mới và tiếp tục quét toàn ngày.</p>
@@ -25,7 +25,7 @@ export function ScheduledSyncHistory({full,data}:{full:boolean;data?:AdminSync})
         <p>Mốc lịch là thời điểm đến hạn; bắt đầu thực tế ở lượt webhook kế tiếp có ngân sách. Đợt chưa xong tiếp tục qua nhiều lượt, không tính thành nhiều đợt mới. Nếu cron ngừng lâu, chỉ bù mốc gần nhất cho cùng ngày. Web không tự chạy lịch khi không có webhook gọi vào.</p>
       </Modal>
     </div>
-    <div className="sync-log-caption">{full ? "100 đợt gần nhất · Trang 100 giao dịch, quét tới hết; số lượt là số webhook đã xử lý đợt đó." : "100 webhook hợp lệ gần nhất · Ghi cả lượt bỏ qua do khóa. Trang lấy mới: 20 giao dịch; trang quét ngày: 100."} Trạng thái cập nhật khi mở lại tab.</div>
+    <div className="sync-log-caption">{full ? "100 đợt gần nhất · Trang 100 giao dịch, quét tới hết; số lượt là số webhook đã xử lý đợt đó." : "Tối đa 200 mốc phút gần nhất trong runtime cache (có thể bị thu hồi); cùng phút hiển thị lượt kết thúc sau cùng · Ghi cả lượt bỏ qua do khóa. Trang lấy mới: 20 giao dịch; trang quét ngày: 100."} Trạng thái cập nhật khi mở lại tab.</div>
     <div className="table-scroll table-card sync-log-scroll" tabIndex={0} role="region" aria-label={full ? "Các đợt quét toàn ngày" : "Lượt webhook từ bên ngoài"}>
       {full ? <table><thead><tr><th>Đến hạn</th><th>Ngày quét</th><th>Trạng thái</th><th>Bắt đầu thực tế</th><th>Gọi gần nhất</th><th>Hoàn tất</th><th>Lượt / trang</th><th>Mới / sửa</th><th>Chi tiết</th></tr></thead><tbody>
         {sweeps.map(s=><tr key={s.id}><td className="nowrap">{dateTime(s.scheduledAt)}</td><td>{s.targetDate}<small>{s.kind==="PREVIOUS_DAY"?"Ngày hôm trước":"Trong ngày"}</small></td><td>{names[s.status]??s.status}</td><td className="nowrap">{s.startedAt?dateTime(s.startedAt):"—"}</td><td className="nowrap">{s.lastCalledAt?preciseTime(s.lastCalledAt):"—"}</td><td className="nowrap">{s.finishedAt?dateTime(s.finishedAt):"—"}</td><td>{s.calls} / {s.pages}</td><td>{s.inserted} / {s.updated}</td><td><Modal title="Chi tiết đợt quét" description={`${s.targetDate} · ${dateTime(s.scheduledAt)}`} trigger="Chi tiết" triggerClassName="button subtle small"><pre className="audit-json">{JSON.stringify({id:s.id,slot:s.slotKey,progress:s.progress,error:s.error},null,2)}</pre></Modal></td></tr>)}

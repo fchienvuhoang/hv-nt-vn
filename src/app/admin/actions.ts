@@ -3,13 +3,13 @@ import { db } from "@/lib/db";
 import { randomUUID } from "node:crypto";
 import { appendTransactionNote, reassignTransactions, fundTransactionList, type BulkReassignment } from "@/lib/transaction-management";
 import { z } from "zod";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { requireAdminActor } from "@/lib/auth";
 import { actorStamp, createdStamp, updatedStamp, type Actor } from "@/lib/actor";
 import { serializable } from "@/lib/ledger";
 import { validateFundKeywords, FundKeywordError } from "@/lib/fund-keywords";
 import { startTabReclassification, advanceTabReclassification, latestTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
-import { PUBLIC_TAG } from "@/lib/public-data";
+import {invalidateMutation} from "@/lib/admin-mutation-scope";
 import {commitAllocationTransfer,type AllocationTransferInput} from "@/lib/allocation-transfers";
 import { transferFunds, reverseFundTransfer } from "@/lib/transfers";
 import {
@@ -53,7 +53,7 @@ const fundSchema = z.object({
 });
 function refresh() {
   revalidatePath("/admin", "layout");
-  revalidateTag(PUBLIC_TAG, { expire: 0 });
+  invalidateMutation();
 }
 async function execute(
   fn: (actor: Actor) => Promise<string>,
@@ -198,7 +198,7 @@ export async function advanceReclassification(input: { id: string; phase: "CHECK
     const values = z.object({ id, phase: z.enum(["CHECK","APPLY"]) }).parse(input);
     const run = await advanceTabReclassification(values.id,values.phase,actor);
     if (values.phase === "APPLY") {
-      revalidateTag(PUBLIC_TAG, { expire: 0 });
+      invalidateMutation();
       if (run.status === "COMPLETE" || run.status === "STALE") revalidatePath("/admin", "layout");
     }
     return { run };
@@ -275,7 +275,7 @@ export async function commitFundExcel(input: {
       .parse(input);
     const batch = await processFundImport(values, actor);
     if (batch.status === "COMPLETE") refresh();
-    else revalidateTag(PUBLIC_TAG, { expire: 0 });
+    else invalidateMutation();
     return { batch };
   } catch (error) {
     return { error: importError(error) };

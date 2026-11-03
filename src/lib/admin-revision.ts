@@ -15,7 +15,7 @@ const revision=unstable_cache(async()=>{
   (SELECT max("createdAt")::text FROM "AuditLog")
  )) AS ledger,
  md5(concat_ws('|',(SELECT max("sourceAttemptAt")::text FROM "BankAccount"))) AS source,
- md5(concat_ws('|',(SELECT max("receivedAt")::text FROM "SyncInvocation"),(SELECT max("lastSuccessAt")::text FROM "SyncState"))) AS sync`;
+ md5(concat_ws('|',(SELECT max("lastCalledAt")::text FROM "SyncJob"),(SELECT max("lastSuccessAt")::text FROM "SyncState"))) AS sync`;
  return row;
 },["admin-revision-v1"],{revalidate:30,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG]});
 export async function loadAdminRevision(){return {...await revision(),day:localDate()}}

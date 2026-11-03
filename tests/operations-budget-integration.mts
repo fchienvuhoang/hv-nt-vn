@@ -23,7 +23,7 @@ async function run(engine:typeof scheduledSync){
  const sql=statements.length,counts={sql,reads:statements.filter(s=>/^SELECT\b/i.test(s.trim())).length,writes:statements.filter(s=>/^(?:INSERT|UPDATE|DELETE|WITH)\b/i.test(s.trim())).length,transactions:statements.filter(s=>/^(?:BEGIN|COMMIT|ROLLBACK)\b/i.test(s.trim())).length};
  assert.ok(outcomes.every(r=>!r.skipped&&r.inserted===0&&r.updated===0));
  assert.equal(await db.bankTransaction.count(),80);
- const rows=await db.syncInvocation.findMany({orderBy:{receivedAt:"desc"},take:3});assert.ok(rows.every(r=>r.quickPages===4&&r.inserted===0&&r.updated===0&&r.finishedAt));
+ assert.equal(await db.syncInvocation.count(),0,"journaling is cache-only");
  // A known ID whose source contents changed must still update, preserving manual classification.
  const entry=await db.bankTransaction.findFirstOrThrow({where:{accountId:accounts[0].id,sourceId:{endsWith:"CREDIT-0"}}});await db.bankTransaction.update({where:{id:entry.id},data:{assignment:"MANUAL",fundId:fund.id}});amount=2000;const changed=await engine(new Date(now.getTime()+4*60000));assert.ok(!changed.skipped&&changed.updated===4);assert.equal((await db.bankTransaction.findUniqueOrThrow({where:{id:entry.id}})).assignment,"MANUAL");
  const heartbeat=await engine(new Date(now.getTime()+5*60000));assert.ok(!heartbeat.skipped);assert.ok(heartbeat.balances?.every(a=>a.persisted));

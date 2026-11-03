@@ -4517,3 +4517,31 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
 .public-allocation-summary b { white-space:nowrap; font-variant-numeric:tabular-nums; }
 .public-allocation-summary > strong { color:#803044; }
 .public-allocation-summary > small { flex-basis:100%; color:#896762; font-size:11px; }
+
+.transaction-mobile-label { display: none; }
+@media (max-width: 680px) {
+  .transaction-mobile-label { display: inline; }
+  .transaction-desktop-label { display: none; }
+  .transaction-mobile-list { width: 100%; min-width: 0; overflow-x: hidden; max-height: none; }
+  .transaction-mobile-list .sheet-table { display: block; width: 100%; min-width: 0; }
+  .transaction-mobile-list colgroup { display: none; }
+  .transaction-mobile-list thead, .transaction-mobile-list tbody { display: block; width: 100%; }
+  .transaction-mobile-list .sheet-table tr { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 112px); gap: 5px 8px; padding: 10px 8px; border-bottom: 1px solid #d8c5b2; }
+  .transaction-mobile-list .sheet-table th, .transaction-mobile-list .sheet-table td { position: static; min-width: 0; width: auto; height: auto; padding: 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
+  .transaction-mobile-list .sheet-table thead th { display: none; }
+  .transaction-mobile-list .sheet-table thead th:first-child { display: block; grid-column: 1; }
+  .transaction-mobile-list .sheet-table thead th:nth-child(6) { display: block; grid-column: 2 / -1; text-align: left; }
+  .transaction-mobile-list .sheet-table td:first-child { grid-column: 1; grid-row: 1 / 4; }
+  .transaction-mobile-list .sheet-table .sheet-index { display: none; }
+  .transaction-mobile-list .sheet-time-cell { grid-column: 2; grid-row: 1; font-size: 11px; }
+  .transaction-mobile-list .sheet-account-cell { grid-column: 2; grid-row: 2; font-size: 11px; }
+  .transaction-mobile-list .sheet-reference-cell { grid-column: 2 / -1; grid-row: 3; font-size: 10px; color: #806653; }
+  .transaction-mobile-list .sheet-ref { display: inline; white-space: normal; overflow: visible; }
+  .transaction-mobile-list .sheet-content-cell { grid-column: 2 / -1; grid-row: 4; }
+  .transaction-mobile-list .sheet-narrative { white-space: normal; overflow: visible; max-height: none; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  .transaction-mobile-list .money { grid-column: 3; grid-row: 1 / 3; font-size: 13px; font-weight: 700; line-height: 1.5; }
+  .transaction-mobile-list .classification-cell { grid-column: 2 / -1; grid-row: 5; }
+  .transaction-mobile-list .sheet-row-actions { grid-column: 2 / -1; grid-row: 6; display: flex; flex-wrap: wrap; gap: 6px; }
+  .transaction-mobile-list .sheet-row-actions > .button { min-height: 32px; height: auto; margin: 0; white-space: normal; }
+  .transaction-mobile-list .sheet-table .badge { white-space: normal; overflow-wrap: anywhere; }
+}

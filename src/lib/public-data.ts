@@ -10,8 +10,8 @@ export const PUBLIC_PAGE_SIZE = 100;
 export const PUBLIC_TAG = "public-ledger";
 // Keep public ledger data until a committed mutation invalidates its tag.
 const options = { revalidate: false as const, tags: [PUBLIC_TAG] };
-const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true,code:true,name:true}}),["public-fund-identity-v3"],options);
-async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:string){
+const publicIdentity=unstable_cache(async(slug:string)=>db.fund.findUnique({where:{slug},select:{id:true,code:true,name:true}}),["public-fund-identity-v4"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
+async function publicFundSummary(slug:string,month:string){
  const identity=await publicIdentity(slug);if(!identity)return null;
  return unstable_cache(async()=>{
     const fund = await db.fund.findUnique({
@@ -79,7 +79,7 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
       openingExpense: fund.openingExpense.toString(),
       cutover: fund.account.syncFrom?.toISOString(),
       id: fund.id,
-      count:periodReceipts.find(r=>r.direction===direction)?._count??0,
+      counts:{CREDIT:periodReceipts.find(r=>r.direction==="CREDIT")?._count??0,DEBIT:periodReceipts.find(r=>r.direction==="DEBIT")?._count??0},
       transfers: transfers.map((t) => ({
         id: t.id,
         from: t.fromFund.code,
@@ -98,7 +98,7 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v18",slug,direction,month],
+  ["public-fund-summary-v19",slug,month],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }
@@ -120,8 +120,9 @@ export async function publicFund(slug: string, page: number, direction: "CREDIT"
   // Public long-term funds only expose the current Vietnam month, regardless of URL input.
   void month;
   const selected=current;
-  const fund=await publicFundSummary(slug,direction,selected);
-  if(!fund)return null;
+  const summary=await publicFundSummary(slug,selected);
+  if(!summary)return null;
+  const fund={...summary,count:summary.counts[direction]};
   const query=search.trim().slice(0,100);
   const requestedPage=Math.max(1,Math.floor(page)||1);
   if(!query){

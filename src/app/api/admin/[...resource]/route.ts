@@ -1,3 +1,5 @@
+import {measureOperations} from "@/lib/operation-metrics";
+import {mutationScope,mutationFundScope} from "@/lib/admin-mutation-scope";
 import {loadFundActivity} from "@/lib/fund-activity";
 import {transactionDates} from "@/lib/transaction-scope";
 import {localDate} from "@/lib/domain";
@@ -17,7 +19,8 @@ import { loadAdminBootstrap,loadAdminTransactions,loadAdminTransfers,loadAdminSy
 export const runtime="nodejs";
 export const maxDuration=300;
 const json=(data:unknown,status=200)=>NextResponse.json(encodeAdmin(data),{status,headers:{"Cache-Control":"private, no-store"}});
-async function handle(request:NextRequest,context:{params:Promise<{resource:string[]}>}){
+async function handle(request:NextRequest,context:{params:Promise<{resource:string[]}>}){const first=(await context.params).resource[0];const flow=["transactions","bootstrap","funds","sync","revision","fund-activity","fund-transactions","transfers"].includes(first)?`admin-${first}`:"admin-other";return measureOperations(flow,()=>handleMeasured(request,context));}
+async function handleMeasured(request:NextRequest,context:{params:Promise<{resource:string[]}>}){
   const session=await auth();
   if(!session?.user?.email)return json({error:"Phiên đăng nhập đã hết hạn."},401);
   if(!allowedAdmin(session.user.email))return json({error:"Email không có quyền quản trị."},403);
@@ -46,6 +49,8 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
         default:return json({error:"Không tìm thấy API."},404);
       }
     }
+    const scoped=resource==="funds/pin"?[]:!["transfers/preview","funds/pin","imports","public-cache"].includes(resource)?await mutationFundScope(resource,request):undefined;
+    return mutationScope.run(scoped,async()=>{
     let result:unknown;
     const form=()=>request.formData();
     switch(`${request.method} ${resource}`){
@@ -70,11 +75,12 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
       case "PATCH reclassification":result=await actions.advanceReclassification(z.object({id:z.string().min(1).max(100),phase:z.enum(["CHECK","APPLY"])}).parse(await request.json()));break;
       default:return json({error:"Phương thức hoặc API không hợp lệ."},405);
     }
-    if(!["transfers/preview","funds/pin","imports"].includes(resource)){
-      await queuePublicRefresh();
+    if(scoped?.length!==0&&!["transfers/preview","funds/pin","imports"].includes(resource)){
+      if(resource==="imports/commit"||resource==="reclassification"||(!(result as {error?:unknown;fieldErrors?:unknown})?.error&&!(result as {fieldErrors?:unknown})?.fieldErrors))await queuePublicRefresh(scoped);
       after(async()=>{await Promise.allSettled([refreshPublicSafely(),dispatchAdminNotificationsSafely()]);});
     }
     return json(result);
+    });
   }catch(error){
     if(isAllocationTransferError(error))return json({error:error.message},400);
     if(error instanceof z.ZodError)return json({error:error.issues.map(i=>i.message).join("; ")},400);
