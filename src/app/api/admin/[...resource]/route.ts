@@ -3,7 +3,7 @@ import {transactionDates} from "@/lib/transaction-scope";
 import {localDate} from "@/lib/domain";
 import {dispatchAdminNotificationsSafely} from "@/lib/fund-goal-notifications";
 import {after} from "next/server";
-import {queuePublicRefresh,refreshPublicSafely} from "@/lib/public-snapshot";
+import {queuePublicRefresh,refreshPublicSafely,runPublicRefresh} from "@/lib/public-snapshot";
 import {loadFundHistory} from "@/lib/fund-history";
 import {loadAdminRevision} from "@/lib/admin-revision";
 import { loadTransactionSummary } from "@/lib/transaction-summary";
@@ -54,6 +54,10 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
       case "POST transactions/assignment":result=await actions.assignTransaction({},await form());break;
       case "POST transactions/assignments":result=await actions.bulkAssignTransactions(await request.json());break;
       case "POST transaction-notes":{const data=await form();result=await actions.saveTransactionNote({},data);break;}
+      case "POST public-cache":{
+        await queuePublicRefresh();
+        return json(await runPublicRefresh(100));
+      }
       case "POST transfers/preview":return json(await previewAllocationTransfer(await request.json()));
       case "POST transfers/allocate":result=await actions.createAllocationTransfer(await request.json());break;
       case "POST transfers":result=await actions.createTransfer({},await form());break;

@@ -56,7 +56,9 @@ export function useAdminResource<T>(path:string,ttl=15000,enabled=true,keepPrevi
   },[path,ttl,enabled,keepPreviousData]);
   return state.key===path?state:{key:path,data:(entries.get(path)?.data as T|undefined)??(keepPreviousData?state.data:undefined),loading:true,error:undefined};
 }
-export function refreshAdminData(){for(const entry of entries.values())entry.at=0;window.dispatchEvent(new Event("admin:data-changed"))}
+export function refreshAdminData(){for(const entry of entries.values())entry.at=0;window.dispatchEvent(new Event("admin:data-changed"));
+ if(typeof BroadcastChannel!=="undefined"){const channel=new BroadcastChannel("hvntvn-ledger");channel.postMessage("changed");channel.close();}
+}
 async function write<T>(path:string,method:string,body:FormData|object,notify=true):Promise<T>{
   try {
   const isForm=body instanceof FormData;

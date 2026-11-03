@@ -6,11 +6,15 @@ import {db} from "./db";
 import {publicFund,publicFundDTO,PUBLIC_PAGE_SIZE} from "./public-data";
 import {publicFundTag} from "./cache-tags";
 import {publicSearchText,publicSearchTerms,matchesPublicSearchText} from "./public-search";
-export type PublicSnapshot={searchIndex?:{credit:string[];debit:string[]};credit:NonNullable<Awaited<ReturnType<typeof publicFund>>>;debit:NonNullable<Awaited<ReturnType<typeof publicFund>>>};
+export type PublicSnapshot={revision?:number;searchIndex?:{credit:string[];debit:string[]};credit:NonNullable<Awaited<ReturnType<typeof publicFund>>>;debit:NonNullable<Awaited<ReturnType<typeof publicFund>>>};
 const cache=()=>getCache({namespace:"hvntvn-public-snapshot-v1"});
 const key=(slug:string)=>`fund:${slug}`;
 export function vietnamMonth(){return new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit"}).format(new Date());}
-async function buildSnapshot(slug:string):Promise<PublicSnapshot|null>{
+class SnapshotChangedError extends Error {}
+async function buildSnapshotOnce(slug:string):Promise<PublicSnapshot|null>{
+ const identity=await db.fund.findUnique({where:{slug},select:{id:true}});if(!identity)return null;
+ const revision=(await db.publicCacheRefresh.findUnique({where:{fundId:identity.id},select:{requestedVersion:true}}))?.requestedVersion??0;
+ revalidateTag(publicFundTag(identity.id),{expire:0});
  const load=async(direction:"CREDIT"|"DEBIT")=>{
    const first=await publicFund(slug,1,direction);if(!first)return null;
    const rows=[...first.rows];
@@ -19,7 +23,13 @@ async function buildSnapshot(slug:string):Promise<PublicSnapshot|null>{
    }
    return {...first,rows};
  };
- const credit=await load("CREDIT"),debit=await load("DEBIT");return credit&&debit?{credit,debit,searchIndex:{credit:credit.rows.map(publicSearchText),debit:debit.rows.map(publicSearchText)}}:null;
+ const credit=await load("CREDIT"),debit=await load("DEBIT");
+ const latest=(await db.publicCacheRefresh.findUnique({where:{fundId:identity.id},select:{requestedVersion:true}}))?.requestedVersion??0;
+ if(latest!==revision)throw new SnapshotChangedError("Ledger changed while building snapshot");
+ return credit&&debit?{revision,credit,debit,searchIndex:{credit:credit.rows.map(publicSearchText),debit:debit.rows.map(publicSearchText)}}:null;
+}
+async function buildSnapshot(slug:string):Promise<PublicSnapshot|null>{
+ for(let attempt=0;;attempt++)try{return await buildSnapshotOnce(slug)}catch(error){if(!(error instanceof SnapshotChangedError)||attempt>=2)throw error;}
 }
 /** Publish immutable chunks first, then atomically swap the manifest. Readers retain the old complete version. */
 async function publish(slug:string,snapshot:PublicSnapshot){
@@ -34,6 +44,8 @@ export async function readPublicSnapshot(slug:string){
  const store=cache(),manifest=await store.get(key(slug)) as {chunks:string[]}|null;if(!manifest)return null;
  const parts=await Promise.all(manifest.chunks.map(name=>store.get(name) as Promise<string|null>));if(parts.some(p=>p===null))return null;
  const snapshot=JSON.parse(parts.join("")) as PublicSnapshot;
+ const state=await db.publicCacheRefresh.findUnique({where:{fundId:snapshot.credit.id},select:{requestedVersion:true}});
+ if(snapshot.revision!==(state?.requestedVersion??0))return null;
  if (snapshot.credit.fundingVersion!==1 || snapshot.debit.fundingVersion!==1) return null;
  if (!("goalAmount" in snapshot.credit) || !("goalAmount" in snapshot.debit)) return null;
  // Never disclose the previous month's rows, even if a daily warmup has not finished yet.

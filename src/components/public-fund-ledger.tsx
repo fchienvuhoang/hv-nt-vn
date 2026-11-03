@@ -37,6 +37,14 @@ export function PublicFundLedger({slug}:{slug:string}) {
     }
     void load();return()=>{alive=false;controller.abort()};
   },[key,slug,direction,search,query.page,month,retry]);
+  useEffect(()=>{
+    const refresh=()=>{cached.current.clear();setRetry(n=>n+1)};
+    const visible=()=>{if(document.hidden)return;const entry=cached.current.get(key);if(!entry||Date.now()-entry.at>=30000)refresh()};
+    const channel=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("hvntvn-ledger"):null;
+    if(channel)channel.onmessage=event=>{if(event.data==="changed")refresh()};
+    window.addEventListener("focus",visible);document.addEventListener("visibilitychange",visible);
+    return()=>{channel?.close();window.removeEventListener("focus",visible);document.removeEventListener("visibilitychange",visible)};
+  },[key]);
   useEffect(()=>{if(state.fund)document.title=`${state.fund.code} · ${state.fund.name} - Học viện nguyên thủy Việt Nam`;},[state.fund]);
   const fund=state.fund,loading=state.key!==key||state.loading,error=state.key===key?state.error:"";
   if(!fund)return <div className="public-site">
@@ -68,7 +76,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             {fund.syncAt
               ? `Đã đồng bộ đầy đủ đến lượt ${dateTime(fund.syncAt)}`
               : "Đang chờ hoàn tất đồng bộ đầu tiên"}
-            <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)}
+            <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)} <button type="button" className="button subtle small" disabled={loading} onClick={()=>{cached.current.clear();setRetry(n=>n+1)}}>Cập nhật số liệu</button>
           </div>
         </div>
         {fund.status === "ACTIVE" && <PublicTransferContent code={fund.code}/>}

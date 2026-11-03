@@ -1,4 +1,5 @@
 "use client";
+import {PublicCacheRefreshButton} from "@/components/admin/public-cache-refresh-button";
 import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
@@ -50,6 +51,7 @@ export default function Sync({params={},bootstrap}:{params?:AdminParams;bootstra
         <h1>Đồng bộ & lịch sử</h1>
         <SyncRecency initial={recency} initialNow={recency[0]?.checkedAt ?? 0} />
         <div className="sync-toolbar-actions">
+        <PublicCacheRefreshButton/>
         <Modal
           title="Kết nối đồng bộ mỗi phút"
           trigger={

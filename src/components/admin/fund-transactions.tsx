@@ -49,6 +49,12 @@ export function FundTransactions({fundId,active,funds,accounts,onNavigate}:{fund
     void load();
     return()=>{cancelled=true};
   },[fundId,active,accountReady,page,query,type,account,reload,toast]);
+  useEffect(()=>{
+    if(!active)return;
+    const refresh=()=>{setSelected(new Map());setReload(n=>n+1)};
+    window.addEventListener("admin:data-changed",refresh);
+    return()=>window.removeEventListener("admin:data-changed",refresh);
+  },[active]);
   const rows=[...selected.values()],income=rows.reduce((n,r)=>n+(r.direction==="CREDIT"?BigInt(r.amount):0n),0n),expense=rows.reduce((n,r)=>n+(r.direction==="DEBIT"?BigInt(r.amount):0n),0n);
   const selectable=data.rows.filter(r=>!r.opening);
   const allOnPage=selectable.length>0&&selectable.every(r=>selected.has(r.id));
