@@ -37,6 +37,14 @@ try{
  const bootstrap=await api<{funds:{id:string;code:string;income:bigint;createdAt:Date}[];accounts:{id:string}[]}>("bootstrap");assert.equal(bootstrap.response.status,200);assert.equal(typeof bootstrap.data.funds[0].income,"bigint");assert.ok(bootstrap.data.funds[0].createdAt instanceof Date);
  const stats=await api<{days:{income:bigint;expense:bigint}[];totalBalance:bigint|null}>("transaction-summary");assert.equal(stats.response.status,200);assert.equal(stats.data.days.length,10);assert.equal(typeof stats.data.days[0].income,"bigint");assert.equal(stats.data.totalBalance,null);
  const fund=await db.fund.findUniqueOrThrow({where:{slug:"0572-tptest"}}),other=await db.fund.findUniqueOrThrow({where:{slug:"0572-tpother"}});
+ const transferInput={fromFundId:fund.id,toFundId:other.id,mode:"AMOUNT",value:"10000000",reason:"TEST preview only"};
+ const cacheBefore=await db.publicCacheRefresh.findMany();
+ const missingDetails=await api<{amount:string;balanceItems:{amount:string}[]}>("transfers/preview","POST",transferInput);
+ assert.equal(missingDetails.response.status,200);assert.equal(missingDetails.data.amount,"10000000");assert.equal(missingDetails.data.balanceItems[0].amount,"9800000");
+ const validPreview=await api<{amount:string}>("transfers/preview","POST",{...transferInput,value:"100000"});
+ assert.equal(validPreview.response.status,200);assert.equal(validPreview.data.amount,"100000");
+ assert.equal(await db.transfer.count(),0);assert.equal(await db.fundAllocation.count(),0);
+ assert.deepEqual(await db.publicCacheRefresh.findMany(),cacheBefore,"preview must not enqueue cache writes or notifications");
  const created=await api<{success?:string}>("funds","POST",form({code:"TPREST",name:"TEST REST shared fund",status:"ACTIVE",publicListed:"1",description:"",keywords:"REST SHARED KEY",accountId:"FORGED",actorId:"FORGED",actorName:"FORGED"}));assert.ok(created.data.success);
  const shared=await db.fund.findUniqueOrThrow({where:{code:"TPREST"}});assert.equal(shared.createdById,"qa");assert.equal(shared.createdByName,"QA admin");assert.deepEqual([shared.accountId,...shared.accountIds].sort(),bootstrap.data.accounts.map(a=>a.id).sort());
  assert.equal(shared.publicListed,true);

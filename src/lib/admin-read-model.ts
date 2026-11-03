@@ -34,7 +34,7 @@ export async function loadAdminTransactions(params:AdminParams){
   return {rows,...navigation,page,pageSize,count,total,pending,selectedTotal,range:{from:range.from,to:range.to,error:range.error,allTime:range.allTime},filter};
 }
 export type AdminTransactions=Awaited<ReturnType<typeof loadAdminTransactions>>;
-export async function loadAdminTransfers(){return db.transfer.findMany({include:{fromFund:{include:{account:true}},account:true,toFund:true,reversal:true,_count:{select:{items:true}}},orderBy:{createdAt:"desc"},take:100})}
+export async function loadAdminTransfers(){return db.transfer.findMany({include:{fromFund:{include:{account:true}},account:true,toFund:true,reversal:true,_count:{select:{items:true,balanceItems:true}}},orderBy:{createdAt:"desc"},take:100})}
 export type AdminTransfers=Awaited<ReturnType<typeof loadAdminTransfers>>;
 async function scheduleStats(){
   const since=startOfVietnamDay(localDate()),kind={in:["FULL_DAY","PREVIOUS_DAY"]};
@@ -60,5 +60,5 @@ export async function loadReviewCandidates(id:string){
 }
 export type ReviewCandidates=Awaited<ReturnType<typeof loadReviewCandidates>>;
 
-export async function loadTransferDetails(id:string){return db.transfer.findUniqueOrThrow({where:{id},include:{fromFund:{select:{code:true,name:true}},toFund:{select:{code:true,name:true}},items:{orderBy:{id:"asc"}}}})}
+export async function loadTransferDetails(id:string){return db.transfer.findUniqueOrThrow({where:{id},include:{fromFund:{select:{code:true,name:true}},toFund:{select:{code:true,name:true}},items:{orderBy:{id:"asc"}},balanceItems:{orderBy:{id:"asc"}}}})}
 export type TransferDetails=Awaited<ReturnType<typeof loadTransferDetails>>;

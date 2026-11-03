@@ -7,7 +7,7 @@ import {queuePublicRefresh,refreshPublicSafely} from "@/lib/public-snapshot";
 import {loadFundHistory} from "@/lib/fund-history";
 import {loadAdminRevision} from "@/lib/admin-revision";
 import { loadTransactionSummary } from "@/lib/transaction-summary";
-import {previewAllocationTransfer,AllocationTransferError} from "@/lib/allocation-transfers";
+import {previewAllocationTransfer,isAllocationTransferError} from "@/lib/allocation-transfers";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth, allowedAdmin } from "@/auth";
@@ -54,7 +54,7 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
       case "POST transactions/assignment":result=await actions.assignTransaction({},await form());break;
       case "POST transactions/assignments":result=await actions.bulkAssignTransactions(await request.json());break;
       case "POST transaction-notes":{const data=await form();result=await actions.saveTransactionNote({},data);break;}
-      case "POST transfers/preview":result=await previewAllocationTransfer(await request.json());break;
+      case "POST transfers/preview":return json(await previewAllocationTransfer(await request.json()));
       case "POST transfers/allocate":result=await actions.createAllocationTransfer(await request.json());break;
       case "POST transfers":result=await actions.createTransfer({},await form());break;
       case "POST transfers/reversal":result=await actions.reverseTransfer({},await form());break;
@@ -69,7 +69,7 @@ async function handle(request:NextRequest,context:{params:Promise<{resource:stri
     after(async()=>{await Promise.allSettled([refreshPublicSafely(),dispatchAdminNotificationsSafely()]);});
     return json(result);
   }catch(error){
-    if(error instanceof AllocationTransferError)return json({error:error.message},400);
+    if(isAllocationTransferError(error))return json({error:error.message},400);
     if(error instanceof z.ZodError)return json({error:error.issues.map(i=>i.message).join("; ")},400);
     console.error("Admin REST request failed",resource,error instanceof Error?error.name:"unknown");
     return json({error:"Không thể xử lý dữ liệu. Vui lòng thử lại."},500);

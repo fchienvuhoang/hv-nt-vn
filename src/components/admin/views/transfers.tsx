@@ -66,7 +66,7 @@ export default function Transfers() {
                       <span className="code">{t.toFund.code}</span>
                       <small>{t.toFund.name}</small>
                     </td>
-                    <td className="transfer-reason">{t.reason}<small>{t.mode==="ALLOCATION"?"Điều chuyển các phần hùn phước":"Điều chuyển số dư cũ"}{t.targetIncome!==null?` · Mức thành tựu ${vnd(t.targetIncome)}`:""}</small></td>
+                    <td className="transfer-reason">{t.reason}<small>{t.mode==="ALLOCATION"?"Điều chuyển hùn phước / số dư":"Điều chuyển số dư cũ"}{t.targetIncome!==null?` · Mức thành tựu ${vnd(t.targetIncome)}`:""}</small></td>
                     <td className="money align-right nowrap">
                       {vnd(t.amount)}
                     </td>
@@ -80,7 +80,7 @@ export default function Transfers() {
                       )}
                     </td>
                     <td>
-                      {t._count.items>0&&<TransferDetailsModal id={t.id} count={t._count.items}/>}
+                      {t._count.items+t._count.balanceItems>0&&<TransferDetailsModal id={t.id} count={t._count.items+t._count.balanceItems}/>}
                       {!t.reversal && !t.reversalOf && (
                         <Modal
                           title="Đảo khoản điều chuyển"
