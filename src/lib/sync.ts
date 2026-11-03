@@ -1,3 +1,4 @@
+import {prepareBankPage} from "./bank-ingest-cache";
 import {enqueueSyncFailure} from "./admin-push";
 import {effectiveSyncStart} from "./sync-boundary";
 import "server-only";
@@ -109,6 +110,9 @@ export async function synchronize(actor: Actor) {
           throw new Error(
             "Nguồn trả trang rỗng trước khi hết dữ liệu; giữ tiến độ để thử lại",
           );
+        const items = [...new Map(result.items.map(i=>[i.id,i])).values()].filter(i=>parseSourceTime(i.transactionTime)>=account.syncFrom);
+        // Explicit reconciliation reads Postgres, then warms the quick-poll cache after commit.
+        const prepared=await prepareBankPage(account.id,items,{useCache:false});
         const lastPage = page >= Math.ceil(result.total / 100);
         const outcome = await serializable(async (tx) => {
           const lease = await tx.syncLease.updateMany({
@@ -119,12 +123,7 @@ export async function synchronize(actor: Actor) {
             throw new Error(
               "Lượt đồng bộ đã hết quyền xử lý; sẽ tiếp tục ở lượt sau",
             );
-          const items = [
-            ...new Map(result.items.map((i) => [i.id, i])).values(),
-          ].filter(
-            (i) => parseSourceTime(i.transactionTime) >= account.syncFrom,
-          );
-          const ingested = await ingestBankPage(tx, account.id, items, actor);
+          const ingested = await ingestBankPage(tx, account.id, prepared.items, actor);
           await tx.syncState.update({
             where: { id: state.id },
             data: lastPage
@@ -139,6 +138,7 @@ export async function synchronize(actor: Actor) {
           });
           return ingested;
         }, deadline);
+        await prepared.committed();
         pages++;
         inserted += outcome.inserted;
         updated += outcome.updated;

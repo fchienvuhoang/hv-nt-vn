@@ -56,5 +56,20 @@ try{
  const later=new Date(`${day}T12:01:00+07:00`);await scheduledSync(later);
  assert.equal(await db.syncJob.count({where:{kind:"FULL_DAY",status:{not:"SUPERSEDED"}}}),2,"next slot creates a new whole-day scan");
  assert.equal(await db.syncInvocation.count(),16,"all authenticated calls, including busy and failed, counted");
- console.log("PASS: webhook accounting, overlap skip, 20/100 page sizes, schedule dedup, full-day continuation, retries and no duplicate money");
+ // Losing the lease after upstream fetch must roll back even an inserted row.
+ const upstream=globalThis.fetch;let revoke=true;
+ globalThis.fetch=async(input,init)=>{
+  const response=await upstream(input,init),u=new URL(String(input));
+  if(revoke&&u.searchParams.get("accountNo")==="0572"&&u.searchParams.get("type")==="CREDIT"){
+   revoke=false;const data=await response.json();data.data.items[0].id+="-lost-lease";
+   await db.syncLease.update({where:{id:"bank-sync"},data:{token:"new-owner",expiresAt:new Date(Date.now()+120000)}});
+   return Response.json(data);
+  }
+  return response;
+ };
+ await assert.rejects(scheduledSync(new Date(`${day}T14:01:00+07:00`)),/hết quyền/);
+ assert.equal(await db.bankTransaction.count({where:{sourceId:{contains:"lost-lease"}}}),0,"lease check and ingest must be atomic");
+ assert.equal(await db.bankTransaction.count(),before);assert.equal((await db.syncLease.findUniqueOrThrow({where:{id:"bank-sync"}})).token,"new-owner");
+ globalThis.fetch=upstream;
+ console.log("PASS: webhook accounting, overlap skip, 20/100 page sizes, schedule dedup, full-day continuation, retries, expired-lease rollback and no duplicate money");
 }finally{globalThis.fetch=originalFetch;await clean();await db.$disconnect();}

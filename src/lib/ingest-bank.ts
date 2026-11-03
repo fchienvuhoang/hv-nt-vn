@@ -1,9 +1,10 @@
+import {bankSourceFingerprint} from "./bank-ingest-cache";
 import {enqueuePush} from "./admin-push";
 import {transactionPushKind} from "./push-policy";
 import {allowedBankSyncTime} from "./sync-boundary";
 import "server-only";
 import { actorStamp, createdStamp, updatedStamp, type Actor } from "./actor";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
 import type { LedgerClient } from "./ledger";
 import type { SourceItem } from "./source";
@@ -23,7 +24,7 @@ export async function ingestBankPage(
   items=items.filter(i=>allowedBankSyncTime(i.transactionTime));
   if(!items.length)return {inserted:0,updated:0,knownCount:0,affectedFundIds:[] as string[]};
   const existing=await tx.bankTransaction.findMany({where:{accountId,sourceId:{in:items.map(i=>i.id)}},select:{id:true,sourceId:true,sourceHash:true,fundId:true}});
-  const fingerprints=new Map(items.map(item=>[item.id,createHash("sha256").update(JSON.stringify(item)).digest("hex")]));
+  const fingerprints=new Map(items.map(item=>[item.id,bankSourceFingerprint(item)]));
   const known = new Map(existing.map((row) => [row.sourceId, row]));
   if(items.every(item=>known.get(item.id)?.sourceHash===fingerprints.get(item.id)))return {inserted:0,updated:0,knownCount:existing.length,affectedFundIds:[] as string[]};
   const fresh = items.filter((item) => !known.has(item.id));

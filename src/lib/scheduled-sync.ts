@@ -1,3 +1,4 @@
+import {prepareBankPage} from "./bank-ingest-cache";
 import {enqueueSyncFailure} from "./admin-push";
 import {BANK_SYNC_MIN_DATE,effectiveSyncStart} from "./sync-boundary";
 import "server-only";
@@ -112,34 +113,45 @@ export async function scheduledSync(now = new Date()) {
         const result = await fetchSourcePage(stream.number, stream.direction, from, job.rangeTo ?? job.targetDate, page, Math.max(1000, Math.min(10000, deadline - Date.now() - 5000)), pageSize);
         if (result.total > 0 && page <= Math.ceil(result.total / pageSize) && !result.items.length) throw new Error("Nguồn trả trang rỗng trước khi hết dữ liệu");
         const items = [...new Map(result.items.map(i => [i.id, i])).values()].filter(i => parseSourceTime(i.transactionTime) >= syncFrom && localDate(parseSourceTime(i.transactionTime)) >= job.targetDate && localDate(parseSourceTime(i.transactionTime)) <= (job.rangeTo ?? job.targetDate));
+        const prepared=await prepareBankPage(account.id,items,{useCache:job.kind==="QUICK",now:now.getTime()});
         const previous={page:stream.page,done:stream.done};
         try {
           const outcome = await serializable(async tx => {
-            const lease = await tx.syncLease.updateMany({ where: { id: "bank-sync", token, expiresAt: { gt: new Date() } }, data: { expiresAt: new Date(Date.now() + 120000) } });
-            if (!lease.count) throw new Error("Lượt đồng bộ đã hết quyền xử lý");
-            const saved = await ingestBankPage(tx, account.id, items, "scheduler");
+            const saved = await ingestBankPage(tx, account.id, prepared.items, "scheduler");
+            saved.knownCount+=prepared.knownCount;
             // Reuse the ingest lookup; hash changes are still ingested before a quick stop.
             const done=page>=Math.ceil(result.total/pageSize)||(job.kind==="QUICK"&&items.length>0&&saved.knownCount===items.length);
             stream.page=page+1;stream.done=done;
-            // Persist cursor and per-invocation counters atomically in one SQL operation.
-            // A process termination cannot leave imported money ahead of its history counters.
+            const successAt=done&&job.targetDate===today?new Date():null;
+            const completedTo=done&&job.kind==="HISTORY"?new Date(startOfVietnamDay(job.rangeTo??job.targetDate).getTime()+86400000):null;
+            // Validate/renew the lease, persist the cursor/counters and touch recency
+            // together. A lost lease rolls back ALL ingested money in this transaction.
             const recorded=await tx.$executeRaw`
-              WITH job_saved AS (
+              WITH lease_saved AS (
+                UPDATE "SyncLease" SET "expiresAt"=${new Date(Date.now()+120000)}
+                WHERE id='bank-sync' AND token=${token} AND "expiresAt">${new Date()} RETURNING id
+              ), job_saved AS (
                 UPDATE "SyncJob" AS j SET progress=${JSON.stringify(work)}::jsonb,
                   pages=j.pages+1, inserted=j.inserted+${saved.inserted}, updated=j.updated+${saved.updated}
-                WHERE j.id=${job.id} RETURNING j.id
+                WHERE j.id=${job.id} AND EXISTS(SELECT 1 FROM lease_saved) RETURNING j.id
+              ), state_saved AS (
+                INSERT INTO "SyncState" (id,"accountId",direction,"nextPage","lastSuccessAt","completedTo")
+                SELECT ${randomUUID()},${account.id},${stream.direction}::"Direction",1,${successAt}::timestamp,${completedTo}::timestamp
+                WHERE ${!!successAt||!!completedTo} AND EXISTS(SELECT 1 FROM job_saved)
+                ON CONFLICT ("accountId",direction) DO UPDATE SET
+                  "lastSuccessAt"=COALESCE(EXCLUDED."lastSuccessAt","SyncState"."lastSuccessAt"),
+                  "completedTo"=COALESCE(EXCLUDED."completedTo","SyncState"."completedTo")
+                RETURNING id
               )
               UPDATE "SyncInvocation" AS i SET
                 "quickPages"=i."quickPages"+${job.kind==="QUICK"?1:0},
                 "fullPages"=i."fullPages"+${job.kind==="QUICK"?0:1},
                 inserted=i.inserted+${saved.inserted}, updated=i.updated+${saved.updated}
               WHERE i.id=${invocation.id} AND EXISTS(SELECT 1 FROM job_saved)`;
-            if(recorded!==1)throw new Error("Không lưu được tiến độ đồng bộ");
-            // Recency for today reflects complete quick passes, not old-day audits.
-            if (done && job.targetDate === today) await tx.syncState.upsert({ where: { accountId_direction: { accountId: account.id, direction: stream.direction } }, create: { accountId: account.id, direction: stream.direction, lastSuccessAt: new Date() }, update: { lastSuccessAt: new Date() } });
-            if (done && job.kind === "HISTORY") await tx.syncState.upsert({ where: { accountId_direction: { accountId: account.id, direction: stream.direction } }, create: { accountId: account.id, direction: stream.direction, completedTo: new Date(startOfVietnamDay(job.rangeTo ?? job.targetDate).getTime() + 86400000) }, update: { completedTo: new Date(startOfVietnamDay(job.rangeTo ?? job.targetDate).getTime() + 86400000) } });
+            if(recorded!==1)throw new Error("Lượt đồng bộ đã hết quyền xử lý hoặc không lưu được tiến độ đồng bộ");
             return saved;
           }, deadline);
+          await prepared.committed();
           if (job.kind === "QUICK") quickPages++; else fullPages++;
           inserted += outcome.inserted; updated += outcome.updated;
           for(const id of outcome.affectedFundIds)affectedFundIds.add(id);
