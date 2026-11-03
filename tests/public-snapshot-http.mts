@@ -34,12 +34,18 @@ try{
  assert.equal((await (await get()).json()).goalIncome,(BigInt(initial.income)+400n).toString());
  const destinationGet=()=>fetch(`${origin}/api/public/funds/${destination.slug}`);
  assert.equal((await (await destinationGet()).json()).goalIncome,"100");
+ const detail=await fetch(`${origin}/api/public/funds/${slug}/transfers/${moved.id}`);assert.equal(detail.status,200);const detailData=await detail.json();assert.equal(detailData.amount,"100");assert.equal(detailData.items[0].originalAmount,"105");assert.equal(detailData.items[0].sourceAfter,"5");
+ const text=JSON.stringify(detailData);assert.ok(!text.includes("0912345678"));assert.ok(!text.includes("qa@example.test"));assert.ok(!text.includes("PRIVATE-ADMIN-NOTE"));assert.ok(!text.includes("sourceHash"));assert.ok(!("snapshot" in detailData.items[0]));
+ assert.equal((await fetch(`${origin}/api/public/funds/unrelated-qa/transfers/${moved.id}`)).status,404);
+ const movedItem=await db.transferItem.findFirstOrThrow({where:{transferId:moved.id}});await db.bankTransaction.update({where:{id:movedItem.transactionId},data:{hiddenNarrative:true}});
+ const hidden=await(await fetch(`${origin}/api/public/funds/${slug}/transfers/${moved.id}`)).json();assert.equal(hidden.items[0].narrative,"Nội dung được ẩn theo nguồn sao kê");await db.bankTransaction.update({where:{id:movedItem.transactionId},data:{hiddenNarrative:false}});
+
  await reverseFundTransfer(moved.id,"QA reverse and show original rows",actor);
  await queuePublicRefresh([fund.id,destination.id]);
  const restored=await get();assert.equal(restored.headers.get("x-public-cache"),"MISS");const restoredData=await restored.json();
- assert.equal(restoredData.goalIncome,(BigInt(initial.income)+500n).toString());assert.equal(restoredData.count,105);assert.ok(restoredData.rows.some((r:{notes:{text:string}[]})=>r.notes.some(n=>n.text.includes("đảo điều chuyển"))));
- const destinationAfter=await(await destinationGet()).json();assert.equal(destinationAfter.goalIncome,"0");assert.equal(destinationAfter.count,0);
- console.log("PASS: cold recovery, warm HIT, cached all-page search/pagination, privacy, unannounced data stays cached, queued mutation recovers immediately before worker, authenticated full refresh, transfer then reversal immediately restores both public totals/rows/notes");
+ assert.equal(restoredData.goalIncome,(BigInt(initial.income)+500n).toString());assert.equal(restoredData.count,105);assert.ok(restoredData.rows.some((r:{transferTrail:{reversal:boolean}[]})=>r.transferTrail.some(t=>t.reversal)));
+ const destinationAfter=await(await destinationGet()).json();assert.equal(destinationAfter.goalIncome,"0");assert.equal(destinationAfter.count,1);assert.equal(destinationAfter.rows[0].amount,"0");
+ console.log("PASS: cold recovery, warm HIT, cached all-page search/pagination, privacy, unannounced data stays cached, queued mutation recovers immediately before worker, authenticated full refresh, transfer then reversal immediately restores both public totals/rows/history, masked transfer detail endpoint and unrelated-slug isolation");
 }finally{
  const ids=[fund.id,destination.id];const transfers=await db.transfer.findMany({where:{fromFundId:{in:ids}},select:{id:true}});
  await db.auditLog.deleteMany({where:{entityId:{in:transfers.map(t=>t.id)}}});

@@ -4489,3 +4489,13 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
 .public-carry-note strong { font-weight: 600; font-variant-numeric: tabular-nums; }
 .public-compact .public-longterm-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }
 @media (max-width:680px) { .public-compact .public-longterm-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .public-longterm-metrics > :first-child { grid-column: 1 / -1; } }
+
+.transfer-allocation-info { display: grid; gap: 3px; margin-top: 5px; padding: 5px 8px; border-left: 2px solid #b58b56; background: #fbf6ee; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.transfer-allocation-info > small { font-size: 11px; }
+.transfer-allocation-info > strong { font-size: 12px; }
+.transfer-allocation-info details > summary { cursor: pointer; color: #803044; font-weight: 600; }
+.transfer-allocation-info details > div { display: grid; gap: 3px; padding: 5px 0; border-top: 1px solid #e6d8c7; }
+.transfer-allocation-info .button { justify-self: start; }
+.transfer-history-only, .allocation-history-row .money { color: #887b72; }
+
+.public-transfer-details-table table { min-width: 760px; }

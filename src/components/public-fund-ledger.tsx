@@ -1,4 +1,6 @@
 "use client";
+import {TransferAllocationInfo} from "@/components/transfer-allocation-info";
+import {PublicTransferDetailsModal} from "@/components/public-transfer-details";
 import {PublicAdminRefresh} from "@/components/public-admin-refresh";
 import {PwaAdminReturn} from "@/components/pwa-admin-return";
 import { PublicFundGoal } from "@/components/public-fund-goal";
@@ -175,12 +177,12 @@ export function PublicFundLedger({slug}:{slug:string}) {
                       Nội dung{" "}
                       {direction === "CREDIT" ? "hùn phước" : "khoản chi"}
                     </th>
-                    <th className="align-right">Số tiền</th>
+                    <th className="align-right">Tính cho {fund.code}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {fund.rows.map((r,index) => (
-                    <tr key={r.id}>
+                    <tr key={r.id} className={BigInt(r.amount)===0n?"allocation-history-row":undefined}>
                       <td className="public-row-number">{(fund.page-1)*PUBLIC_PAGE_SIZE+index+1}</td>
                       <td className="nowrap">{r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.at)}<small>TK {accountLabel(r.account)}</small></td>
                       <td>
@@ -189,6 +191,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                         </p>
                         {r.opening&&<span className="sheet-source">Số dư chuyển sang đầu tháng · đã tính trong số dư</span>}
                         <small>{r.name}</small>
+                        <TransferAllocationInfo originalAmount={r.originalAmount} amount={r.amount} code={fund.code} trail={r.transferTrail} details={id=><PublicTransferDetailsModal slug={slug} id={id} revision={fund.generatedAt}/>}/>
                         {r.notes.map(note=><div key={note.id} className="transaction-public-note"><strong>Ghi chú quản trị:</strong> {note.text}<small>{dateTime(note.at)}</small></div>)}
                       </td>
                       <td
@@ -199,6 +202,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot><tr><th colSpan={3} scope="row">Tổng trang này · chỉ phần tính cho {fund.code}</th><td className="money align-right nowrap">{vnd(fund.rows.reduce((sum,r)=>sum+BigInt(r.amount),0n))}</td></tr></tfoot>
               </table>
             </div>
           )}
@@ -237,7 +241,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                         {t.from} → {t.to}
                         {t.reversal && <small>Bút toán đảo</small>}
                       </td>
-                      <td>{t.reason}</td>
+                      <td>{t.reason}<div><PublicTransferDetailsModal slug={slug} id={t.id} revision={fund.generatedAt}/></div></td>
                       <td className="align-right money nowrap">
                         {vnd(t.amount)}
                       </td>

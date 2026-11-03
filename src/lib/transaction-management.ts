@@ -1,5 +1,5 @@
 import "server-only";
-import {fundMembership,fundShare} from "./allocation";
+import {fundShare,fundDisplayMembership,transferTrailSelect,transferTrail} from "./allocation";
 import {moveShares} from "./allocation-write";
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -66,10 +66,10 @@ export async function appendTransactionNote(input:z.input<typeof noteSchema>,act
 }
 export async function fundTransactionList(input:{fundId:string;page?:number;q?:string;type?:string;account?:string}) {
   const fundId=id.parse(input.fundId),page=Math.max(1,Math.floor(input.page??1)),query=(input.q??"").trim().slice(0,100);
-  const scope={AND:[fundMembership(fundId)],entryStatus:{in:["POSTED","OPENING"]},...(input.type==="CREDIT"||input.type==="DEBIT"?{direction:input.type as "CREDIT"|"DEBIT"}:{}),...(query?{OR:[{narrative:{contains:query,mode:"insensitive" as const}},{displayName:{contains:query,mode:"insensitive" as const}},{refId:{contains:query,mode:"insensitive" as const}},{notes:{some:{text:{contains:query,mode:"insensitive" as const}}}}]}:{})};
+  const scope={AND:[fundDisplayMembership(fundId)],entryStatus:{in:["POSTED","OPENING"]},...(input.type==="CREDIT"||input.type==="DEBIT"?{direction:input.type as "CREDIT"|"DEBIT"}:{}),...(query?{OR:[{narrative:{contains:query,mode:"insensitive" as const}},{displayName:{contains:query,mode:"insensitive" as const}},{refId:{contains:query,mode:"insensitive" as const}},{notes:{some:{text:{contains:query,mode:"insensitive" as const}}}}]}:{})};
   const where={...scope,...(input.account?{accountId:id.parse(input.account)}:{})};
   const [rows,amounts,ledgerFunds,transfers]=await Promise.all([
-    db.bankTransaction.findMany({where,include:{allocations:true,account:{select:{number:true}},notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*100,take:100}),
+    db.bankTransaction.findMany({where,include:{allocations:true,allocationTransfers:transferTrailSelect(fundId),account:{select:{number:true}},notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*100,take:100}),
     db.bankTransaction.findMany({where:scope,select:{accountId:true,fundId:true,amount:true,direction:true,allocations:{select:{fundId:true,amount:true}}}}),
     fundTotals(db,fundId),
     db.transfer.findMany({where:{OR:[{fromFundId:fundId},{toFundId:fundId}],...(input.account?{AND:[{OR:[{accountId:input.account},{items:{some:{transaction:{accountId:input.account}}}},{balanceItems:{some:{accountId:input.account}}}]}]}:{})},include:{fromFund:{select:{code:true}},toFund:{select:{code:true}},items:{select:{amount:true,transaction:{select:{accountId:true}}}},balanceItems:true},orderBy:[{createdAt:"desc"},{id:"desc"}],take:20}),
@@ -81,6 +81,6 @@ export async function fundTransactionList(input:{fundId:string;page?:number;q?:s
   const summarize=(own:typeof amounts)=>({count:own.length,income:own.filter(r=>r.direction==="CREDIT").reduce((n,r)=>n+fundShare(r,fundId),0n).toString(),expense:own.filter(r=>r.direction==="DEBIT").reduce((n,r)=>n+fundShare(r,fundId),0n).toString()});
   const summary={total:summarize(amounts),byAccount:[...new Set(amounts.map(r=>r.accountId))].map(accountId=>({accountId,...summarize(amounts.filter(r=>r.accountId===accountId))}))};
   const count=input.account?summary.byAccount.find(a=>a.accountId===input.account)?.count??0:summary.total.count;
-  return {page,count,summary,fundLedger,transfers:transferHistory,rows:rows.map(r=>({id:r.id,dateUnknown:r.notes.some(n=>n.kind==="SOURCE_DATE_MISSING"),opening:r.entryStatus==="OPENING",amount:fundShare(r,fundId).toString(),direction:r.direction,narrative:r.narrative,displayName:r.displayName,refId:r.refId,at:r.occurredAt.toISOString(),account:r.account.number,accountId:r.accountId,updatedAt:r.updatedAt.toISOString(),notes:r.notes.map(n=>({id:n.id,text:n.text,actor:n.actorName??n.actor,at:n.createdAt.toISOString()}))}))};
+  return {page,count,summary,fundLedger,transfers:transferHistory,rows:rows.map(r=>({id:r.id,dateUnknown:r.notes.some(n=>n.kind==="SOURCE_DATE_MISSING"),opening:r.entryStatus==="OPENING",originalAmount:r.amount.toString(),transferTrail:transferTrail(r.allocationTransfers,fundId),amount:fundShare(r,fundId).toString(),direction:r.direction,narrative:r.narrative,displayName:r.displayName,refId:r.refId,at:r.occurredAt.toISOString(),account:r.account.number,accountId:r.accountId,updatedAt:r.updatedAt.toISOString(),notes:r.notes.filter(n=>!["ALLOCATION_TRANSFER","ALLOCATION_REVERSAL"].includes(n.kind)).map(n=>({id:n.id,text:n.text,actor:n.actorName??n.actor,at:n.createdAt.toISOString()}))}))};
 }
 export type FundTransactionList = Awaited<ReturnType<typeof fundTransactionList>>;
