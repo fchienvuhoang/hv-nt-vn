@@ -184,6 +184,14 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     <td data-label="Chi vượt quỹ" className={`money align-right nowrap${f.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(f.excessExpense)}</td>
                     <td>
                       {f.adminNote&&<div className="fund-mobile-note"><strong>Ghi chú:</strong> {f.adminNote}</div>}
+                      <details className="fund-mobile-details">
+                        <summary>Thông tin thêm</summary>
+                        {f.keywords.length>0&&<div className="fund-aliases">{f.keywords.map(keyword=><span key={keyword}>{keyword}</span>)}</div>}
+                        {f.goalAmount!=null&&<div>Mục tiêu thành tựu: <strong>{vnd(f.goalAmount)}</strong></div>}
+                        {f.openingBalance!==0n&&<div>Trong đó Excel: {vnd(f.openingBalance)}</div>}
+                        <div><small>Người tạo</small><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt}/></div>
+                        <div><small>Cập nhật</small><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt}/></div>
+                      </details>
                       <div className="inline-actions table-actions">
                         <AdminDialogButton kind="fund-transactions" fundId={f.id} className="button subtle small"><List size={15}/>Xem giao dịch</AdminDialogButton>
                         <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
