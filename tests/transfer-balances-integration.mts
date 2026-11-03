@@ -5,6 +5,7 @@ if(url.hostname!=="localhost"||!url.pathname.startsWith("/hvntvn_test"))throw ne
 const {db}=await import("../src/lib/db");
 const {previewAllocationTransfer,commitAllocationTransfer}=await import("../src/lib/allocation-transfers");
 const {reverseFundTransfer}=await import("../src/lib/transfers");
+const {fundTransactionList}=await import("../src/lib/transaction-management");
 const {fundTotals,accountTotals}=await import("../src/lib/ledger");
 if(await db.bankAccount.count())throw new Error("Require empty test database");
 const actor={id:"qa-balance",name:"QA",email:"qa@example.test"};
@@ -30,6 +31,10 @@ try{
  let state=await totals();assert.equal(state.find(f=>f.id===funds[0].id)!.balance,350727n);assert.equal(state.find(f=>f.id===funds[1].id)!.balance,10000000n);
  const targetAfter=await previewAllocationTransfer({...input,mode:"TARGET_INCOME",value:"300000"});assert.equal(targetAfter.amount,"50727");
  assert.ok(state.find(f=>f.id===funds[0].id)!.byAccount.every(a=>a.balance>=0n));
+ assert.equal(state.find(f=>f.id===funds[0].id)!.fundingIncome,350727n);assert.equal(state.find(f=>f.id===funds[1].id)!.fundingIncome,10000000n);
+ const received=await fundTransactionList({fundId:funds[1].id});assert.equal(received.fundLedger?.balance,"10000000");assert.equal(received.fundLedger?.fundingIncome,"10000000");assert.equal(received.transfers[0].amount,"10000000");assert.equal(received.transfers[0].balanceAmount,"9275000");assert.equal(received.transfers[0].received,true);assert.equal(received.transfers[0].reason,input.reason);assert.ok(received.rows.every(r=>r.notes.some(n=>n.text.includes("SOURCE sang DEST"))));
+ const receivedAccount=await fundTransactionList({fundId:funds[1].id,account:accounts[1].id});assert.equal(receivedAccount.transfers[0].amount,preview.balanceItems.find(i=>i.accountId===accounts[1].id)!.amount);
+ const sent=await fundTransactionList({fundId:funds[0].id});assert.equal(sent.transfers[0].received,false);assert.equal(sent.fundLedger?.balance,"350727");
  assert.equal(JSON.stringify((await accountTotals()).map(a=>({id:a.id,balance:a.expected.toString()}))),bankBalances);
  const originalRows=await db.bankTransaction.findMany({orderBy:{id:"asc"}});assert.deepEqual(originalRows.map(r=>({id:r.id,amount:r.amount,accountId:r.accountId,source:r.source})),bankBefore.map(r=>({id:r.id,amount:r.amount,accountId:r.accountId,source:r.source})));
  await reverseFundTransfer(transfer.id,"Đảo kiểm thử số dư",actor);state=await totals();assert.equal(state.find(f=>f.id===funds[0].id)!.balance,10350727n);assert.equal(state.find(f=>f.id===funds[1].id)!.balance,0n);

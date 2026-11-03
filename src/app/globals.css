@@ -4477,3 +4477,15 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
 .transfer-fund-money { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 12px; font-weight: 400; line-height: 1.5; color: #896762; }
 .transfer-fund-money strong { color: #803044; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .transfer-fund-verification { color: #896762; font-size: 11px; line-height: 1.4; }
+
+.fund-transfer-history { display: grid; gap: 6px; }
+.fund-transfer-history h3 { margin: 0; font-size: 14px; }
+.fund-transfer-history > small { color: #896762; font-size: 11px; }
+.fund-transfer-history .table-scroll { max-height: 240px; overflow: auto; }
+.fund-transfer-history th, .fund-transfer-history td { padding: 6px 8px; font-size: 12px; }
+.fund-transfer-history td p { margin: 3px 0; }
+
+.public-carry-note { margin: 3px 0 8px; color: #896762; font-size: 11px; line-height: 1.4; }
+.public-carry-note strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.public-compact .public-longterm-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }
+@media (max-width:680px) { .public-compact .public-longterm-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .public-longterm-metrics > :first-child { grid-column: 1 / -1; } }

@@ -80,16 +80,15 @@ export function PublicFundLedger({slug}:{slug:string}) {
         )}
         {fund.isLongTerm&&<div className="public-month-picker">Thống kê tháng {fund.month.slice(5,7)}/{fund.month.slice(0,4)} · Tháng hiện tại</div>}
         <PublicFundGoal goalAmount={fund.goalAmount} income={fund.goalIncome}/>
-        {fund.isLongTerm?<div className="metrics">
-          <Metric label="Dư / thiếu tháng trước chuyển sang" value={fund.carryBalance} note="Giữ nguyên cả số dư dương và âm"/>
-          <Metric label="Hùn phước trong tháng" value={fund.income} note="Chỉ các khoản ghi nhận trong tháng" accent/>
+        {fund.isLongTerm?<div className="metrics public-longterm-metrics">
+          <Metric label="Tổng hùn phước" value={fund.goalIncome} note="Đã tính phần chuyển sang và điều chuyển ròng" accent/>
           <Metric label="Đã chi trong tháng" value={fund.expense} note="Chỉ các khoản chi trong tháng"/>
           <Metric label="Số dư cuối tháng" value={fund.balance} note="Đầu kỳ + hùn phước − chi + điều chuyển ròng"/>
         </div>:<div className="metrics">
           <Metric
             label="Tổng hùn phước"
-            value={fund.income}
-            note="Gồm các khoản nhập Excel và hùn phước đã ghi nhận"
+            value={fund.goalIncome}
+            note="Đã tính các khoản nhập Excel và điều chuyển ròng giữa thiện pháp"
             accent
           />
           <Metric
@@ -104,6 +103,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
           />
           <Metric label="Chi vượt quỹ" value={fund.excessExpense} note="Phần chi vượt khoản hùn phước đã ghi nhận" />
         </div>}
+        {fund.isLongTerm&&<p className="public-carry-note">Dư / thiếu tháng trước chuyển sang: <strong>{vnd(fund.carryBalance)}</strong></p>}
         {!fund.isLongTerm&&BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
         {!fund.isLongTerm&&BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
         <div className="public-ledger-card">

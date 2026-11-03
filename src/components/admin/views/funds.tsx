@@ -51,7 +51,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
       ? f.byAccount.find((a) => a.accountId === params.account)
       : null;
     return a
-      ? { ...f, openingBalance:a.openingBalance,availableBalance:a.availableBalance,excessExpense:a.excessExpense, income: a.income, expense: a.expense, balance: a.balance }
+      ? { ...f, openingBalance:a.openingBalance,availableBalance:a.availableBalance,excessExpense:a.excessExpense, income: a.income, fundingIncome:a.fundingIncome, expense: a.expense, balance: a.balance }
       : f;
   });
   const accounts = balances;
@@ -163,7 +163,8 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       <div className="fund-status-public-link"><Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={13} /><span>Trang công khai</span></Link><button type="button" className="fund-copy-link" onClick={()=>void copyPublicLink(f.slug)} title={`Sao chép link công khai ${f.code}`} aria-label={`Sao chép link công khai ${f.code}`}><Copy size={13}/></button></div>
                     </td>
                     <td className="money align-right nowrap">
-                      {vnd(f.income)}
+                      {vnd(f.fundingIncome)}
+                      {(f.transferIn!==0n||f.transferOut!==0n)&&<small>Đã tính điều chuyển ròng</small>}
                       {f.adminNote && <div className="fund-income-note"><strong>Ghi chú:</strong> {f.adminNote}</div>}
                     </td>
                     <td className="money align-right nowrap">
@@ -196,7 +197,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </strong>
                   </td>
                   <td className="money align-right nowrap">
-                    {vnd(scoped.reduce((n, f) => n + f.income, 0n))}
+                    {vnd(scoped.reduce((n, f) => n + f.fundingIncome, 0n))}
                   </td>
                   <td className="money align-right nowrap">
                     {vnd(scoped.reduce((n, f) => n + f.expense, 0n))}

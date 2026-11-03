@@ -17,7 +17,8 @@ export async function enqueueFundGoalNotifications() {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('fund-goal-notifications'))`;
     const funds = await fundTotals(tx);
     const previous = await tx.fundGoalAchievement.findMany({ select: { fundId: true, goalAmount: true, milestone: true } });
-    const data = funds.flatMap(fund => {
+    const data = funds.flatMap(rawFund => {
+      const fund={...rawFund,income:rawFund.fundingIncome};
       const highest = previous.filter(event => event.fundId === fund.id && event.goalAmount === fund.goalAmount).reduce((max, event) => Math.max(max, event.milestone), 0);
       const milestone = goalEmailMilestone(fund, highest);
       const id = milestone === 100 ? goalAchievementKey(fund) : milestone ? `fund-goal:${fund.id}:${fund.goalAmount}:${milestone}` : null;

@@ -34,6 +34,7 @@ export async function readPublicSnapshot(slug:string){
  const store=cache(),manifest=await store.get(key(slug)) as {chunks:string[]}|null;if(!manifest)return null;
  const parts=await Promise.all(manifest.chunks.map(name=>store.get(name) as Promise<string|null>));if(parts.some(p=>p===null))return null;
  const snapshot=JSON.parse(parts.join("")) as PublicSnapshot;
+ if (snapshot.credit.fundingVersion!==1 || snapshot.debit.fundingVersion!==1) return null;
  if (!("goalAmount" in snapshot.credit) || !("goalAmount" in snapshot.debit)) return null;
  // Never disclose the previous month's rows, even if a daily warmup has not finished yet.
  if(snapshot.credit.isLongTerm&&snapshot.credit.month!==vietnamMonth())return null;
