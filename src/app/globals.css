@@ -4545,3 +4545,5 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
   .transaction-mobile-list .sheet-row-actions > .button { min-height: 32px; height: auto; margin: 0; white-space: normal; }
   .transaction-mobile-list .sheet-table .badge { white-space: normal; overflow-wrap: anywhere; }
 }
+
+.daily-summary-toggle { display: block; margin: 8px 0; }
