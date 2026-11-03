@@ -39,7 +39,10 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
           .toLocaleLowerCase("vi")
           .includes(query)),
   );
-  const funds = matching.filter((f) => status === "ALL" || f.status === status);
+  const term=["LONG","SHORT"].includes(params.term??"")?params.term!:"ALL";
+  const termMatching=matching.filter(f=>term==="ALL"||(term==="LONG"?f.isLongTerm:!f.isLongTerm));
+  const funds = termMatching.filter((f) => status === "ALL" || f.status === status);
+  const termTabs=[{value:"LONG",label:"Dài hạn"},{value:"SHORT",label:"Ngắn hạn"},{value:"ALL",label:"Tất cả"}];
   const tabs = [
     { value: "ACTIVE", label: "Đang hoạt động" },
     { value: "COMPLETED", label: "Hoàn thành" },
@@ -66,20 +69,24 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
       </div>
       <FundBalanceComparison bootstrap={bootstrap} />
       <section className="fund-list-panel" aria-label="Danh sách thiện pháp">
+        <nav className="fund-term-tabs" aria-label="Thời hạn thiện pháp">
+          {termTabs.map(tab=><Link key={tab.value} href={adminUrl("funds",{q:params.q,account:params.account,status,term:tab.value})} aria-current={term===tab.value?"page":undefined} className={term===tab.value?"selected":""}>{tab.label}<span>{matching.filter(f=>(status==="ALL"||f.status===status)&&(tab.value==="ALL"||(tab.value==="LONG"?f.isLongTerm:!f.isLongTerm))).length}</span></Link>)}
+        </nav>
         <nav className="fund-status-tabs" aria-label="Trạng thái thiện pháp">
           {tabs.map((tab) => (
             <Link key={tab.value} scroll={false}
-              href={adminUrl("funds", { q: params.q, account: params.account, status: tab.value })}
+              href={adminUrl("funds", { q: params.q, account: params.account, term, status: tab.value })}
               data-status={tab.value}
               aria-current={status === tab.value ? "page" : undefined}
               className={status === tab.value ? "selected" : ""}>
-              {tab.label}<span>{tab.value === "ALL" ? matching.length : matching.filter((f) => f.status === tab.value).length}</span>
+              {tab.label}<span>{tab.value === "ALL" ? termMatching.length : termMatching.filter((f) => f.status === tab.value).length}</span>
             </Link>
           ))}
         </nav>
         <form key={`${params.q??""}-${params.account??""}-${status}`} className="filter-bar" action="/admin" method="get">
           <input type="hidden" name="view" value="funds" />
           <input type="hidden" name="status" value={status} />
+          <input type="hidden" name="term" value={term} />
           <label>
             Tìm thiện pháp
             <input
@@ -117,8 +124,8 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
           </Empty>
         ) : (
           <div className="table-scroll table-card fund-list-scroll" tabIndex={0} role="region" aria-label="Bảng thiện pháp">
-            <table>
-              <thead>
+            <table role="table">
+              <thead role="rowgroup">
                 <tr>
                   <th>Thiện pháp / từ khóa</th>
                   <th>Tài khoản</th>
@@ -132,9 +139,9 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                   <th>Người cập nhật</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {scoped.map((f) => (
-                  <tr key={f.id} className={f.pinnedAt?"fund-pinned-row":undefined}>
+                  <tr role="row" key={f.id} className={f.pinnedAt?"fund-pinned-row":undefined}>
                     <td>
                       <div className="fund-identity">
                         <FundPinButton fundId={f.id} code={f.code} pinned={!!f.pinnedAt}/>
@@ -162,20 +169,21 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       <Status status={f.status} />
                       <div className="fund-status-public-link"><Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={13} /><span>Trang công khai</span></Link><button type="button" className="fund-copy-link" onClick={()=>void copyPublicLink(f.slug)} title={`Sao chép link công khai ${f.code}`} aria-label={`Sao chép link công khai ${f.code}`}><Copy size={13}/></button></div>
                     </td>
-                    <td className="money align-right nowrap">
+                    <td data-label="Hùn phước" className="money align-right nowrap">
                       {vnd(f.fundingIncome)}
                       {(f.transferIn!==0n||f.transferOut!==0n)&&<small>Đã tính điều chuyển ròng</small>}
                       {f.adminNote && <div className="fund-income-note"><strong>Ghi chú:</strong> {f.adminNote}</div>}
                     </td>
-                    <td className="money align-right nowrap">
+                    <td data-label="Đã chi" className="money align-right nowrap">
                       {vnd(f.expense)}
                     </td>
-                    <td className="money align-right nowrap balance-value">
+                    <td data-label="Số dư khả dụng" className="money align-right nowrap balance-value">
                       {vnd(f.availableBalance)}
                       {f.openingBalance!==0n&&<small className="fund-opening-note">Trong đó Excel: {vnd(f.openingBalance)}</small>}
                     </td>
-                    <td className={`money align-right nowrap${f.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(f.excessExpense)}</td>
+                    <td data-label="Chi vượt quỹ" className={`money align-right nowrap${f.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(f.excessExpense)}</td>
                     <td>
+                      {f.adminNote&&<div className="fund-mobile-note"><strong>Ghi chú:</strong> {f.adminNote}</div>}
                       <div className="inline-actions table-actions">
                         <AdminDialogButton kind="fund-transactions" fundId={f.id} className="button subtle small"><List size={15}/>Xem giao dịch</AdminDialogButton>
                         <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
@@ -184,8 +192,8 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
 
                       </div>
                     </td>
-                    <td><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
-                    <td><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
+                    <td data-label="Người tạo"><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
+                    <td data-label="Cập nhật"><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -196,16 +204,16 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       Tổng {funds.length} thiện pháp đang hiển thị
                     </strong>
                   </td>
-                  <td className="money align-right nowrap">
+                  <td data-label="Hùn phước" className="money align-right nowrap">
                     {vnd(scoped.reduce((n, f) => n + f.fundingIncome, 0n))}
                   </td>
-                  <td className="money align-right nowrap">
+                  <td data-label="Đã chi" className="money align-right nowrap">
                     {vnd(scoped.reduce((n, f) => n + f.expense, 0n))}
                   </td>
-                  <td className="money align-right nowrap">
+                  <td data-label="Số dư khả dụng" className="money align-right nowrap">
                     {vnd(totals.availableBalance)}
                   </td>
-                  <td className={`money align-right nowrap${totals.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(totals.excessExpense)}</td>
+                  <td data-label="Chi vượt quỹ" className={`money align-right nowrap${totals.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(totals.excessExpense)}</td>
                   <td colSpan={3} />
                 </tr>
                 <tr><td colSpan={10} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>

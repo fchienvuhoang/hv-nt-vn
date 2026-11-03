@@ -4547,3 +4547,36 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
 }
 
 .daily-summary-toggle { display: block; margin: 8px 0; }
+
+.fund-term-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.fund-term-tabs a { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border: 1px solid #dfcfbd; border-radius: 7px; color: #684c3e; background: #fffdf8; font-size: 13px; }
+.fund-term-tabs a.selected { background: #7b3040; border-color: #7b3040; color: #fff8e9; }
+.fund-term-tabs a span { font-size: 11px; opacity: .8; }
+.fund-mobile-note { display: none; }
+@media (max-width: 680px) {
+ .fund-term-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+ .fund-term-tabs a { min-width: 0; padding: 9px 4px; font-size: 12px; }
+ .fund-list-scroll.table-scroll.table-card { overflow: visible; border: 0; background: transparent; }
+ .fund-list-scroll.table-card table, .fund-list-scroll.table-card tbody, .fund-list-scroll.table-card tfoot { display: block; width: 100%; min-width: 0; max-width: 100%; }
+ .fund-list-scroll.table-card thead { display: none; }
+ .fund-list-scroll.table-card tbody tr, .fund-list-scroll.table-card tfoot tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px 12px; margin-bottom: 12px; padding: 14px 12px; border: 1px solid #d8c5b2; border-radius: 10px; background: #fff; }
+ .fund-list-scroll.table-card tbody tr > td, .fund-list-scroll.table-card tfoot tr > td,
+ .fund-list-scroll.table-card tbody tr > td:first-child { position: static; width: auto; min-width: 0; max-width: none; height: auto; padding: 0; border: 0; box-shadow: none; background: transparent; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+ .fund-list-scroll.table-card tbody tr > td:nth-child(-n+3),
+ .fund-list-scroll.table-card tbody tr > td:nth-child(n+8) { grid-column: 1 / -1; }
+ .fund-list-scroll.table-card .fund-identity { gap: 6px; }
+ .fund-list-scroll.table-card .fund-identity > .code { font-size: 12px; }
+ .fund-list-scroll.table-card .table-fund-name { display: block; overflow: visible; -webkit-line-clamp: unset; font-size: 14px; line-height: 1.5; flex-basis: 100%; }
+ .fund-list-scroll.table-card .fund-aliases { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+ .fund-list-scroll.table-card .fund-goal-note { display: block; font-size: 11px; margin-top: 6px; }
+ .fund-list-scroll.table-card .account-number { white-space: normal; font-size: 11px; }
+ .fund-list-scroll.table-card .fund-status-public-link { display: inline-flex; flex-wrap: wrap; margin: 0 0 0 8px; vertical-align: middle; }
+ .fund-list-scroll.table-card td.money { font-size: 14px; font-weight: 700; line-height: 1.5; padding: 8px; background: #faf6ef; border-radius: 6px; }
+ .fund-list-scroll.table-card td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 400; color: #806653; margin-bottom: 3px; }
+ .fund-list-scroll.table-card .fund-income-note { display: none; }
+ .fund-list-scroll.table-card .fund-mobile-note { display: block; font-size: 12px; line-height: 1.5; white-space: pre-wrap; margin-bottom: 8px; }
+ .fund-list-scroll.table-card .table-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+ .fund-list-scroll.table-card .table-actions .button { min-height: 34px; }
+ .fund-list-scroll.table-card tfoot tr > td:first-child, .fund-list-scroll.table-card .fund-book-balance { grid-column: 1 / -1; }
+ .fund-list-scroll.table-card tfoot tr > td:last-child:empty { display: none; }
+}
