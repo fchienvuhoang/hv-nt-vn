@@ -4154,6 +4154,7 @@ tfoot td {
 .allocation-transfer-table table { min-width: 900px; font-size: 12px; }
 .allocation-transfer-table th { position: sticky; top: 0; z-index: 1; }
 .allocation-transfer-table td { vertical-align: top; padding: 6px 8px; }
+.allocation-transfer-table tfoot th, .allocation-transfer-table tfoot td { position: sticky; bottom: 0; z-index: 2; background: #f3e7d7; border-top: 2px solid #ccb79d; font-weight: 700; padding: 8px; vertical-align: middle; }
 .allocation-transfer-table .sheet-narrative { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 200px; }
 .transaction-allocation-labels { display: flex; flex-wrap: wrap; gap: 3px; }
 
