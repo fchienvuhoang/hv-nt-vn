@@ -1,4 +1,6 @@
 "use client";
+import { MoneyInput } from "@/components/money-input";
+import {transferBalanceError} from "@/lib/transfer-balance";
 import { accountLabel, fundOptionLabel } from "@/lib/account-label";
 import {useState} from "react";
 import {previewTransfer,createAllocationTransfer} from "@/lib/admin-api";
@@ -9,19 +11,23 @@ import {useCloseModal} from "@/components/modal";
 import {vnd,dateTime} from "@/lib/domain";
 export function TransferFormFields({requestId,accounts,funds}:{requestId:string;accounts:{id:string;number:string;label:string}[];funds:{id:string;code:string;name:string;income:string;accountId:string;accountIds:string[];byAccount:{accountId:string;balance:string}[]}[]}){
  const [values,setValues]=useState({fromFundId:"",toFundId:"",accountId:"",mode:"AMOUNT",value:"",reason:""}),[preview,setPreview]=useState<AllocationTransferPreview|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState("");
- const toast=useToast(),close=useCloseModal(),source=funds.find(f=>f.id===values.fromFundId);
- const change=(field:keyof typeof values,value:string)=>{setValues(v=>({...v,[field]:value}));setPreview(null);setError("")};
+ const toast=useToast(),close=useCloseModal(),source=funds.find(f=>f.id===values.fromFundId),destination=funds.find(f=>f.id===values.toFundId);
+ const change=(field:keyof typeof values,value:string)=>{setValues(v=>({...v,[field]:value,...(field==="fromFundId"&&v.toFundId===value?{toFundId:""}:{})}));setPreview(null);setError("")};
+ const fundMoney=(fund:typeof source)=>fund&&<span className="transfer-fund-money" aria-live="polite"><span>Số dư hiện có: <strong>{vnd(fund.byAccount.reduce((sum,a)=>sum+BigInt(a.balance),0n))}</strong></span><span>Tổng hùn phước: <strong>{vnd(fund.income)}</strong></span></span>;
  const input=():AllocationTransferInput=>({...values,mode:values.mode as AllocationTransferInput["mode"],accountId:values.accountId||undefined});
- async function check(event:React.FormEvent){event.preventDefault();setBusy(true);setError("");try{setPreview(await previewTransfer(input()))}catch(error){const message=error instanceof Error?error.message:"Không kiểm tra được điều chuyển";setError(message);toast(message,"error")}finally{setBusy(false)}}
+ const amount=values.value&&/^\d+$/.test(values.value)?values.mode==="AMOUNT"?BigInt(values.value):BigInt(source?.income??"0")-BigInt(values.value):null;
+ const balanceError=source?transferBalanceError(source.byAccount,amount,values.accountId||undefined):null;
+ async function check(event:React.FormEvent){event.preventDefault();if(balanceError){setPreview(null);setError(balanceError);return}setBusy(true);setError("");try{setPreview(await previewTransfer(input()))}catch(error){const message=error instanceof Error?error.message:"Không kiểm tra được điều chuyển";setError(message);toast(message,"error")}finally{setBusy(false)}}
  async function apply(){if(!preview)return;setBusy(true);setError("");try{const result=await createAllocationTransfer({...input(),requestId,fingerprint:preview.fingerprint});if(result.error){setError(result.error);toast(result.error,"error")}else if(result.success){toast(result.success,"success");close?.()}}finally{setBusy(false)}}
  return <div className="allocation-transfer-workspace"><form onSubmit={check} className="action-form"><fieldset disabled={busy} className="action-fields">
-  <div className="form-row"><label>Thiện pháp nguồn<select required value={values.fromFundId} onChange={e=>change("fromFundId",e.target.value)}><option value="">Chọn thiện pháp</option>{funds.map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select></label><label>Thiện pháp nhận<select required value={values.toFundId} onChange={e=>change("toFundId",e.target.value)}><option value="">Chọn thiện pháp</option>{funds.filter(f=>f.id!==values.fromFundId).map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select></label></div>
-  {source&&<div className="notice">Tổng hùn phước hiện tại của {source.code}: <strong>{vnd(source.income)}</strong>. Số tiền được xác minh lại khi xem trước và xác nhận.</div>}
-  <div className="form-row"><label>Cách tính<select value={values.mode} onChange={e=>change("mode",e.target.value)}><option value="AMOUNT">Nhập số tiền cần cắt</option><option value="TARGET_INCOME">Đưa tổng hùn phước về mức thành tựu</option></select></label><label>{values.mode==="AMOUNT"?"Số tiền cần chuyển (VND)":"Tổng hùn phước cần giữ lại (VND)"}<input required value={values.value} onChange={e=>change("value",e.target.value)} inputMode="numeric" pattern="[0-9]{1,15}" maxLength={15} placeholder={values.mode==="AMOUNT"?"2000000":"90000000"}/></label></div>
+  <div className="form-row"><label>Thiện pháp nguồn<select required value={values.fromFundId} onChange={e=>change("fromFundId",e.target.value)}><option value="">Chọn thiện pháp</option>{funds.map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select>{fundMoney(source)}</label><label>Thiện pháp nhận<select required value={values.toFundId} onChange={e=>change("toFundId",e.target.value)}><option value="">Chọn thiện pháp</option>{funds.filter(f=>f.id!==values.fromFundId).map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select>{fundMoney(destination)}</label></div>
+  {(source||destination)&&<small className="transfer-fund-verification">Số tiền được xác minh lại khi xem trước và xác nhận.</small>}
+  <div className="form-row"><label>Cách tính<select value={values.mode} onChange={e=>change("mode",e.target.value)}><option value="AMOUNT">Nhập số tiền cần cắt</option><option value="TARGET_INCOME">Đưa tổng hùn phước về mức thành tựu</option></select></label><label>{values.mode==="AMOUNT"?"Số tiền cần chuyển (VND)":"Tổng hùn phước cần giữ lại (VND)"}<MoneyInput required value={values.value} onValueChange={value=>change("value",value)} placeholder={values.mode==="AMOUNT"?"2.000.000":"90.000.000"}/></label></div>
   <label>Phạm vi tài khoản<select value={values.accountId} onChange={e=>change("accountId",e.target.value)}><option value="">Cả hai tài khoản</option>{accounts.map(a=><option key={a.id} value={a.id}>{accountLabel(a.number)} · {a.label}</option>)}</select></label>
   <label>Lý do điều chuyển<textarea required minLength={5} maxLength={1000} rows={2} value={values.reason} onChange={e=>change("reason",e.target.value)}/></label>
   <div className="notice">Chọn ngược từ các khoản hùn phước mới nhất, tách khoản cuối nếu cần để chuyển đúng số tiền. Giữ nguyên giao dịch ngân hàng và tài khoản; ghi chú điều chuyển được hiển thị công khai.</div>
-  <button className="button subtle" type="submit" disabled={busy}>{busy?<><LoadingSpinner size={20}/>Đang xử lý…</>:"Xem trước các khoản sẽ chuyển"}</button>
+  {balanceError&&<div className="notice danger" role="alert">{balanceError}</div>}
+  <button className="button subtle" type="submit" disabled={busy||!!balanceError}>{busy?<><LoadingSpinner size={20}/>Đang xử lý…</>:"Xem trước các khoản sẽ chuyển"}</button>
  </fieldset></form>
  {error&&<div className="notice danger" role="alert">{error}</div>}
  {busy&&!preview&&<LoadingIndicator label="Đang tính các khoản hùn phước cần cắt…"/>}

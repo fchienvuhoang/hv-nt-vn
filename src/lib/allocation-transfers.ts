@@ -7,6 +7,7 @@ import {fundMembership,fundShare} from "./allocation";
 import {moveShares} from "./allocation-write";
 import {actorStamp,type Actor} from "./actor";
 import {fundUsesAccount,vnd} from "./domain";
+import {transferBalanceError} from "./transfer-balance";
 export class AllocationTransferError extends Error {}
 const id=z.string().min(1).max(100),money=z.string().regex(/^\d{1,15}$/).transform(BigInt);
 const planSchema=z.object({fromFundId:id,toFundId:id,accountId:id.optional(),mode:z.enum(["AMOUNT","TARGET_INCOME"]),value:money,reason:z.string().trim().min(5).max(1000)});
@@ -17,6 +18,8 @@ async function plan(tx:LedgerClient,input:AllocationTransferInput){
  const totals=await fundTotals(tx),source=totals.find(f=>f.id===data.fromFundId),destination=totals.find(f=>f.id===data.toFundId);
  if(!source||!destination)throw new AllocationTransferError("Không tìm thấy thiện pháp");
  const amount=data.mode==="AMOUNT"?data.value:source.income-data.value;
+ const balanceError=transferBalanceError(source.byAccount,amount,data.accountId);
+ if(balanceError)throw new AllocationTransferError(balanceError);
  if(amount<=0n)throw new AllocationTransferError("Số tiền điều chuyển phải lớn hơn 0; mức thành tựu phải nhỏ hơn tổng hùn phước hiện tại.");
  const budgets=new Map(source.byAccount.filter(a=>!data.accountId||a.accountId===data.accountId).map(a=>[a.accountId,a.balance>0n?a.balance:0n]));
  const rows=await tx.bankTransaction.findMany({omit:{source:true,sourceHash:true},where:{AND:[fundMembership(source.id),{direction:"CREDIT",entryStatus:"POSTED",...(data.accountId?{accountId:data.accountId}:{})}]},include:{allocations:true,account:{select:{number:true}}},orderBy:[{occurredAt:"desc"},{id:"desc"}]});
@@ -60,6 +63,8 @@ export async function reverseAllocationTransfer(tx:LedgerClient,original:{id:str
  if(!items.length)throw new AllocationTransferError("Không tìm thấy chi tiết các khoản đã điều chuyển");
  const totals=await fundTotals(tx),source=totals.find(f=>f.id===original.toFundId)!,destination=totals.find(f=>f.id===original.fromFundId)!;
  const required=new Map<string,bigint>();for(const item of items)required.set(item.transaction.accountId,(required.get(item.transaction.accountId)??0n)+item.amount);
+ const balanceError=transferBalanceError(source.byAccount,original.amount);
+ if(balanceError)throw new AllocationTransferError("Thiện pháp nhận không còn đủ số dư khả dụng để đảo; không thể làm âm thiện pháp nguồn.");
  for(const [accountId,amount]of required)if((source.byAccount.find(a=>a.accountId===accountId)?.balance??0n)<amount)throw new AllocationTransferError("Thiện pháp nhận không còn đủ số dư trong tài khoản gốc để đảo");
  for(const item of items)if(item.transaction.entryStatus!=="POSTED"||item.transaction.direction!=="CREDIT"||fundShare(item.transaction,source.id)<item.amount)throw new AllocationTransferError("Phần tiền đã được chuyển tiếp hoặc thay đổi; không thể đảo lượt này. Hãy đảo các lượt sau trước.");
  const reversal=await tx.transfer.create({data:{requestId:randomUUID(),accountId:original.accountId,fromFundId:source.id,toFundId:destination.id,amount:original.amount,reason,mode:"ALLOCATION",reversalOf:original.id,...actorStamp(actor)}});

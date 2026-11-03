@@ -4471,3 +4471,8 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
  .activity-toolbar .activity-calendar > span { display:none; }
  .activity-table .activity-code-col { display:none; width:0; }
 }
+.money-input { text-align:right; font-variant-numeric:tabular-nums; }
+
+.transfer-fund-money { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 12px; font-weight: 400; line-height: 1.5; color: #896762; }
+.transfer-fund-money strong { color: #803044; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.transfer-fund-verification { color: #896762; font-size: 11px; line-height: 1.4; }

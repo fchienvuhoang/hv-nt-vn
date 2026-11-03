@@ -1,5 +1,6 @@
 "use client";
 import { accountLabel } from "@/lib/account-label";
+import { MoneyInput } from "@/components/money-input";
 import { LoadingSpinner } from "@/components/loading-indicator";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import type { ActionState } from "@/app/admin/actions";
@@ -95,9 +96,9 @@ export function FundForm({
       </label>
       <label>
         Mục tiêu thành tựu (₫)
-        <input name="goalAmount" inputMode="numeric" pattern="[0-9]{1,15}" maxLength={15} placeholder="Ví dụ: 100000000" value={values.goalAmount} onChange={event=>change("goalAmount",event.target.value)} {...errorProps("goalAmount")} />
+        <MoneyInput name="goalAmount" placeholder="Ví dụ: 100.000.000" value={values.goalAmount} onValueChange={value=>change("goalAmount",value)} {...errorProps("goalAmount")} />
         {errorMessage("goalAmount")}
-        <small>{/^\d{1,15}$/.test(values.goalAmount) ? vnd(values.goalAmount) : "Để trống nếu chưa có mục tiêu. Nhập số nguyên VND, không có dấu phân cách."}</small>
+        <small>{/^\d{1,15}$/.test(values.goalAmount) ? vnd(values.goalAmount) : "Để trống nếu chưa có mục tiêu. Tự phân cách hàng nghìn khi nhập hoặc dán số tiền."}</small>
       </label>
       <label>
         Ghi chú nội bộ
