@@ -1,5 +1,5 @@
 import "server-only";
-import {fundShare,fundDisplayMembership,transferTrailSelect,transferTrail} from "./allocation";
+import {publicOriginalMembership} from "./public-original-transactions";
 import {PUBLIC_DIRECTORY_TAG,publicFundTag} from "./cache-tags";
 import { unstable_cache } from "next/cache";
 import { db } from "./db";
@@ -23,11 +23,13 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
     const period=fund.isLongTerm?month:"";
     const start=period?new Date(`${period}-01T00:00:00+07:00`):undefined;
     const end=start?new Date(Date.UTC(Number(period.slice(0,4)),Number(period.slice(5,7)),1)-7*3600000):undefined;
-    const where = { ...fundDisplayMembership(fund.id), direction, entryStatus: {in:period?["POSTED"]:["POSTED","OPENING"]},...(start?{occurredAt:{gte:start,lt:end}}:{}) };
-    const [summary, previous, count, transfers, sync] = await Promise.all([
+    const originalMembership=await publicOriginalMembership(fund.id);
+    const receipts=db.bankTransaction.groupBy({by:["direction"],where:{...originalMembership,entryStatus:{in:["POSTED","OPENING"]}},_sum:{amount:true},_count:true});
+    const [summary, previous, receiptTotals, periodReceipts, transfers, sync] = await Promise.all([
       fundTotals(db,fund.id,end),
       start?fundTotals(db,fund.id,start):Promise.resolve([]),
-      db.bankTransaction.count({ where }),
+      receipts,
+      start?db.bankTransaction.groupBy({by:["direction"],where:{...originalMembership,entryStatus:"POSTED",occurredAt:{gte:start,lt:end}},_sum:{amount:true},_count:true}):receipts,
       db.transfer.findMany({
         where: { ...(start?{createdAt:{gte:start,lt:end}}:{}),OR: [{ fromFundId: fund.id }, { toFundId: fund.id }] },
         include: {
@@ -44,11 +46,16 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
     ]);
     const total = summary.find((f) => f.id === fund.id)!;
     const prior=previous[0];
+    const originalIncome=(receiptTotals.find(r=>r.direction==="CREDIT")?._sum.amount??0n)+fund.openingIncome;
+    const netReallocation=total.fundingIncome-originalIncome;
     return {
       isLongTerm:fund.isLongTerm,month:period,carryBalance:prior?.balance.toString()??"0",
       code: fund.code,
       goalAmount: fund.goalAmount?.toString() ?? null,
-      fundingVersion: 2,
+      fundingVersion: 3,
+      originalIncome:originalIncome.toString(),
+      receivedAllocation:(netReallocation>0n?netReallocation:0n).toString(),
+      sentAllocation:(netReallocation<0n?-netReallocation:0n).toString(),
       goalIncome: total.fundingIncome.toString(),
       name: maskPhones(fund.name),
       slug,
@@ -58,7 +65,7 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
       pendingImports: await db.fundImport.count({
         where: { fundId: fund.id, status: "RUNNING" },
       }),
-      income: (total.income-(prior?.income??0n)).toString(),
+      income: ((periodReceipts.find(r=>r.direction==="CREDIT")?._sum.amount??0n)+(start?0n:fund.openingIncome)).toString(),
       expense: (total.expense-(prior?.expense??0n)).toString(),
       balance: total.balance.toString(),
       availableBalance:total.availableBalance.toString(),
@@ -72,7 +79,7 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
       openingExpense: fund.openingExpense.toString(),
       cutover: fund.account.syncFrom?.toISOString(),
       id: fund.id,
-      count,
+      count:periodReceipts.find(r=>r.direction===direction)?._count??0,
       transfers: transfers.map((t) => ({
         id: t.id,
         from: t.fromFund.code,
@@ -91,21 +98,22 @@ async function publicFundSummary(slug:string,direction:"CREDIT"|"DEBIT",month:st
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v17",slug,direction,month],
+  ["public-fund-summary-v18",slug,direction,month],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }
 
 // Cache public, masked rows by stable page, never by a visitor's search term.
 const publicTransactionPage = async (fundId: string, direction: "CREDIT" | "DEBIT", page: number,month="") => unstable_cache(async()=>{
+  const membership=await publicOriginalMembership(fundId);
   const rows = await db.bankTransaction.findMany({
-    where:{...fundDisplayMembership(fundId),direction,entryStatus:{in:month?["POSTED"]:["POSTED","OPENING"]},...(month?{occurredAt:{gte:new Date(`${month}-01T00:00:00+07:00`),lt:new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7)),1)-7*3600000)}}:{})},
-    select:{id:true,entryStatus:true,fundId:true,allocationTransfers:transferTrailSelect(fundId),allocations:{select:{fundId:true,amount:true}},amount:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{id:true,text:true,createdAt:true,kind:true},orderBy:[{createdAt:"asc"},{id:"asc"}]}},
+    where:{...membership,direction,entryStatus:{in:month?["POSTED"]:["POSTED","OPENING"]},...(month?{occurredAt:{gte:new Date(`${month}-01T00:00:00+07:00`),lt:new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7)),1)-7*3600000)}}:{})},
+    select:{id:true,entryStatus:true,fundId:true,amount:true,occurredAt:true,narrative:true,hiddenNarrative:true,displayName:true,account:{select:{number:true}},notes:{select:{id:true,text:true,createdAt:true,kind:true},orderBy:[{createdAt:"asc"},{id:"asc"}]}},
     orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*PUBLIC_PAGE_SIZE,take:PUBLIC_PAGE_SIZE,
   });
-  return rows.map(r=>({id:r.id,dateUnknown:r.notes.some(n=>n.kind==="SOURCE_DATE_MISSING"),opening:r.entryStatus==="OPENING",account:r.account.number,originalAmount:r.amount.toString(),transferTrail:transferTrail(r.allocationTransfers,fundId).map(t=>({...t,reason:maskPhones(t.reason)})),amount:fundShare(r,fundId).toString(),at:r.occurredAt.toISOString(),
+  return rows.map(r=>({id:r.id,dateUnknown:r.notes.some(n=>n.kind==="SOURCE_DATE_MISSING"),opening:r.entryStatus==="OPENING",account:r.account.number,amount:r.amount.toString(),at:r.occurredAt.toISOString(),
     notes:r.notes.filter(n=>!["ALLOCATION_TRANSFER","ALLOCATION_REVERSAL"].includes(n.kind)).map(n=>({id:n.id,text:maskPhones(n.text),at:n.createdAt.toISOString()})),narrative:r.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(r.narrative),name:maskPhones(r.displayName)}));
-},["public-transaction-page-v7",fundId,direction,String(page),month],{...options,tags:[PUBLIC_TAG,publicFundTag(fundId)]})();
+},["public-transaction-page-v8",fundId,direction,String(page),month],{...options,tags:[PUBLIC_TAG,publicFundTag(fundId)]})();
 
 export async function publicFund(slug: string, page: number, direction: "CREDIT" | "DEBIT", search = "", month = "") {
   const current=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit"}).format(new Date());
@@ -147,16 +155,17 @@ export function publicFundDTO(fund:NonNullable<Awaited<ReturnType<typeof publicF
 const DIRECTORY_PAGE_SIZE=12;
 const directoryFunds=unstable_cache(async()=>{
   const totals=await fundTotals();
-  // One batched query adds historical-only row counts without N queries per fund.
-  const history=await db.transferItem.findMany({where:{transaction:{entryStatus:"POSTED"}},select:{transactionId:true,transfer:{select:{fromFundId:true,toFundId:true}},transaction:{select:{fundId:true,direction:true,allocations:{select:{fundId:true}}}}}});
-  const extra=new Map<string,Set<string>>();
-  for(const item of history)for(const fundId of [item.transfer.fromFundId,item.transfer.toFundId]){
-   const r=item.transaction,current=r.allocations.length?r.allocations.some(a=>a.fundId===fundId):r.fundId===fundId;
-   if(!current){const key=`${fundId}:${r.direction}`,ids=extra.get(key)??new Set<string>();ids.add(item.transactionId);extra.set(key,ids)}
+  const rows=await db.bankTransaction.findMany({where:{entryStatus:"POSTED",allocationTransfers:{some:{}}},select:{id:true,fundId:true,direction:true,allocations:{select:{fundId:true}},allocationTransfers:{where:{transfer:{reversalOf:null}},select:{transfer:{select:{fromFundId:true}}},orderBy:[{transfer:{createdAt:"asc"}},{transfer:{id:"asc"}}],take:1}}});
+  const counts=new Map<string,number>();for(const f of totals){counts.set(`${f.id}:CREDIT`,f.statementIncomeCount);counts.set(`${f.id}:DEBIT`,f.statementExpenseCount)}
+  for(const row of rows){
+   const original=row.allocationTransfers[0]?.transfer.fromFundId;if(!original)continue;
+   const current=row.allocations.length?row.allocations.map(a=>a.fundId):row.fundId?[row.fundId]:[];
+   for(const id of current){const key=`${id}:${row.direction}`;counts.set(key,(counts.get(key)??0)-1)}
+   const key=`${original}:${row.direction}`;counts.set(key,(counts.get(key)??0)+1);
   }
-  const count=(id:string,type:string)=>extra.get(`${id}:${type}`)?.size??0;
-  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,goalAmount:f.goalAmount?.toString()??null,name:maskPhones(f.name),description:maskPhones(f.description),income:f.fundingIncome.toString(),expense:f.expense.toString(),balance:f.balance.toString(),availableBalance:f.availableBalance.toString(),excessExpense:f.excessExpense.toString(),openingBalance:f.openingBalance.toString(),count:f.statementCount+count(f.id,"CREDIT")+count(f.id,"DEBIT"),incomeCount:f.statementIncomeCount+count(f.id,"CREDIT"),expenseCount:f.statementExpenseCount+count(f.id,"DEBIT")}));
-},["public-directory-funds-v11"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
+  const count=(id:string,type:string)=>counts.get(`${id}:${type}`)??0;
+  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,goalAmount:f.goalAmount?.toString()??null,name:maskPhones(f.name),description:maskPhones(f.description),income:f.fundingIncome.toString(),expense:f.expense.toString(),balance:f.balance.toString(),availableBalance:f.availableBalance.toString(),excessExpense:f.excessExpense.toString(),openingBalance:f.openingBalance.toString(),count:count(f.id,"CREDIT")+count(f.id,"DEBIT"),incomeCount:count(f.id,"CREDIT"),expenseCount:count(f.id,"DEBIT")}));
+},["public-directory-funds-v12"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
 export async function publicDirectory(search="",requestedPage=1){
  const funds=await directoryFunds(),query=search.trim().slice(0,100);
  type Preview=Omit<Awaited<ReturnType<typeof publicTransactionPage>>[number],"id">&{direction:"CREDIT"|"DEBIT"};

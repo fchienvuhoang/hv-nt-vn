@@ -1,6 +1,4 @@
 "use client";
-import {TransferAllocationInfo} from "@/components/transfer-allocation-info";
-import {PublicTransferDetailsModal} from "@/components/public-transfer-details";
 import {PublicAdminRefresh} from "@/components/public-admin-refresh";
 import {PwaAdminReturn} from "@/components/pwa-admin-return";
 import { PublicFundGoal } from "@/components/public-fund-goal";
@@ -115,6 +113,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
           <Metric label="Chi vượt quỹ" value={fund.excessExpense} note="Phần chi vượt khoản hùn phước đã ghi nhận" />
         </div>}
         {fund.isLongTerm&&<p className="public-carry-note">Dư / thiếu tháng trước chuyển sang: <strong>{vnd(fund.carryBalance)}</strong></p>}
+        {(BigInt(fund.receivedAllocation)>0n||BigInt(fund.sentAllocation)>0n)&&<div className="public-allocation-summary"><span>Hùn phước ban đầu: <b>{vnd(fund.originalIncome)}</b></span><span>Nhận điều chuyển ròng: <b>+{vnd(fund.receivedAllocation)}</b></span><span>Đã chuyển đi ròng: <b>−{vnd(fund.sentAllocation)}</b></span><strong>Tổng hùn phước sau điều chuyển: {vnd(fund.goalIncome)}</strong><small>Danh sách bên dưới giữ nguyên các khoản hùn phước gốc. Phần điều chuyển được ghi riêng, không cộng lặp vào tổng.</small></div>}
         {!fund.isLongTerm&&BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
         {!fund.isLongTerm&&BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
         <div className="public-ledger-card">
@@ -160,11 +159,11 @@ export function PublicFundLedger({slug}:{slug:string}) {
             <Empty
               title={
                 search ? "Không tìm thấy giao dịch phù hợp" : direction === "CREDIT"
-                  ? "Chưa có khoản hùn phước mới"
+                  ? "Chưa có giao dịch hùn phước gốc"
                   : "Chưa có khoản chi mới"
               }
             >
-              {search?"Hãy thử tên, nội dung hoặc 3 số cuối điện thoại. Các tổng phía trên theo kỳ đang hiển thị.":"Số liệu lịch sử đã được tính trong các tổng ở trên."}
+              {search?"Hãy thử tên, nội dung hoặc 3 số cuối điện thoại. Các tổng phía trên theo kỳ đang hiển thị.":direction==="CREDIT"&&BigInt(fund.receivedAllocation)>0n?"Tiền nhận điều chuyển được ghi riêng ở mục Điều chuyển nội bộ, đã tính vào tổng phía trên.":"Số liệu lịch sử đã được tính trong các tổng ở trên."}
             </Empty>
           ) : (
             <div className="table-scroll table-card">
@@ -177,12 +176,12 @@ export function PublicFundLedger({slug}:{slug:string}) {
                       Nội dung{" "}
                       {direction === "CREDIT" ? "hùn phước" : "khoản chi"}
                     </th>
-                    <th className="align-right">Tính cho {fund.code}</th>
+                    <th className="align-right">Số tiền gốc</th>
                   </tr>
                 </thead>
                 <tbody>
                   {fund.rows.map((r,index) => (
-                    <tr key={r.id} className={BigInt(r.amount)===0n?"allocation-history-row":undefined}>
+                    <tr key={r.id} >
                       <td className="public-row-number">{(fund.page-1)*PUBLIC_PAGE_SIZE+index+1}</td>
                       <td className="nowrap">{r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.at)}<small>TK {accountLabel(r.account)}</small></td>
                       <td>
@@ -191,7 +190,6 @@ export function PublicFundLedger({slug}:{slug:string}) {
                         </p>
                         {r.opening&&<span className="sheet-source">Số dư chuyển sang đầu tháng · đã tính trong số dư</span>}
                         <small>{r.name}</small>
-                        <TransferAllocationInfo originalAmount={r.originalAmount} amount={r.amount} code={fund.code} trail={r.transferTrail} details={id=><PublicTransferDetailsModal slug={slug} id={id} revision={fund.generatedAt}/>}/>
                         {r.notes.map(note=><div key={note.id} className="transaction-public-note"><strong>Ghi chú quản trị:</strong> {note.text}<small>{dateTime(note.at)}</small></div>)}
                       </td>
                       <td
@@ -202,7 +200,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot><tr><th colSpan={3} scope="row">Tổng trang này · chỉ phần tính cho {fund.code}</th><td className="money align-right nowrap">{vnd(fund.rows.reduce((sum,r)=>sum+BigInt(r.amount),0n))}</td></tr></tfoot>
+                <tfoot><tr><th colSpan={3} scope="row">Tổng giao dịch gốc trên trang này</th><td className="money align-right nowrap">{vnd(fund.rows.reduce((sum,r)=>sum+BigInt(r.amount),0n))}</td></tr></tfoot>
               </table>
             </div>
           )}
@@ -241,7 +239,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                         {t.from} → {t.to}
                         {t.reversal && <small>Bút toán đảo</small>}
                       </td>
-                      <td>{t.reason}<div><PublicTransferDetailsModal slug={slug} id={t.id} revision={fund.generatedAt}/></div></td>
+                      <td>{t.reason}</td>
                       <td className="align-right money nowrap">
                         {vnd(t.amount)}
                       </td>
