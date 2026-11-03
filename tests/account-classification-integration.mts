@@ -25,8 +25,19 @@ try{
  const request={requestId:randomUUID(),sourceFundId:null,targetFundId:httb.id,reason:"Kiểm tra tài khoản nhận",rows:[{id:wrong.id,updatedAt:wrong.updatedAt.toISOString()}]};
  await assert.rejects(reassignTransactions(request,"qa"),/tài khoản/);
  assert.equal((await db.bankTransaction.findUniqueOrThrow({where:{id:wrong.id}})).fundId,null);
- await reassignTransactions({...request,requestId:randomUUID(),targetFundId:shared.id},"qa");
+ await assert.rejects(reassignTransactions({...request,requestId:randomUUID(),targetFundId:shared.id},"qa"),/đúng 1 tài khoản/);
+ await reassignTransactions({...request,requestId:randomUUID(),targetFundId:pscd.id},"qa");
  const moved=await db.bankTransaction.findUniqueOrThrow({where:{id:wrong.id}});
- assert.equal(moved.accountId,tram.id);assert.equal(moved.amount,wrong.amount);assert.equal(moved.fundId,shared.id);assert.equal(moved.assignment,"MANUAL");
- console.log("PASS: wrong-account code/alias detection during ingest; no alias/code fallback; correct-account auto assignment; cross-account manual rejection; valid manual assignment preserves receiving account and amount");
+ assert.equal(moved.accountId,tram.id);assert.equal(moved.amount,wrong.amount);assert.equal(moved.fundId,pscd.id);assert.equal(moved.assignment,"MANUAL");
+ // Closed funds reject new automatic receipts AND expenses, by code and alias.
+ const {fundMembership}=await import("../src/lib/allocation");
+ for(const status of ["PAUSED","COMPLETED"] as const){
+  await db.fund.update({where:{id:httb.id},data:{status}});
+  const incoming=[...(["CREDIT","DEBIT"] as const)].flatMap(type=>["HTTB","TAM BAO"].map((narrative,index)=>({...item(`inactive-${status}-${type}-${index}`,narrative),type})));
+  await db.$transaction(tx=>ingestBankPage(tx,my.id,incoming,"qa"));
+  for(const source of incoming){const row=await db.bankTransaction.findUniqueOrThrow({where:{accountId_sourceId:{accountId:my.id,sourceId:source.id}}});assert.equal(row.fundId,null);assert.equal(row.assignment,"UNASSIGNED");assert.equal(row.entryStatus,"POSTED");assert.match(row.matchReason,/tạm dừng hoặc hoàn thành/)}
+  assert.equal(await db.bankTransaction.count({where:{AND:[fundMembership(null)],sourceId:{in:incoming.map(i=>i.id)}}}),4,"all new closed-fund receipts/expenses appear in Unclassified");
+ }
+ assert.equal((await db.bankTransaction.findFirstOrThrow({where:{sourceId:"my-right"}})).fundId,httb.id,"closing a fund must not detach historical gifts");
+ console.log("PASS: wrong-account code/alias detection during ingest; no alias/code fallback; correct-account auto assignment; cross-account manual rejection; valid manual assignment preserves receiving account and amount; paused/completed code and alias route new credits/debits to Unclassified, historical gifts remain");
 }finally{await db.auditLog.deleteMany();await db.bankTransaction.deleteMany();await db.fund.deleteMany();await db.bankAccount.deleteMany();await db.$disconnect();}

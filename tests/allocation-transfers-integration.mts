@@ -13,11 +13,23 @@ try{
  const input={fromFundId:funds[0].id,toFundId:funds[1].id,mode:"TARGET_INCOME" as const,value:"90000000",reason:"Đủ thành tựu, chuyển phần dư"};
  const preview=await previewAllocationTransfer(input);assert.equal(preview.amount,"10000000");assert.equal(preview.incomeAfter,"90000000");assert.deepEqual(preview.items.map(i=>i.amount),["500000","1500000","8000000"]);assert.equal(preview.items[2].sourceAfter,"10000000");assert.ok(preview.items[2].split);assert.equal(await db.transfer.count(),0,"preview cannot write");
  const request={...input,requestId:randomUUID(),fingerprint:preview.fingerprint};
+ // A new expense after preview must not permit spending a positive account
+ // while the fund as a whole would become negative.
+ const expense=await db.bankTransaction.create({data:{accountId:accounts[1].id,fundId:funds[0].id,sourceId:"BALANCE-GUARD",refId:"BALANCE-GUARD",amount:95000000n,direction:"DEBIT",narrative:"TEST expense",displayName:"TEST",occurredAt:new Date(),sourceHash:"TEST",source:{test:true}}});
+ await assert.rejects(commitAllocationTransfer(request,actor),/Không đủ số dư/);
+ await assert.rejects(previewAllocationTransfer({...input,mode:"AMOUNT",value:"5000001"}),/Không đủ số dư/);
+ await assert.rejects(previewAllocationTransfer({...input,mode:"AMOUNT",value:"1",accountId:accounts[1].id}),/phạm vi/);
+ assert.equal(await db.transfer.count(),0);assert.equal(await db.fundAllocation.count(),0);
+ await db.bankTransaction.update({where:{id:expense.id},data:{amount:100000000n}});
+ await assert.rejects(previewAllocationTransfer({...input,mode:"AMOUNT",value:"1"}),/số dư dương/);
+ await db.bankTransaction.update({where:{id:expense.id},data:{amount:100000001n}});
+ await assert.rejects(previewAllocationTransfer({...input,mode:"AMOUNT",value:"1"}),/số dư dương/);
+ await db.bankTransaction.delete({where:{id:expense.id}});
  const changed=await db.bankTransaction.create({data:{accountId:accounts[0].id,fundId:funds[0].id,sourceId:"LATE",refId:"LATE",amount:1n,direction:"CREDIT",narrative:"TEST",displayName:"TEST",occurredAt:new Date(),sourceHash:"TEST",source:{test:true}}});await assert.rejects(commitAllocationTransfer(request,actor),/thay đổi/);assert.equal(await db.transfer.count(),0);await db.bankTransaction.delete({where:{id:changed.id}});
  const results=await Promise.all([commitAllocationTransfer(request,actor),commitAllocationTransfer(request,actor)]);assert.equal(results[0].id,results[1].id);assert.equal(await db.transfer.count(),1);assert.equal(await db.transferItem.count(),3);assert.equal(await db.transactionNote.count(),3);assert.equal(await db.fundAllocation.count(),2);
  assert.deepEqual(await bankSnapshot(),before,"bank amount/account/source/narrative remain immutable");assert.equal(await balances(),originalBalances);
  let totals=await fundTotals();assert.equal(totals.find(f=>f.id===funds[0].id)?.income,90000000n);assert.equal(totals.find(f=>f.id===funds[1].id)?.income,10000000n);assert.equal(totals.reduce((n,f)=>n+f.income,0n),100000000n);assert.equal(totals.find(f=>f.id===funds[0].id)?.balance,90000000n,"allocation transfer cannot be subtracted twice");
- const sourceList=await fundTransactionList({fundId:funds[0].id}),destinationList=await fundTransactionList({fundId:funds[1].id});assert.equal(sourceList.count,3);assert.equal(destinationList.count,3);assert.equal(destinationList.rows.find(r=>r.id===rows[2].id)?.amount,"8000000");assert.equal(sourceList.rows.find(r=>r.id===rows[2].id)?.amount,"10000000");assert.ok(destinationList.rows.every(r=>r.notes.length&&r.notes[0].text.includes("Quản trị viên điều chuyển")));
+ const sourceList=await fundTransactionList({fundId:funds[0].id}),destinationList=await fundTransactionList({fundId:funds[1].id});assert.equal(sourceList.count,5);assert.equal(destinationList.count,3);assert.equal(destinationList.rows.find(r=>r.id===rows[2].id)?.amount,"8000000");assert.equal(sourceList.rows.find(r=>r.id===rows[2].id)?.amount,"10000000");assert.ok(destinationList.rows.every(r=>r.transferTrail.length&&r.transferTrail[0].reason===input.reason));assert.equal(sourceList.rows.filter(r=>r.amount==="0").length,2);assert.equal(sourceList.summary.total.income,"90000000");
  const partial=destinationList.rows.find(r=>r.id===rows[2].id)!;
  await reassignTransactions({requestId:randomUUID(),sourceFundId:funds[1].id,targetFundId:funds[2].id,reason:"Chuyển phần đã tách sang C",rows:[{id:partial.id,updatedAt:partial.updatedAt}]},actor);assert.equal((await fundTotals()).find(f=>f.id===funds[2].id)?.income,8000000n);assert.equal(await balances(),originalBalances);await assert.rejects(reverseFundTransfer(results[0].id,"Đảo lượt gốc",actor),/không còn đủ|chuyển tiếp/);
  const current=(await fundTransactionList({fundId:funds[2].id})).rows[0];await reassignTransactions({requestId:randomUUID(),sourceFundId:funds[2].id,targetFundId:funds[1].id,reason:"Trả phần đã tách về B",rows:[{id:current.id,updatedAt:current.updatedAt}]},actor);

@@ -4,7 +4,7 @@ import { db } from "./db";
 import type { Prisma } from "@/generated/prisma/client";
 export type LedgerClient = Prisma.TransactionClient;
 export async function fundTotals(client: LedgerClient = db, fundId?: string, before?:Date) {
-  const [funds, baseMovements, sent, received, allocations] = await Promise.all([
+  const [funds, baseMovements, sent, received, allocations, balanceItems] = await Promise.all([
     client.fund.findMany({
       where: fundId ? { id: fundId } : undefined,
       include: { account: true },
@@ -28,7 +28,12 @@ export async function fundTotals(client: LedgerClient = db, fundId?: string, bef
       _sum: { amount: true },
     }),
     client.fundAllocation.groupBy({by:["fundId","accountId"],where:{...(fundId?{fundId}:{}),transaction:{entryStatus:"POSTED",direction:"CREDIT",...(before?{occurredAt:{lt:before}}:{})}},_sum:{amount:true},_count:true}),
+    client.transferBalanceItem.findMany({where:{transfer:{...(before?{createdAt:{lt:before}}:{}),...(fundId?{OR:[{fromFundId:fundId},{toFundId:fundId}]}:{})}},include:{transfer:{select:{fromFundId:true,toFundId:true}}}}),
   ]);
+  for(const item of balanceItems){
+    sent.push({fromFundId:item.transfer.fromFundId,accountId:item.accountId,_sum:{amount:item.amount}});
+    received.push({toFundId:item.transfer.toFundId,accountId:item.accountId,_sum:{amount:item.amount}});
+  }
   const grouped=new Map<string,{fundId:string|null;accountId:string;direction:"CREDIT"|"DEBIT";entryStatus:string;openingAt:Date|null;_sum:{amount:bigint};_count:number}>();
   for(const row of [...baseMovements,...allocations.map(a=>({...a,direction:"CREDIT" as const,entryStatus:"POSTED",_min:{occurredAt:null}}))]){
     const key=JSON.stringify([row.fundId,row.accountId,row.direction,row.entryStatus]),old=grouped.get(key);
@@ -72,6 +77,7 @@ export async function fundTotals(client: LedgerClient = db, fundId?: string, bef
         openingAt:own.find(t=>t.entryStatus==="OPENING")?.openingAt??null,
         income,
         expense,
+        fundingIncome: income+transferIn-transferOut+(primary?fund.openingTransferNet:0n),
         transferIn,
         transferOut,
         balance,
@@ -83,6 +89,7 @@ export async function fundTotals(client: LedgerClient = db, fundId?: string, bef
       byAccount,
       openingBalance: byAccount.reduce((n,a)=>n+a.openingBalance,0n),
       income: byAccount.reduce((n, a) => n + a.income, 0n),
+      fundingIncome: byAccount.reduce((n,a)=>n+a.fundingIncome,0n),
       expense: byAccount.reduce((n, a) => n + a.expense, 0n),
       balance: byAccount.reduce((n, a) => n + a.balance, 0n),
       ...splitBalance(byAccount.reduce((n,a)=>n+a.balance,0n)),

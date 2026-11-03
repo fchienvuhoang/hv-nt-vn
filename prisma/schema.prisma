@@ -148,6 +148,7 @@ model Transfer {
   requestKey String @default("")
   planFingerprint String @default("")
   items TransferItem[]
+  balanceItems TransferBalanceItem[]
   id          String   @id @default(cuid())
   requestId   String   @unique
   accountId   String?
@@ -447,4 +448,20 @@ model DailyReportEmail {
   lastError String?
   @@unique([reportDate,email])
   @@index([finishedAt,nextAttemptAt])
+}
+
+// A balance transfer has no original bank transaction to split.
+model TransferBalanceItem {
+ id String @id @default(cuid())
+ transferId String
+ transfer Transfer @relation(fields:[transferId],references:[id],onDelete:Cascade)
+ accountId String
+ accountNumber String
+ amount BigInt
+ sourceBefore BigInt
+ sourceAfter BigInt
+ destinationBefore BigInt
+ destinationAfter BigInt
+ @@unique([transferId,accountId])
+ @@index([accountId])
 }

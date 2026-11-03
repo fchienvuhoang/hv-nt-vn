@@ -1,4 +1,5 @@
 "use client";
+import {PublicAdminRefresh} from "@/components/public-admin-refresh";
 import {PwaAdminReturn} from "@/components/pwa-admin-return";
 import { PublicFundGoal } from "@/components/public-fund-goal";
 import { PublicTransferContent } from "@/components/public-transfer-content";
@@ -37,7 +38,15 @@ export function PublicFundLedger({slug}:{slug:string}) {
     }
     void load();return()=>{alive=false;controller.abort()};
   },[key,slug,direction,search,query.page,month,retry]);
-  useEffect(()=>{if(state.fund)document.title=`${state.fund.code} · ${state.fund.name} - Học viện nguyên thủy Việt Nam`;},[state.fund]);
+  useEffect(()=>{
+    const refresh=()=>{cached.current.clear();setRetry(n=>n+1)};
+    const visible=()=>{if(document.hidden)return;const entry=cached.current.get(key);if(!entry||Date.now()-entry.at>=30000)refresh()};
+    const channel=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("hvntvn-ledger"):null;
+    if(channel)channel.onmessage=event=>{if(event.data==="changed")refresh()};
+    window.addEventListener("focus",visible);document.addEventListener("visibilitychange",visible);
+    return()=>{channel?.close();window.removeEventListener("focus",visible);document.removeEventListener("visibilitychange",visible)};
+  },[key]);
+  useEffect(()=>{if(state.fund)document.title=state.fund.name;},[state.fund]);
   const fund=state.fund,loading=state.key!==key||state.loading,error=state.key===key?state.error:"";
   if(!fund)return <div className="public-site">
     <header className="public-header"><Brand href={base}/><PwaAdminReturn/></header>
@@ -68,7 +77,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             {fund.syncAt
               ? `Đã đồng bộ đầy đủ đến lượt ${dateTime(fund.syncAt)}`
               : "Đang chờ hoàn tất đồng bộ đầu tiên"}
-            <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)}
+            <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)} <PublicAdminRefresh disabled={loading} onRefresh={()=>{cached.current.clear();setRetry(n=>n+1)}}/>
           </div>
         </div>
         {fund.status === "ACTIVE" && <PublicTransferContent code={fund.code}/>}
@@ -80,16 +89,15 @@ export function PublicFundLedger({slug}:{slug:string}) {
         )}
         {fund.isLongTerm&&<div className="public-month-picker">Thống kê tháng {fund.month.slice(5,7)}/{fund.month.slice(0,4)} · Tháng hiện tại</div>}
         <PublicFundGoal goalAmount={fund.goalAmount} income={fund.goalIncome}/>
-        {fund.isLongTerm?<div className="metrics">
-          <Metric label="Dư / thiếu tháng trước chuyển sang" value={fund.carryBalance} note="Giữ nguyên cả số dư dương và âm"/>
-          <Metric label="Hùn phước trong tháng" value={fund.income} note="Chỉ các khoản ghi nhận trong tháng" accent/>
+        {fund.isLongTerm?<div className="metrics public-longterm-metrics">
+          <Metric label="Tổng hùn phước" value={fund.goalIncome} note="Đã tính phần chuyển sang và điều chuyển ròng" accent/>
           <Metric label="Đã chi trong tháng" value={fund.expense} note="Chỉ các khoản chi trong tháng"/>
           <Metric label="Số dư cuối tháng" value={fund.balance} note="Đầu kỳ + hùn phước − chi + điều chuyển ròng"/>
         </div>:<div className="metrics">
           <Metric
             label="Tổng hùn phước"
-            value={fund.income}
-            note="Gồm các khoản nhập Excel và hùn phước đã ghi nhận"
+            value={fund.goalIncome}
+            note="Đã tính các khoản nhập Excel và điều chuyển ròng giữa thiện pháp"
             accent
           />
           <Metric
@@ -104,6 +112,8 @@ export function PublicFundLedger({slug}:{slug:string}) {
           />
           <Metric label="Chi vượt quỹ" value={fund.excessExpense} note="Phần chi vượt khoản hùn phước đã ghi nhận" />
         </div>}
+        {fund.isLongTerm&&<p className="public-carry-note">Dư / thiếu tháng trước chuyển sang: <strong>{vnd(fund.carryBalance)}</strong></p>}
+        {(BigInt(fund.receivedAllocation)>0n||BigInt(fund.sentAllocation)>0n)&&<div className="public-allocation-summary"><span>Hùn phước ban đầu: <b>{vnd(fund.originalIncome)}</b></span><span>Nhận điều chuyển ròng: <b>+{vnd(fund.receivedAllocation)}</b></span><span>Đã chuyển đi ròng: <b>−{vnd(fund.sentAllocation)}</b></span><strong>Tổng hùn phước sau điều chuyển: {vnd(fund.goalIncome)}</strong><small>Danh sách bên dưới giữ nguyên các khoản hùn phước gốc. Phần điều chuyển được ghi riêng, không cộng lặp vào tổng.</small></div>}
         {!fund.isLongTerm&&BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
         {!fund.isLongTerm&&BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
         <div className="public-ledger-card">
@@ -149,11 +159,11 @@ export function PublicFundLedger({slug}:{slug:string}) {
             <Empty
               title={
                 search ? "Không tìm thấy giao dịch phù hợp" : direction === "CREDIT"
-                  ? "Chưa có khoản hùn phước mới"
+                  ? "Chưa có giao dịch hùn phước gốc"
                   : "Chưa có khoản chi mới"
               }
             >
-              {search?"Hãy thử tên, nội dung hoặc 3 số cuối điện thoại. Các tổng phía trên theo kỳ đang hiển thị.":"Số liệu lịch sử đã được tính trong các tổng ở trên."}
+              {search?"Hãy thử tên, nội dung hoặc 3 số cuối điện thoại. Các tổng phía trên theo kỳ đang hiển thị.":direction==="CREDIT"&&BigInt(fund.receivedAllocation)>0n?"Tiền nhận điều chuyển được ghi riêng ở mục Điều chuyển nội bộ, đã tính vào tổng phía trên.":"Số liệu lịch sử đã được tính trong các tổng ở trên."}
             </Empty>
           ) : (
             <div className="table-scroll table-card">
@@ -166,12 +176,12 @@ export function PublicFundLedger({slug}:{slug:string}) {
                       Nội dung{" "}
                       {direction === "CREDIT" ? "hùn phước" : "khoản chi"}
                     </th>
-                    <th className="align-right">Số tiền</th>
+                    <th className="align-right">Số tiền gốc</th>
                   </tr>
                 </thead>
                 <tbody>
                   {fund.rows.map((r,index) => (
-                    <tr key={r.id}>
+                    <tr key={r.id} >
                       <td className="public-row-number">{(fund.page-1)*PUBLIC_PAGE_SIZE+index+1}</td>
                       <td className="nowrap">{r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.at)}<small>TK {accountLabel(r.account)}</small></td>
                       <td>
@@ -190,6 +200,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot><tr><th colSpan={3} scope="row">Tổng giao dịch gốc trên trang này</th><td className="money align-right nowrap">{vnd(fund.rows.reduce((sum,r)=>sum+BigInt(r.amount),0n))}</td></tr></tfoot>
               </table>
             </div>
           )}
