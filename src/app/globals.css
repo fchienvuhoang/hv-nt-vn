@@ -4612,3 +4612,8 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
  .fund-list-scroll.table-card .table-actions { gap: 5px; }
  .fund-list-scroll.table-card .table-actions .button { min-height: 32px; padding: 4px 8px; font-size: 11px; }
 }
+
+.app-startup-loading { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom)); background: #faf7f1; color: #7b3040; text-align: center; }
+.app-startup-loading > img { border-radius: 16px; }
+.app-startup-loading > strong { max-width: 300px; font-size: 18px; line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .app-startup-loading .app-loading-spinner { animation: none; } }

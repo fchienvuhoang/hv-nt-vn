@@ -1,4 +1,5 @@
 import {SITE_ORIGIN} from "@/lib/site-url";
+import {pwaStartupImages} from "@/lib/pwa-splash";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
     default: "Học viện nguyên thủy Việt Nam",
     template: "%s · Học viện nguyên thủy Việt Nam",
   },
-  appleWebApp: {capable:true, title:"hvntvn", statusBarStyle:"default"},
+  appleWebApp: {capable:true, title:"hvntvn", statusBarStyle:"default",startupImage:pwaStartupImages},
   description:
     "Theo dõi hùn phước, thu chi và điều chuyển thiện pháp của Học Viện Nguyên Thủy Việt Nam.",
   icons: {
