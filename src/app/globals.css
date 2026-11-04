@@ -4617,3 +4617,20 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
 .app-startup-loading > img { border-radius: 16px; }
 .app-startup-loading > strong { max-width: 300px; font-size: 18px; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { .app-startup-loading .app-loading-spinner { animation: none; } }
+
+/* Safari date controls must not set the minimum width of mobile filter columns. */
+@media (max-width: 680px) {
+ .transaction-sheet .filter-bar { width: 100%; min-width: 0; max-width: 100%; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px 8px; }
+ .transaction-sheet .filter-bar label,
+ .transaction-sheet .filter-bar label:first-of-type,
+ .transaction-sheet .filter-bar label:not(:first-of-type) { min-width: 0; max-width: 100%; }
+ .transaction-sheet .filter-bar :is(input,select) { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; height: 38px; min-height: 38px; font-size: 16px; }
+ .transaction-sheet .filter-bar input[type="date"] { appearance: none; -webkit-appearance: none; min-inline-size: 0; }
+ .transaction-sheet .filter-bar input[type="date"]::-webkit-date-and-time-value { min-width: 0; text-align: left; }
+ .transaction-sheet .filter-bar > .button { grid-column: 1 / -1; width: 100%; min-width: 0; max-width: 100%; min-height: 36px; height: auto; justify-content: center; }
+ .transaction-sheet .sheet-bulk-actions { display: grid; width: 100%; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px 8px; }
+ .transaction-sheet .sheet-bulk-actions > :is(div,label) { grid-column: 1 / -1; min-width: 0; max-width: 100%; }
+ .transaction-sheet .sheet-bulk-actions :is(input,select) { min-width: 0; max-width: 100%; font-size: 16px; min-height: 38px; height: 38px; }
+ .transaction-sheet .sheet-bulk-actions > .button { min-width: 0; max-width: 100%; white-space: normal; min-height: 36px; }
+ .transaction-sheet .sheet-record-count > * { min-width: 0; overflow-wrap: anywhere; }
+}
