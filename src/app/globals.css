@@ -4659,3 +4659,19 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
  .fund-list-scroll.table-card .fund-goal-note { display: flex; font-size: 10px; margin-top: 4px; padding: 2px 5px; }
  .fund-list-scroll.table-card .fund-goal-note b { font-size: 13px; }
 }
+
+.fund-funding-progress { min-width: 150px; margin-top: 5px; white-space: normal; font-size: 11px; line-height: 1.3; font-weight: 400; }
+.fund-funding-progress > div { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
+.fund-funding-progress span { color: #754521; }
+.fund-funding-progress b { font-weight: 700; white-space: nowrap; }
+.fund-funding-progress strong { color: #3f6538; font-weight: 800; white-space: nowrap; }
+.fund-funding-progress progress { display: block; appearance: none; width: 100%; height: 5px; margin: 4px 0 0; border: 0; border-radius: 5px; overflow: hidden; background: #e8dfd1; accent-color: #52764b; }
+.fund-funding-progress progress::-webkit-progress-bar { background: #e8dfd1; border-radius: 5px; }
+.fund-funding-progress progress::-webkit-progress-value { background: #52764b; border-radius: 5px; }
+.fund-funding-progress progress::-moz-progress-bar { background: #52764b; border-radius: 5px; }
+@media (max-width: 680px) {
+ .fund-funding-progress { min-width: 0; margin-top: 4px; font-size: 10px; }
+ .fund-funding-progress > div { flex-wrap: wrap; gap: 2px 5px; }
+ .fund-funding-progress strong { margin-left: auto; }
+ .fund-funding-progress progress { height: 4px; margin-top: 3px; }
+}

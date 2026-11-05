@@ -21,6 +21,16 @@ import type { AdminBootstrap } from "@/lib/admin-read-model";
 import { Status, Empty } from "@/components/ui";
 import { vnd, fundUsesAccount } from "@/lib/domain";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
+function FundingProgress({ income, goal }: { income: bigint; goal: bigint | null }) {
+  if (goal === null || goal <= 0n) return null;
+  const percentage = Number((income > 0n ? income : 0n) * 1000n / goal) / 10;
+  const label = `${percentage.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`;
+  return <div className="fund-funding-progress">
+    <div><span>Mục tiêu: <b>{vnd(goal)}</b></span><strong>{label}</strong></div>
+    <progress max={100} value={Math.min(100, percentage)} aria-label="Tiến độ thành tựu" aria-valuetext={label}/>
+  </div>;
+}
+
 export default function Funds({ params = {},bootstrap }: { params?: AdminParams;bootstrap?:AdminBootstrap }) {
   const toast=useToast();
   async function copyPublicLink(slug:string){
@@ -149,9 +159,6 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                         <h3 className="table-fund-name" title={`${f.code} · ${f.name}${f.keywords.length ? ` (Từ khóa: ${f.keywords.join(" · ")})` : ""}`}>{f.name}</h3>
                       </div>
                       {f.keywords.length > 0 && <div className="fund-aliases" aria-label="Mã phụ và từ khóa">{f.keywords.map(keyword=><span key={keyword}>{keyword}</span>)}</div>}
-                      {f.goalAmount != null && <div className="fund-context">
-                        {f.goalAmount != null && <div className="fund-goal-note"><span>Mục tiêu thành tựu:</span> <b>{vnd(f.goalAmount)}</b></div>}
-                      </div>}
                     </td>
                     <td className="nowrap">
                       <span className="account-number">
@@ -171,6 +178,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </td>
                     <td data-label="Hùn phước" className="money align-right nowrap">
                       {vnd(f.fundingIncome)}
+                      <FundingProgress income={f.fundingIncome} goal={f.goalAmount}/>
                       {(f.transferIn!==0n||f.transferOut!==0n)&&<small>Đã tính điều chuyển ròng</small>}
                       {f.adminNote && <div className="fund-income-note"><strong>Ghi chú:</strong> {f.adminNote}</div>}
                     </td>
