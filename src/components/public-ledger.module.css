@@ -82,3 +82,43 @@
   :global(.public-compact) .ledger :global(.public-transfer-table .transfer-date) { font-size: 11px; }
   :global(.public-compact) .ledger :global(.public-transfer-table .transfer-reason) { font-size: 12px; }
 }
+
+/* Footer cells must not inherit the header's fixed column widths or padding. */
+:global(.public-compact) .ledger :global(.table-card .public-ledger-table tfoot tr > th:first-child),
+:global(.public-compact) .ledger :global(.table-card .public-ledger-table tfoot tr > td:last-child) {
+  width: auto;
+  padding: 16px;
+  background: #edf4ef;
+  border: 0;
+  border-top: 1px solid #dce7df;
+  line-height: 1.5;
+}
+:global(.public-compact) .ledger :global(.pagination) { padding-top: 14px; gap: 12px; }
+:global(.public-compact) .ledger :global(.pagination .button) { min-height: 36px; border-radius: 8px; }
+:global(.public-compact) .ledger :global(.pagination .pagination-number.selected) { background: #254d3b; border-color: #254d3b; color: #fff; }
+@media (max-width: 680px) {
+  :global(.public-compact) .ledger :global(.public-ledger-table tfoot tr) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 12px;
+  }
+  :global(.public-compact) .ledger :global(.table-card .public-ledger-table tfoot tr > th:first-child),
+  :global(.public-compact) .ledger :global(.table-card .public-ledger-table tfoot tr > td:last-child) {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  :global(.public-compact) .ledger :global(.table-card .public-ledger-table tfoot tr > th:first-child) {
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 11px;
+  }
+  :global(.public-compact) .ledger :global(.pagination) { flex-direction: column; align-items: stretch; gap: 12px; }
+  :global(.public-compact) .ledger :global(.pagination > div) { justify-content: flex-end; gap: 6px; }
+  :global(.public-compact) .ledger :global(.pagination .button) { min-height: 38px; min-width: 38px; padding: 8px 12px; }
+}

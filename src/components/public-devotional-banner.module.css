@@ -68,12 +68,12 @@
     aspect-ratio: auto;
     -webkit-mask-image: none;
     mask-image: none;
-    filter: blur(.2px);
+    filter: none;
     background-size: 660px 440px;
     background-position: calc(100% + 130px) top;
-    opacity: .8;
+    opacity: 1;
   }
-  .copy::after { background: linear-gradient(90deg, #fffaf0e6, #fffaf099 60%, #fffaf052); }
+  .copy::after { background: linear-gradient(90deg, #fffaf0e6 0%, #fffaf080 50%, #fffaf033 75%, #fffaf014 100%); }
   .copy :global(h1) { font-size: 29px; padding-left: 11px; }
   .copy .blessing { margin-top: 12px; }
 }
