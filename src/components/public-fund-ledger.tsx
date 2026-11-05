@@ -1,4 +1,6 @@
 "use client";
+import styles from "./public-ledger.module.css";
+import { PublicDevotionalBanner } from "@/components/public-devotional-banner";
 import {PublicAdminRefresh} from "@/components/public-admin-refresh";
 import {PwaAdminReturn} from "@/components/pwa-admin-return";
 import { PublicFundGoal } from "@/components/public-fund-goal";
@@ -51,9 +53,9 @@ export function PublicFundLedger({slug}:{slug:string}) {
   if(!fund)return <div className="public-site">
     <header className="public-header"><Brand href={base}/><PwaAdminReturn/></header>
     <main className="public-detail public-compact" aria-busy={loading}>
-      <div className="fund-intro"><h1>Sao kê thiện pháp</h1></div>
+      <PublicDevotionalBanner><div className="fund-intro"><h1>Sao kê thiện pháp</h1></div></PublicDevotionalBanner>
       <div className="metrics">{["Tổng hùn phước","Tổng chi","Số dư khả dụng","Chi vượt quỹ"].map(label=><div className="metric" key={label}><span>{label}</span><strong aria-label="Đang tải">—</strong></div>)}</div>
-      <div className="public-ledger-card"><Section title="Danh sách hùn phước & khoản chi" note="Số điện thoại được che, giữ 3 số cuối để đối chiếu.">
+      <div className={`public-ledger-card ${styles.ledger}`}><Section title="Danh sách hùn phước & khoản chi" note="Số điện thoại được che, giữ 3 số cuối để đối chiếu.">
         {error?<div className="notice danger" role="alert">{error}<button className="button subtle" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:<LoadingIndicator label="Đang tải số liệu và giao dịch…" className="public-data-status"/>}
       </Section></div>
     </main>
@@ -66,7 +68,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
         <PwaAdminReturn/>
       </header>
       <main className="public-detail public-compact">
-        <div className="fund-intro">
+        <PublicDevotionalBanner><div className="fund-intro">
           <h1>{fund.name}</h1>
           <div className="intro-meta">
             <Status status={fund.status} />
@@ -80,6 +82,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)} <PublicAdminRefresh disabled={loading} onRefresh={()=>{cached.current.clear();setRetry(n=>n+1)}}/>
           </div>
         </div>
+        </PublicDevotionalBanner>
         {fund.status === "ACTIVE" && <PublicTransferContent code={fund.code}/>}
         {fund.pendingImports > 0 && (
           <div className="notice">
@@ -116,7 +119,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
         {(BigInt(fund.receivedAllocation)>0n||BigInt(fund.sentAllocation)>0n)&&<div className="public-allocation-summary"><span>Hùn phước ban đầu: <b>{vnd(fund.originalIncome)}</b></span><span>Nhận điều chuyển ròng: <b>+{vnd(fund.receivedAllocation)}</b></span><span>Đã chuyển đi ròng: <b>−{vnd(fund.sentAllocation)}</b></span><strong>Tổng hùn phước sau điều chuyển: {vnd(fund.goalIncome)}</strong><small>Danh sách bên dưới giữ nguyên các khoản hùn phước gốc. Phần điều chuyển được ghi riêng, không cộng lặp vào tổng.</small></div>}
         {!fund.isLongTerm&&BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
         {!fund.isLongTerm&&BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
-        <div className="public-ledger-card">
+        <div className={`public-ledger-card ${styles.ledger}`}>
         <Section
           title="Danh sách hùn phước & khoản chi"
           note="Số điện thoại được che, giữ 3 số cuối để đối chiếu."
@@ -169,16 +172,16 @@ export function PublicFundLedger({slug}:{slug:string}) {
             </Empty>
           ) : (
             <div className="table-scroll table-card">
-              <table className="public-ledger-table">
+              <table className="public-ledger-table" aria-label="Sao kê giao dịch thiện pháp">
                 <thead>
                   <tr>
-                    <th className="public-row-number">#</th>
-                    <th>Thời gian</th>
-                    <th>
+                    <th scope="col" className="public-row-number">#</th>
+                    <th scope="col">Thời gian</th>
+                    <th scope="col">
                       Nội dung{" "}
                       {direction === "CREDIT" ? "hùn phước" : "khoản chi"}
                     </th>
-                    <th className="align-right">Số tiền gốc</th>
+                    <th scope="col" className="align-right">Số tiền gốc</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -227,7 +230,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
               <table className="public-transfer-table">
                 <thead>
                   <tr>
-                    <th>Thời gian</th>
+                    <th scope="col">Thời gian</th>
                     <th>Từ → đến</th>
                     <th>Lý do</th>
                     <th className="align-right">Số tiền</th>

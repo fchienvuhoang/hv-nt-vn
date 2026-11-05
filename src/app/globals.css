@@ -4675,3 +4675,32 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
  .fund-funding-progress strong { margin-left: auto; }
  .fund-funding-progress progress { height: 4px; margin-top: 3px; }
 }
+
+.public-site:has(.public-compact) { background: #fbf7ef; }
+
+/* A quiet, opaque masthead keeps the academy identity clear above the artwork. */
+.public-site:has(.public-compact) > .public-header {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 7px max(24px, calc((100% - 1472px) / 2));
+  background: #fcf8f1;
+  border-bottom: 1px solid #e5dac7;
+  box-shadow: 0 2px 10px #59462706;
+}
+.public-site:has(.public-compact) > .public-header .brand {
+  color: #344e42;
+}
+.public-site:has(.public-compact) > .public-header .public-directory-header-note {
+  max-width: 420px;
+  color: #81735e;
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: right;
+  font-style: italic;
+}
+@media (max-width: 640px) {
+  .public-site:has(.public-compact) > .public-header {
+    padding: calc(6px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px));
+  }
+}
