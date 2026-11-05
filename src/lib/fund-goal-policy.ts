@@ -3,8 +3,13 @@ export function goalAchievementKey(fund: { id: string; status: string; goalAmoun
     ? `fund-goal:${fund.id}:${fund.goalAmount}` : null;
 }
 
+// Login authorization remains independent from report and achievement email delivery.
+export function receivesAdminEmail(email: string) {
+  return email.trim().toLowerCase() !== "thuyjeans@gmail.com";
+}
+
 export function adminNotificationEmails(value: string) {
-  return [...new Set(value.split(",").map(email => email.trim().toLowerCase()).filter(Boolean))];
+  return [...new Set(value.split(",").map(email => email.trim().toLowerCase()).filter(email => Boolean(email) && receivesAdminEmail(email)))];
 }
 
 export const GOAL_EMAIL_MILESTONES = [80, 90, 95, 100] as const;

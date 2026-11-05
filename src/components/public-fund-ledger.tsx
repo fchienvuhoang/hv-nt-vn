@@ -122,18 +122,20 @@ export function PublicFundLedger({slug}:{slug:string}) {
           note="Số điện thoại được che, giữ 3 số cuối để đối chiếu."
         >
           <div className="public-ledger-tools">
-          <div className="tabs">
+          <div className="tabs public-ledger-tabs">
             <Link
+              aria-current={direction === "CREDIT" ? "page" : undefined}
               className={direction === "CREDIT" ? "selected" : ""}
               href={`${base}?${new URLSearchParams({type:"CREDIT",...(fund.month?{month:fund.month}:{}),...(search?{q:search}:{})})}`}
             >
-              Khoản hùn phước
+              Hùn phước
             </Link>
             <Link
+              aria-current={direction === "DEBIT" ? "page" : undefined}
               className={direction === "DEBIT" ? "selected" : ""}
               href={`${base}?${new URLSearchParams({type:"DEBIT",...(fund.month?{month:fund.month}:{}),...(search?{q:search}:{})})}`}
             >
-              Khoản chi
+              Chi / Cúng dường
             </Link>
           </div>
           <form action={base} method="get" key={key} onSubmit={event=>{event.preventDefault();const params=new URLSearchParams();for(const [name,value] of new FormData(event.currentTarget))if(typeof value==="string"&&value)params.set(name,value);publicNavigate(`${base}?${params}`)}} className="public-search" role="search">
@@ -222,7 +224,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             </p>
           ) : (
             <div className="table-scroll table-card">
-              <table>
+              <table className="public-transfer-table">
                 <thead>
                   <tr>
                     <th>Thời gian</th>
@@ -234,13 +236,13 @@ export function PublicFundLedger({slug}:{slug:string}) {
                 <tbody>
                   {fund.transfers.map((t) => (
                     <tr key={t.id}>
-                      <td className="nowrap">{dateTime(t.at)}</td>
-                      <td className="code nowrap">
+                      <td className="transfer-date">{dateTime(t.at)}</td>
+                      <td className="code transfer-route">
                         {t.from} → {t.to}
                         {t.reversal && <small>Bút toán đảo</small>}
                       </td>
-                      <td>{t.reason}</td>
-                      <td className="align-right money nowrap">
+                      <td className="transfer-reason">{t.reason}</td>
+                      <td className="align-right money nowrap transfer-amount">
                         {vnd(t.amount)}
                       </td>
                     </tr>

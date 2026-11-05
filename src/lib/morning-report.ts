@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { allowedAdmin } from "./admin-allowlist";
-import { adminNotificationEmails, morningReportDate } from "./fund-goal-policy";
+import { receivesAdminEmail, adminNotificationEmails, morningReportDate } from "./fund-goal-policy";
 import { emailConfigured, sendNotificationEmail } from "./email-service";
 import { emailLogoAttachments } from "./email-logo";
 import { loadFundReportData } from "./fund-report-data";
@@ -36,8 +36,8 @@ export async function dispatchMorningReports(now = new Date()) {
     const rows = await db.dailyReportEmail.findMany({ where: { finishedAt: null, attempts: { lt: 6 }, nextAttemptAt: { lte: new Date() } }, include: { report: true }, orderBy: [{ nextAttemptAt: "asc" }, { id: "asc" }], take: 8 });
     const attachments = rows.length ? await emailLogoAttachments() : [];
     for (const row of rows) {
-      if (!allowedAdmin(row.email)) {
-        await db.dailyReportEmail.update({ where: { id: row.id }, data: { finishedAt: new Date(), lastError: "Đã gỡ quyền quản trị" } });
+      if (!allowedAdmin(row.email) || !receivesAdminEmail(row.email)) {
+        await db.dailyReportEmail.update({ where: { id: row.id }, data: { finishedAt: new Date(), lastError: "Không nhận email quản trị" } });
         continue;
       }
       if (row.firstAttemptAt && Date.now() - row.firstAttemptAt.getTime() > 23 * 3600000) {

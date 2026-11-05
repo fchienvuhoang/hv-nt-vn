@@ -4634,3 +4634,28 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
  .transaction-sheet .sheet-bulk-actions > .button { min-width: 0; max-width: 100%; white-space: normal; min-height: 36px; }
  .transaction-sheet .sheet-record-count > * { min-width: 0; overflow-wrap: anywhere; }
 }
+
+/* Public ledger controls remain prominent without increasing section height. */
+.public-compact .public-ledger-tabs { gap: 3px; padding: 3px; border: 1px solid #d9bf9c; border-radius: 8px; background: #f4e8d7; }
+.public-compact .public-ledger-tabs a { justify-content: center; padding: 6px 12px; border: 0; border-radius: 5px; font-weight: 700; color: #754733; }
+.public-compact .public-ledger-tabs a.selected { background: #7b3040; color: #fff8eb; box-shadow: 0 1px 3px #57202c26; }
+.public-compact .public-ledger-tabs a:focus-visible { outline: 2px solid #b88029; outline-offset: 2px; }
+.public-directory .public-goal-target { padding: 4px 7px; border-radius: 5px; background: #f1dfbc; color: #683b25; }
+.public-directory .public-goal-target > strong { font-size: 20px; font-weight: 800; }
+.fund-list-scroll.table-card .fund-goal-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; width: fit-content; margin-top: 5px; padding: 3px 6px; border: 1px solid #dcc08b; border-radius: 5px; background: #fff1d4; color: #754521; line-height: 1.3; }
+.fund-list-scroll.table-card .fund-goal-note b { font-size: 14px; font-weight: 800; }
+@media (max-width: 680px) {
+ .public-compact .public-ledger-tabs { width: 100%; }
+ .public-compact .public-ledger-tabs a { flex: 1; padding: 6px 8px; font-size: 12px; }
+ .public-compact .public-transfer-table, .public-compact .public-transfer-table tbody { display: block; width: 100%; min-width: 0; }
+ .public-compact .public-transfer-table thead { display: none; }
+ .public-compact .public-transfer-table tbody tr { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 8px; padding: 7px 8px; border-bottom: 1px solid #e5d8c9; }
+ .public-compact .public-transfer-table tbody tr:last-child { border-bottom: 0; }
+ .public-compact .public-transfer-table tbody td { min-width: 0; padding: 0; border: 0; font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; white-space: normal; }
+ .public-compact .public-transfer-table .transfer-route { grid-column: 1; grid-row: 1; font-weight: 700; }
+ .public-compact .public-transfer-table .transfer-amount { grid-column: 2; grid-row: 1; align-self: start; font-size: 12px; white-space: nowrap; }
+ .public-compact .public-transfer-table .transfer-date { grid-column: 1 / -1; grid-row: 2; color: #896f5d; font-size: 10px; }
+ .public-compact .public-transfer-table .transfer-reason { grid-column: 1 / -1; grid-row: 3; }
+ .fund-list-scroll.table-card .fund-goal-note { display: flex; font-size: 10px; margin-top: 4px; padding: 2px 5px; }
+ .fund-list-scroll.table-card .fund-goal-note b { font-size: 13px; }
+}

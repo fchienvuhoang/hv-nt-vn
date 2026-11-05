@@ -5,7 +5,7 @@ import { db } from "./db";
 import { fundTotals } from "./ledger";
 import { enqueuePush, dispatchAdminPushSafely } from "./admin-push";
 import { allowedAdmin } from "./admin-allowlist";
-import { goalAchievementKey, goalEmailMilestone, adminNotificationEmails } from "./fund-goal-policy";
+import { goalAchievementKey, goalEmailMilestone, adminNotificationEmails, receivesAdminEmail } from "./fund-goal-policy";
 import { dispatchMorningReports } from "./morning-report";
 import { vnd } from "./domain";
 import { brandedEmail } from "./email-template";
@@ -45,7 +45,7 @@ export async function dispatchFundGoalEmails() {
     const rows = await db.fundGoalEmail.findMany({ where: { finishedAt: null, attempts: { lt: 6 }, nextAttemptAt: { lte: new Date() } }, include: { achievement: true }, orderBy: { nextAttemptAt: "asc" }, take: 8 });
     const InlinedAttachments = rows.length ? await emailLogoAttachments() : [];
     for (const row of rows) {
-      if (!allowedAdmin(row.email)) {
+      if (!allowedAdmin(row.email) || !receivesAdminEmail(row.email)) {
         await db.fundGoalEmail.update({ where: { id: row.id }, data: { finishedAt: new Date() } });
         continue;
       }

@@ -39,6 +39,7 @@ test("milestones keep exact VND and stay stable across income corrections", () =
 test("achievement recipients reuse unique authorized login emails and push opens funds", () => {
   assert.deepEqual(adminNotificationEmails(" Admin@Example.com, ,admin@example.com, Other@example.com "), ["admin@example.com", "other@example.com"]);
   assert.deepEqual(adminNotificationEmails(""), []);
+  assert.deepEqual(adminNotificationEmails(" THUYJEANS@gmail.com,admin@example.com"), ["admin@example.com"]);
   assert.equal(defaultPushPreferences.fundGoalReached, true);
   assert.equal(pushDestination("fundGoalReached"), "/admin?view=funds");
 });
