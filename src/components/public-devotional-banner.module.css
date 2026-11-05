@@ -71,7 +71,7 @@
     filter: none;
     background-size: 660px 440px;
     background-position: calc(100% + 130px) top;
-    opacity: 1;
+    opacity: .8;
   }
   .copy::after { background: linear-gradient(90deg, #fffaf0e6 0%, #fffaf080 50%, #fffaf033 75%, #fffaf014 100%); }
   .copy :global(h1) { font-size: 29px; padding-left: 11px; }
@@ -82,3 +82,25 @@
 .blessing cite { display: block; margin-top: 7px; font-size: 10px; font-weight: 500; font-style: normal; line-height: 1.6; }
 .blessing a { text-decoration: underline; text-underline-offset: 3px; }
 .blessing a:focus-visible { outline: 2px solid #837047; outline-offset: 3px; }
+
+/* Protect only the title's lines, leaving the artwork around them visible. */
+.copy :global(h1 > span),
+.blessing p > span {
+  background: #fffaf0ed;
+  padding: .06em .18em;
+  border-radius: 5px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  text-shadow: 0 1px 0 #fffaf0;
+}
+
+.copy :global(.intro-meta .badge > svg),
+.copy :global(.public-update > svg) {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.copy :global(.public-update) {
+  padding-left: 6px;
+  gap: 4px;
+}

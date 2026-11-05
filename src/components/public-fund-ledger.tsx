@@ -53,7 +53,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
   if(!fund)return <div className="public-site">
     <header className="public-header"><Brand href={base}/><PwaAdminReturn/></header>
     <main className="public-detail public-compact" aria-busy={loading}>
-      <PublicDevotionalBanner><div className="fund-intro"><h1>Sao kê thiện pháp</h1></div></PublicDevotionalBanner>
+      <PublicDevotionalBanner><div className="fund-intro"><h1><span>Sao kê thiện pháp</span></h1></div></PublicDevotionalBanner>
       <div className="metrics">{["Tổng hùn phước","Tổng chi","Số dư khả dụng","Chi vượt quỹ"].map(label=><div className="metric" key={label}><span>{label}</span><strong aria-label="Đang tải">—</strong></div>)}</div>
       <div className={`public-ledger-card ${styles.ledger}`}><Section title="Danh sách hùn phước & khoản chi" note="Số điện thoại được che, giữ 3 số cuối để đối chiếu.">
         {error?<div className="notice danger" role="alert">{error}<button className="button subtle" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:<LoadingIndicator label="Đang tải số liệu và giao dịch…" className="public-data-status"/>}
@@ -69,7 +69,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
       </header>
       <main className="public-detail public-compact">
         <PublicDevotionalBanner><div className="fund-intro">
-          <h1>{fund.name}</h1>
+          <h1><span>{fund.name}</span></h1>
           <div className="intro-meta">
             <Status status={fund.status} />
             <span>Tài khoản {accountLabel(fund.account)}</span>
