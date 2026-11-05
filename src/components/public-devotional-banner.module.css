@@ -17,7 +17,7 @@
   border: 1px solid #b9a37d;
   border-radius: 18px;
   background: #fffaf0;
-  box-shadow: 0 8px 32px #5d4b2508;
+  box-shadow: 0 3px 6px #5d4b2529, 0 12px 24px #5d4b2533;
 }
 .copy::before {
   content: "";
@@ -27,7 +27,7 @@
   right: -8px;
   height: 115%;
   aspect-ratio: 3 / 2;
-  background: url("/images/chu-thien-hoi-chung.webp") center / 100% 100% no-repeat;
+  background: url("/images/chu-thien-nam-phia-truoc.webp") center / 100% 100% no-repeat;
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #0003 12%, #0009 25%, #000 42%);
   mask-image: linear-gradient(90deg, transparent 0%, #0003 12%, #0009 25%, #000 42%);
   filter: none;
@@ -83,11 +83,10 @@
 .blessing a { text-decoration: underline; text-underline-offset: 3px; }
 .blessing a:focus-visible { outline: 2px solid #837047; outline-offset: 3px; }
 
-/* Protect only the title's lines, leaving the artwork around them visible. */
-.copy :global(h1 > span),
+/* Keep the quotation highlighted while reserving space for the artwork beside the title. */
 .blessing p > span {
-  background: #fffaf0ed;
-  padding: .06em .18em;
+  background: linear-gradient(90deg, #fffaf0ed 0%, #fffaf0ed calc(100% - 1em), #fffaf099 calc(100% - .35em), #fffaf000 100%);
+  padding: .06em .3em .06em .18em;
   border-radius: 5px;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
@@ -103,4 +102,40 @@
 .copy :global(.public-update) {
   padding-left: 6px;
   gap: 4px;
+}
+
+.banner .copy :global(.fund-intro h1),
+.banner .copy :global(.directory-intro h1) {
+  width: 75%;
+  max-width: 75%;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.copy :global(h1 > span) {
+  background: linear-gradient(90deg, #fffaf0ed 0%, #fffaf0ed calc(100% - 1em), #fffaf099 calc(100% - .35em), #fffaf000 100%);
+  padding: .06em .3em .06em .18em;
+  border-radius: 5px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  text-shadow: 0 1px 2px #fffaf0;
+}
+
+.copy :global(.intro-meta .badge.active) {
+  background: #eaf5e9;
+  color: #276342;
+  border: 1px solid #c3dfc5;
+  font-weight: 650;
+}
+.copy :global(.intro-meta .badge.active > svg) {
+  fill: #31a564;
+  stroke: #278751;
+  border-radius: 50%;
+  animation: active-pulse 1.5s ease-in-out infinite;
+}
+@keyframes active-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 #31a56466; }
+  55% { opacity: .35; box-shadow: 0 0 0 5px #31a56400; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .copy :global(.intro-meta .badge.active > svg) { animation: none; }
 }

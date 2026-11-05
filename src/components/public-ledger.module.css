@@ -122,3 +122,21 @@
   :global(.public-compact) .ledger :global(.pagination > div) { justify-content: flex-end; gap: 6px; }
   :global(.public-compact) .ledger :global(.pagination .button) { min-height: 38px; min-width: 38px; padding: 8px 12px; }
 }
+
+.syncStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #edf1ee;
+  color: #748078;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.syncStatus > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.syncStatus svg { flex-shrink: 0; }
+@media (max-width: 680px) {
+  .syncStatus { flex-direction: column; align-items: flex-start; gap: 8px; }
+}

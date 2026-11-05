@@ -74,13 +74,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             <Status status={fund.status} />
             <span>Tài khoản {accountLabel(fund.account)}</span>
           </div>
-          <div className="public-update">
-            <Clock size={14} />
-            {fund.syncAt
-              ? `Đã đồng bộ đầy đủ đến lượt ${dateTime(fund.syncAt)}`
-              : "Đang chờ hoàn tất đồng bộ đầu tiên"}
-            <span>·</span> Bản hiển thị: {dateTime(fund.generatedAt)} <PublicAdminRefresh disabled={loading} onRefresh={()=>{cached.current.clear();setRetry(n=>n+1)}}/>
-          </div>
+
         </div>
         </PublicDevotionalBanner>
         {fund.status === "ACTIVE" && <PublicTransferContent code={fund.code}/>}
@@ -215,6 +209,13 @@ export function PublicFundLedger({slug}:{slug:string}) {
             base={`${base}?${new URLSearchParams({type:direction,...(fund.month?{month:fund.month}:{}),...(search?{q:search}:{})})}`}
             pageSize={PUBLIC_PAGE_SIZE}
           />
+          <div className={styles.syncStatus}>
+            <span><Clock size={14} aria-hidden="true" />{fund.syncAt
+              ? `Đã đồng bộ đầy đủ đến lượt ${dateTime(fund.syncAt)}`
+              : "Đang chờ hoàn tất đồng bộ đầu tiên"}</span>
+            <span>Bản hiển thị: {dateTime(fund.generatedAt)}</span>
+            <PublicAdminRefresh disabled={loading} onRefresh={()=>{cached.current.clear();setRetry(n=>n+1)}}/>
+          </div>
         </Section>
         </div>
         <div className={`public-ledger-card ${styles.ledger}`}>
