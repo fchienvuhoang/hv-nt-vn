@@ -217,6 +217,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
           />
         </Section>
         </div>
+        <div className={`public-ledger-card ${styles.ledger}`}>
         <Section
           title="Điều chuyển nội bộ"
           note="50 bút toán gần nhất; bao gồm bút toán đảo, không tính thành hùn phước hoặc chi mới."
@@ -227,13 +228,13 @@ export function PublicFundLedger({slug}:{slug:string}) {
             </p>
           ) : (
             <div className="table-scroll table-card">
-              <table className="public-transfer-table">
+              <table className="public-transfer-table" aria-label="Điều chuyển nội bộ giữa các thiện pháp">
                 <thead>
                   <tr>
                     <th scope="col">Thời gian</th>
-                    <th>Từ → đến</th>
-                    <th>Lý do</th>
-                    <th className="align-right">Số tiền</th>
+                    <th scope="col">Từ → đến</th>
+                    <th scope="col">Lý do</th>
+                    <th scope="col" className="align-right">Số tiền</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -255,6 +256,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
             </div>
           )}
         </Section>
+        </div>
         <div className="public-assurance">
           <ShieldCheck size={20} />
           <p>

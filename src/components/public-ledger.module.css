@@ -2,6 +2,7 @@
   border: 1px solid #dce3df;
   border-radius: 16px;
   box-shadow: 0 4px 24px #203e3008;
+  margin-top: 14px;
   margin-bottom: 18px;
 }
 :global(.public-compact) .ledger > :global(.panel) { padding: 22px; }
@@ -18,19 +19,19 @@
 :global(.public-compact) .ledger :global(.public-search-controls .primary) { background: #254d3b; border-color: #254d3b; color: white; }
 :global(.public-compact) .ledger :global(.public-search > small) { color: #728078; font-size: 11px; margin-top: 8px; }
 :global(.public-compact) .ledger :global(.table-scroll) { border: 1px solid #e3e9e5; border-radius: 12px; }
-:global(.public-compact) .ledger :global(.public-ledger-table) { border-collapse: collapse; }
-:global(.public-compact) .ledger :global(.table-card .public-ledger-table th) { padding: 13px 16px; background: #f3f6f4; color: #53675b; border: 0; border-bottom: 1px solid #dfe7e1; font-size: 11px; font-weight: 650; letter-spacing: .2px; }
+:global(.public-compact) .ledger :global(:is(.public-ledger-table, .public-transfer-table)) { border-collapse: collapse; }
+:global(.public-compact) .ledger :global(.table-card :is(.public-ledger-table, .public-transfer-table) th) { padding: 13px 16px; background: #f3f6f4; color: #53675b; border: 0; border-bottom: 1px solid #dfe7e1; font-size: 11px; font-weight: 650; letter-spacing: .2px; }
 :global(.public-compact) .ledger :global(.public-ledger-table th:first-child) { width: 48px; }
 :global(.public-compact) .ledger :global(.public-ledger-table th:nth-child(2)) { width: 165px; }
 :global(.public-compact) .ledger :global(.public-ledger-table th:last-child) { width: 170px; }
-:global(.public-compact) .ledger :global(.table-card .public-ledger-table td) { padding: 14px 16px; border: 0; border-bottom: 1px solid #edf1ee; background: transparent; font-size: 12px; line-height: 1.6; vertical-align: top; }
-:global(.public-compact) .ledger :global(.public-ledger-table tbody tr) { background: #fff; }
-:global(.public-compact) .ledger :global(.public-ledger-table tbody tr:nth-child(even)) { background: #fafcfb; }
-:global(.public-compact) .ledger :global(.public-ledger-table tbody tr:hover) { background: #f0f6f2; }
+:global(.public-compact) .ledger :global(.table-card :is(.public-ledger-table, .public-transfer-table) td) { padding: 14px 16px; border: 0; border-bottom: 1px solid #edf1ee; background: transparent; font-size: 12px; line-height: 1.6; vertical-align: top; }
+:global(.public-compact) .ledger :global(:is(.public-ledger-table, .public-transfer-table) tbody tr) { background: #fff; }
+:global(.public-compact) .ledger :global(:is(.public-ledger-table, .public-transfer-table) tbody tr:nth-child(even)) { background: #fafcfb; }
+:global(.public-compact) .ledger :global(:is(.public-ledger-table, .public-transfer-table) tbody tr:hover) { background: #f0f6f2; }
 :global(.public-compact) .ledger :global(.public-ledger-table .public-row-number) { color: #94a097; font-size: 11px; }
 :global(.public-compact) .ledger :global(.public-ledger-table .narrative) { color: #2e3e34; font-size: 13px; line-height: 1.65; margin: 0; overflow-wrap: anywhere; }
-:global(.public-compact) .ledger :global(.public-ledger-table td small) { display: block; margin-top: 4px; color: #7a877e; font-size: 11px; }
-:global(.public-compact) .ledger :global(.public-ledger-table td.money) { font-size: 14px; font-weight: 750; font-variant-numeric: tabular-nums; }
+:global(.public-compact) .ledger :global(:is(.public-ledger-table, .public-transfer-table) td small) { display: block; margin-top: 4px; color: #7a877e; font-size: 11px; }
+:global(.public-compact) .ledger :global(:is(.public-ledger-table, .public-transfer-table) td.money) { font-size: 14px; font-weight: 750; font-variant-numeric: tabular-nums; }
 :global(.public-compact) .ledger :global(.public-ledger-table td.money.positive) { color: #23724d; }
 :global(.public-compact) .ledger :global(.public-ledger-table td.money.negative) { color: #b24c4c; }
 :global(.public-compact) .ledger :global(.public-ledger-table tfoot th),
@@ -61,4 +62,23 @@
   :global(.public-compact) .ledger :global(.public-ledger-table tfoot tr) { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; padding: 14px 12px; background: #edf4ef; }
   :global(.public-compact) .ledger :global(.public-ledger-table tfoot th),
   :global(.public-compact) .ledger :global(.public-ledger-table tfoot td) { width: auto; padding: 0; border: 0; }
+}
+
+:global(.public-compact) .ledger :global(.public-transfer-table) { width: 100%; table-layout: fixed; color: #2e3e34; }
+:global(.public-compact) .ledger :global(.public-transfer-table th:first-child) { width: 165px; }
+:global(.public-compact) .ledger :global(.public-transfer-table th:nth-child(2)) { width: 25%; }
+:global(.public-compact) .ledger :global(.public-transfer-table th:last-child) { width: 170px; }
+:global(.public-compact) .ledger :global(.public-transfer-table .transfer-route) { color: #254d3b; font-family: inherit; font-weight: 650; overflow-wrap: anywhere; }
+:global(.public-compact) .ledger :global(.public-transfer-table .transfer-reason) { color: #53675b; overflow-wrap: anywhere; }
+:global(.public-compact) .ledger :global(.public-transfer-table .transfer-date) { color: #7a877e; }
+:global(.public-compact) .ledger :global(.public-transfer-table .transfer-route small) { display: table; border: 1px solid #e9d8b2; background: #fff8e8; color: #8a682a; padding: 2px 7px; border-radius: 6px; font-weight: 500; }
+@media (max-width: 680px) {
+  :global(.public-compact) .ledger :global(.public-transfer-table),
+  :global(.public-compact) .ledger :global(.public-transfer-table tbody) { display: block; min-width: 0; width: 100%; }
+  :global(.public-compact) .ledger :global(.public-transfer-table thead) { display: table-header-group; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  :global(.public-compact) .ledger :global(.public-transfer-table tbody tr) { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 12px; padding: 16px 12px; border-bottom: 1px solid #e6ece8; }
+  :global(.public-compact) .ledger :global(.table-card .public-transfer-table tbody td) { padding: 0; border: 0; min-width: 0; white-space: normal; line-height: 1.6; }
+  :global(.public-compact) .ledger :global(.public-transfer-table .transfer-amount) { font-size: 13px; white-space: nowrap; color: #254d3b; }
+  :global(.public-compact) .ledger :global(.public-transfer-table .transfer-date) { font-size: 11px; }
+  :global(.public-compact) .ledger :global(.public-transfer-table .transfer-reason) { font-size: 12px; }
 }

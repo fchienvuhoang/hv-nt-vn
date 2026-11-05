@@ -3578,7 +3578,7 @@ tfoot td {
 .workspace-user .avatar { background: #f4d59a; color: #6b2938; font-weight: 700; }
 .workspace-header-actions .icon-button { color: #ffeac9; }
 .workspace-header-actions .icon-button:hover { background: #ffffff18; color: white; }
-.workspace-nav-wrap { border-top-color: #ffffff20; }
+.workspace-nav-wrap { border-top: 0; }
 .workspace-nav { gap: 5px; }
 .workspace-nav a { color: #fae9d2; font-size: 13px; font-weight: 600; line-height: 18px; padding-top: 7px; padding-bottom: 7px; }
 .workspace-nav a:hover { background: #ffffff16; color: #fff; }
@@ -4703,4 +4703,175 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
   .public-site:has(.public-compact) > .public-header {
     padding: calc(6px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px));
   }
+}
+
+/* Let the page own vertical gestures; the transfer table only scrolls sideways on touch screens. */
+.transfers-history-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  contain: inline-size;
+  scroll-behavior: auto;
+  scroll-snap-type: none;
+  overscroll-behavior-x: none;
+}
+@media (max-width: 680px), (hover: none) and (pointer: coarse) {
+  .transfers-history-scroll.workspace-table {
+    max-height: none;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+  .transfers-history-scroll.table-card table th { position: static; }
+  .transfers-history-scroll.table-card tbody tr:hover { background: inherit; }
+}
+
+/* A continuous, naturally scaled mural across the entire admin header. */
+.workspace-header {
+  background-color: #702d3b;
+  background-image:
+    linear-gradient(90deg, #702d3bcc, #702d3b8c 55%, #702d3ba6),
+    url("/images/chu-thien-hoi-chung.webp");
+  background-size: 100% 100%, auto 150%;
+  background-position: center, center 35%;
+  background-repeat: no-repeat, repeat-x;
+}
+@media (max-width: 680px) {
+  .workspace-header {
+    background-image:
+      linear-gradient(90deg, #702d3bcc, #702d3b99),
+      url("/images/chu-thien-hoi-chung.webp");
+    background-position: center, center 35%;
+    background-size: 100% 100%, auto 125%;
+  }
+}
+
+/* Mobile transfer history reads vertically, without a nested or sideways scroller. */
+@media (max-width: 680px) {
+  .transfers-history-scroll.table-card.workspace-table {
+    overflow: visible;
+    max-height: none;
+    min-height: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    contain: none;
+  }
+  .transfers-history-scroll.table-card > table,
+  .transfers-history-scroll.table-card > table > tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    background: transparent;
+  }
+  .transfers-history-scroll.table-card table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .transfers-history-scroll.table-card table tbody tr,
+  .transfers-history-scroll.table-card table tbody tr:nth-child(even):not(.sheet-review) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #dfd6c9;
+    border-radius: 12px;
+    background: #fffdf9;
+  }
+  .transfers-history-scroll.table-card table tbody td {
+    display: block;
+    position: static;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    background: transparent;
+  }
+  .transfers-history-scroll.table-card table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    color: #8a7a67;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .transfers-history-scroll.table-card table td.money {
+    grid-column: 1;
+    grid-row: 1;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #ede5da;
+    color: #254d3b;
+    font-size: 17px;
+  }
+  .transfers-history-scroll.table-card table td small { line-height: 1.6; }
+  .transfers-history-scroll.table-card table td .button { min-height: 40px; margin: 0 6px 6px 0; }
+}
+
+.transfers-history-scroll td details summary { cursor: pointer; font-size: 11px; color: #776751; }
+@media (max-width: 680px) {
+  .transfers-history-scroll.table-card table tbody td:nth-child(6) { grid-column: 2; grid-row: 1; align-self: center; text-align: right; }
+  .transfers-history-scroll.table-card table tbody td:nth-child(1),
+  .transfers-history-scroll.table-card table tbody td:nth-child(4),
+  .transfers-history-scroll.table-card table tbody td:nth-child(7) { grid-column: 1 / -1; }
+  .transfers-history-scroll.table-card table tbody td:nth-child(5)::before,
+  .transfers-history-scroll.table-card table tbody td:nth-child(6)::before,
+  .transfers-history-scroll.table-card table tbody td:nth-child(8)::before,
+  .transfers-history-scroll.table-card table tbody td:nth-child(9)::before { display: none; }
+  .transfers-history-scroll.table-card table tbody td:nth-child(1)::before { display: inline; margin-right: 6px; }
+  .transfers-history-scroll.table-card table td small { margin-top: 2px; line-height: 1.45; }
+}
+
+@media (max-width: 680px) {
+  .transfers-history-scroll.table-card table tbody td[data-label="Thao tác"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .transfers-history-scroll.table-card table tbody td[data-label="Thao tác"]::before {
+    flex-basis: 100%;
+    margin-bottom: 0;
+  }
+  .transfers-history-scroll.table-card table tbody td[data-label="Thao tác"] > .button {
+    display: inline-flex;
+    flex: 1 1 120px;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    margin: 0;
+    padding: 8px 10px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+}
+
+.transfers-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 130px;
+}
+.transfers-history-scroll.table-card table td .transfers-row-actions > .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin: 0;
+  padding: 8px 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+@media (max-width: 680px) {
+  .transfers-row-actions { width: 100%; min-width: 0; flex-direction: row; flex-wrap: wrap; }
+  .transfers-history-scroll.table-card table td .transfers-row-actions > .button { flex: 1 1 120px; min-height: 40px; }
 }

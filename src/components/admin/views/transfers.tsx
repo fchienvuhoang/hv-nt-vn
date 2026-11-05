@@ -38,7 +38,7 @@ export default function Transfers() {
             Chọn Tạo điều chuyển để phân bổ tiền giữa các thiện pháp.
           </Empty>
         ) : (
-          <div className="table-scroll table-card workspace-table">
+          <div className="table-scroll table-card workspace-table transfers-history-scroll">
             <table>
               <thead>
                 <tr>
@@ -56,21 +56,21 @@ export default function Transfers() {
               <tbody>
                 {transfers.map((t) => (
                   <tr key={t.id}>
-                    <td className="nowrap">{accountLabel(t.account?.number ?? (t.mode==="ALLOCATION"?"Nhiều tài khoản":t.fromFund.account.number))}</td>
+                    <td data-label="Tài khoản" className="nowrap">{accountLabel(t.account?.number ?? (t.mode==="ALLOCATION"?"Nhiều tài khoản":t.fromFund.account.number))}</td>
 
-                    <td>
+                    <td data-label="Thiện pháp nguồn">
                       <span className="code">{t.fromFund.code}</span>
                       <small>{t.fromFund.name}</small>
                     </td>
-                    <td>
+                    <td data-label="Thiện pháp nhận">
                       <span className="code">{t.toFund.code}</span>
                       <small>{t.toFund.name}</small>
                     </td>
-                    <td className="transfer-reason">{t.reason}<small>{t.mode==="ALLOCATION"?"Điều chuyển hùn phước / số dư":"Điều chuyển số dư cũ"}{t.targetIncome!==null?` · Mức thành tựu ${vnd(t.targetIncome)}`:""}</small></td>
-                    <td className="money align-right nowrap">
+                    <td data-label="Lý do" className="transfer-reason">{t.reason}<small>{t.mode==="ALLOCATION"?"Điều chuyển hùn phước / số dư":"Điều chuyển số dư cũ"}{t.targetIncome!==null?` · Mức thành tựu ${vnd(t.targetIncome)}`:""}</small></td>
+                    <td data-label="Số tiền" className="money align-right nowrap">
                       {vnd(t.amount)}
                     </td>
-                    <td>
+                    <td data-label="Trạng thái">
                       {t.reversalOf ? (
                         <span className="badge pending">Bút toán đảo</span>
                       ) : t.reversal ? (
@@ -79,7 +79,7 @@ export default function Transfers() {
                         <span className="badge active">Đã ghi nhận</span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Thao tác"><div className="transfers-row-actions">
                       {t._count.items+t._count.balanceItems>0&&<TransferDetailsModal id={t.id} count={t._count.items+t._count.balanceItems}/>}
                       {!t.reversal && !t.reversalOf && (
                         <Modal
@@ -122,9 +122,9 @@ export default function Transfers() {
                           </ActionForm>
                         </Modal>
                       )}
-                    </td>
-                    <td><RecordAuthor name={t.actorName} id={t.actorId} fallback={t.actor} at={t.createdAt} /></td>
-                    <td>{t.reversal ? <RecordAuthor name={t.reversal.actorName} id={t.reversal.actorId} fallback={t.reversal.actor} at={t.reversal.createdAt} /> : <span className="record-author-unknown">{t.reversalOf ? "Bút toán đảo" : "Chưa đảo"}</span>}</td>
+                    </div></td>
+                    <td data-label="Người tạo"><details><summary>Người tạo</summary><RecordAuthor name={t.actorName} id={t.actorId} fallback={t.actor} at={t.createdAt} /></details></td>
+                    <td data-label="Người đảo"><details><summary>Người đảo</summary>{t.reversal ? <RecordAuthor name={t.reversal.actorName} id={t.reversal.actorId} fallback={t.reversal.actor} at={t.reversal.createdAt} /> : <span className="record-author-unknown">{t.reversalOf ? "Bút toán đảo" : "Chưa đảo"}</span>}</details></td>
                   </tr>
                 ))}
               </tbody>
