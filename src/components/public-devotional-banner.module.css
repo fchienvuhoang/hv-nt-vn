@@ -80,8 +80,6 @@
 
 .blessing p { margin: 0; }
 .blessing cite { display: block; margin-top: 7px; font-size: 10px; font-weight: 500; font-style: normal; line-height: 1.6; }
-.blessing a { text-decoration: underline; text-underline-offset: 3px; }
-.blessing a:focus-visible { outline: 2px solid #837047; outline-offset: 3px; }
 
 /* Keep the quotation highlighted while reserving space for the artwork beside the title. */
 .blessing p > span {
@@ -135,6 +133,23 @@
 @keyframes active-pulse {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 #31a56466; }
   55% { opacity: .35; box-shadow: 0 0 0 5px #31a56400; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .copy :global(.intro-meta .badge.active > svg) { animation: none; }
+}
+
+@media (max-width: 640px) {
+  .copy :global(.intro-meta .badge.active > svg) {
+    width: 16px;
+    height: 16px;
+    fill: #16a34a;
+    stroke: #15803d;
+    animation: mobile-active-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes mobile-active-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 #16a34a80; }
+  50% { opacity: .2; transform: scale(.8); box-shadow: 0 0 0 6px #16a34a00; }
 }
 @media (prefers-reduced-motion: reduce) {
   .copy :global(.intro-meta .badge.active > svg) { animation: none; }
