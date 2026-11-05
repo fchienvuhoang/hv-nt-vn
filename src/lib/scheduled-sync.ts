@@ -8,7 +8,7 @@ import "server-only";
 import { refreshSourceBalances } from "./source-balance-sync";
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
-import { serializable } from "./ledger";
+import { serializable, type LedgerClient } from "./ledger";
 import { localDate, startOfVietnamDay, parseSourceTime } from "./domain";
 import { dueSyncSlots } from "./sync-schedule";
 import { fetchSourcePage } from "./source";
@@ -25,6 +25,7 @@ async function runScheduledSync(now:Date) {
   let quickPages = 0, fullPages = 0, inserted = 0, updated = 0;
   const jobIds: string[] = [];
   const affectedFundIds=new Set<string>();
+  let failedJob: { id: string; progress: Progress } | undefined;
   const deadline = Date.now() + Math.max(15000, Math.min(45000, Number(process.env.SYNC_BUDGET_MS) || 20000));
   const maxPages = Math.max(4, Math.min(30, Number(process.env.SYNC_MAX_PAGES) || 8));
   try {
@@ -52,8 +53,9 @@ async function runScheduledSync(now:Date) {
       if(!from||localDate(from)>=today||account.syncStates.length===2&&account.syncStates.every(s=>s.completedTo&&s.completedTo>=startOfVietnamDay(today)))continue;
       planned.push({slotKey:`HISTORY:${account.id}:${localDate(from)}:${yesterday}`,kind:"HISTORY",targetDate:localDate(from),rangeTo:yesterday,scheduledAt:now,progress:progress.filter(s=>s.accountId===account.id)});
     }
+    const quickSlot=`QUICK:${today}`;
     const openStatuses=["QUEUED","RUNNING","PARTIAL","FAILED"];
-    const jobs=await db.syncJob.findMany({where:{OR:[{status:{in:openStatuses}},{slotKey:{in:planned.map(j=>j.slotKey)}}]},orderBy:[{scheduledAt:"asc"},{id:"asc"}]});
+    const jobs=await db.syncJob.findMany({where:{OR:[{status:{in:openStatuses}},{slotKey:{in:[quickSlot,...planned.map(j=>j.slotKey)]}}]},orderBy:[{scheduledAt:"asc"},{id:"asc"}]});
     const obsolete=jobs.filter(j=>openStatuses.includes(j.status)&&(j.rangeTo??j.targetDate)<BANK_SYNC_MIN_DATE);
     if(obsolete.length){await db.syncJob.updateMany({where:{id:{in:obsolete.map(j=>j.id)}},data:{status:"SUPERSEDED",finishedAt:new Date(),error:"Chặn sao kê trước 01/11/2026: dữ liệu lịch sử nhập Excel"}});for(const job of obsolete)job.status="SUPERSEDED"}
     for(const job of jobs.filter(j=>openStatuses.includes(j.status)&&j.targetDate<BANK_SYNC_MIN_DATE)){
@@ -61,7 +63,11 @@ async function runScheduledSync(now:Date) {
       await db.syncJob.update({where:{id:job.id},data:{targetDate:BANK_SYNC_MIN_DATE,progress:reset}});job.targetDate=BANK_SYNC_MIN_DATE;job.progress=reset;
     }
     const missing=planned.filter(j=>!jobs.some(old=>old.slotKey===j.slotKey));
-    if(!jobs.some(j=>j.kind==="QUICK"&&openStatuses.includes(j.status)))missing.push({slotKey:`QUICK:${invocation.id}`,kind:"QUICK",targetDate:today,scheduledAt:now,progress});
+    const reusableQuick=jobs.find(j=>j.slotKey===quickSlot&&j.status==="SUCCESS");
+    if(!jobs.some(j=>j.kind==="QUICK"&&openStatuses.includes(j.status))){
+      if(reusableQuick){reusableQuick.progress=structuredClone(progress);reusableQuick.status="QUEUED";reusableQuick.scheduledAt=now;}
+      else missing.push({slotKey:quickSlot,kind:"QUICK",targetDate:today,scheduledAt:now,progress});
+    }
     if(missing.length)jobs.push(...await db.syncJob.createManyAndReturn({data:missing,skipDuplicates:true}));
     const queued=jobs.filter(j=>openStatuses.includes(j.status)).sort((a,b)=>a.scheduledAt.getTime()-b.scheduledAt.getTime()||a.id.localeCompare(b.id));
     const quick=queued.find(j=>j.kind==="QUICK"),full=queued.find(j=>["FULL_DAY","PREVIOUS_DAY"].includes(j.kind))??queued.find(j=>j.kind==="HISTORY");
@@ -74,7 +80,38 @@ async function runScheduledSync(now:Date) {
       jobIds.push(job.id);
       invocation.jobIds=[...jobIds];
       const work = job.progress as unknown as Progress;
-      await db.syncJob.update({ where: { id: job.id }, data: { status: "RUNNING", startedAt: job.startedAt ?? new Date(), lastCalledAt: new Date(), calls: { increment: 1 }, error: null } });
+      failedJob={id:job.id,progress:structuredClone(work)};
+      let recordedCall=false, pendingPages=0;
+      let persistedWork=JSON.stringify(work);
+      const pendingStates: {accountId:string;direction:string;successAt:Date|null;completedTo:Date|null}[]=[];
+      // Cache-only pages contain no money writes: checkpoint them together, without a transaction.
+      // For new/changed money this same checkpoint runs inside the ingest transaction.
+      const checkpoint=async(client:LedgerClient,pages:number,saved:{inserted:number;updated:number},states:typeof pendingStates)=>{
+        const status=work.every(s=>s.done)?"SUCCESS":"PARTIAL",at=new Date();
+        const recorded=await client.$queryRaw<{count:number}[]>`
+          WITH lease_saved AS (
+            UPDATE "SyncLease" SET "expiresAt"=${new Date(Date.now()+120000)}
+            WHERE id='bank-sync' AND token=${token} AND "expiresAt">${at} RETURNING id
+          ), job_saved AS (
+            UPDATE "SyncJob" AS j SET progress=${JSON.stringify(work)}::jsonb,
+              pages=j.pages+${pages}, inserted=j.inserted+${saved.inserted}, updated=j.updated+${saved.updated},
+              status=${status}, "startedAt"=COALESCE(j."startedAt",${at}), "lastCalledAt"=${at},
+              calls=j.calls+${recordedCall?0:1}, "finishedAt"=${status==="SUCCESS"?at:null}::timestamp, error=NULL
+            WHERE j.id=${job.id} AND EXISTS(SELECT 1 FROM lease_saved) RETURNING j.id
+          ), state_saved AS (
+            INSERT INTO "SyncState" (id,"accountId",direction,"nextPage","lastSuccessAt","completedTo")
+            SELECT s.id,s."accountId",s.direction::"Direction",1,s."successAt",s."completedTo"
+            FROM jsonb_to_recordset(${JSON.stringify(states.map(state=>({...state,id:randomUUID()})))}::jsonb)
+              AS s(id text,"accountId" text,direction text,"successAt" timestamp,"completedTo" timestamp)
+            WHERE EXISTS(SELECT 1 FROM job_saved)
+            ON CONFLICT ("accountId",direction) DO UPDATE SET
+              "lastSuccessAt"=COALESCE(EXCLUDED."lastSuccessAt","SyncState"."lastSuccessAt"),
+              "completedTo"=COALESCE(EXCLUDED."completedTo","SyncState"."completedTo")
+            RETURNING id
+          ) SELECT count(*)::int FROM job_saved`;
+        if(recorded[0]?.count!==1)throw new Error("Lượt đồng bộ đã hết quyền xử lý hoặc không lưu được tiến độ đồng bộ");
+      };
+      const acknowledge=()=>{recordedCall=true;pendingPages=0;pendingStates.length=0;persistedWork=JSON.stringify(work);failedJob={id:job.id,progress:structuredClone(work)};};
       const pageSize = job.kind === "QUICK" ? 20 : 100;
       // One round per job per call: all accounts/directions get equal opportunity.
       // Rotate unfinished streams so a small time budget cannot starve stream 4.
@@ -92,6 +129,13 @@ async function runScheduledSync(now:Date) {
         const items = [...new Map(result.items.map(i => [i.id, i])).values()].filter(i => parseSourceTime(i.transactionTime) >= syncFrom && localDate(parseSourceTime(i.transactionTime)) >= job.targetDate && localDate(parseSourceTime(i.transactionTime)) <= (job.rangeTo ?? job.targetDate));
         const prepared=await prepareBankPage(account.id,items,{useCache:job.kind==="QUICK",now:now.getTime()});
         const previous={page:stream.page,done:stream.done};
+        if(job.kind==="QUICK"&&!prepared.items.length){
+          stream.page=page+1;
+          stream.done=page>=Math.ceil(result.total/pageSize)||(items.length>0&&prepared.knownCount===items.length);
+          pendingPages++;quickPages++;
+          if(stream.done&&job.targetDate===today)pendingStates.push({accountId:account.id,direction:stream.direction,successAt:new Date(),completedTo:null});
+          continue;
+        }
         try {
           const outcome = await serializable(async tx => {
             const saved = await ingestBankPage(tx, account.id, prepared.items, "scheduler");
@@ -101,29 +145,12 @@ async function runScheduledSync(now:Date) {
             stream.page=page+1;stream.done=done;
             const successAt=done&&job.targetDate===today?new Date():null;
             const completedTo=done&&job.kind==="HISTORY"?new Date(startOfVietnamDay(job.rangeTo??job.targetDate).getTime()+86400000):null;
-            // Validate/renew the lease, persist the cursor/counters and touch recency
-            // together. A lost lease rolls back ALL ingested money in this transaction.
-            const recorded=await tx.$queryRaw<{count:number}[]>`
-              WITH lease_saved AS (
-                UPDATE "SyncLease" SET "expiresAt"=${new Date(Date.now()+120000)}
-                WHERE id='bank-sync' AND token=${token} AND "expiresAt">${new Date()} RETURNING id
-              ), job_saved AS (
-                UPDATE "SyncJob" AS j SET progress=${JSON.stringify(work)}::jsonb,
-                  pages=j.pages+1, inserted=j.inserted+${saved.inserted}, updated=j.updated+${saved.updated}
-                WHERE j.id=${job.id} AND EXISTS(SELECT 1 FROM lease_saved) RETURNING j.id
-              ), state_saved AS (
-                INSERT INTO "SyncState" (id,"accountId",direction,"nextPage","lastSuccessAt","completedTo")
-                SELECT ${randomUUID()},${account.id},${stream.direction}::"Direction",1,${successAt}::timestamp,${completedTo}::timestamp
-                WHERE ${!!successAt||!!completedTo} AND EXISTS(SELECT 1 FROM job_saved)
-                ON CONFLICT ("accountId",direction) DO UPDATE SET
-                  "lastSuccessAt"=COALESCE(EXCLUDED."lastSuccessAt","SyncState"."lastSuccessAt"),
-                  "completedTo"=COALESCE(EXCLUDED."completedTo","SyncState"."completedTo")
-                RETURNING id
-              )
-              SELECT count(*)::int FROM job_saved`;
-            if(recorded[0]?.count!==1)throw new Error("Lượt đồng bộ đã hết quyền xử lý hoặc không lưu được tiến độ đồng bộ");
+            const states=[...pendingStates];
+            if(successAt||completedTo)states.push({accountId:account.id,direction:stream.direction,successAt,completedTo});
+            await checkpoint(tx,pendingPages+1,saved,states);
             return saved;
           }, deadline);
+          acknowledge();
           await prepared.committed();
           if (job.kind === "QUICK") quickPages++; else fullPages++;
           inserted += outcome.inserted; updated += outcome.updated;
@@ -132,8 +159,11 @@ async function runScheduledSync(now:Date) {
       }
       const complete = work.every(s => s.done);
       job.status=complete?"SUCCESS":"PARTIAL";
-      if(complete&&job.kind==="QUICK")await db.syncJob.delete({where:{id:job.id}});
-      else await db.syncJob.update({ where: { id: job.id }, data: { progress: work as unknown as Prisma.InputJsonValue, status: complete ? "SUCCESS" : "PARTIAL", finishedAt: complete ? new Date() : null } });
+      if(pendingPages||!recordedCall||persistedWork!==JSON.stringify(work)){
+        await checkpoint(db,pendingPages,{inserted:0,updated:0},pendingStates);
+        acknowledge();
+      }
+      failedJob=undefined;
     }
     const pending = jobs.some(j=>openStatuses.includes(j.status));
     Object.assign(invocation,{status:pending?"PARTIAL":"SUCCESS"});
@@ -142,7 +172,11 @@ async function runScheduledSync(now:Date) {
     const message = error instanceof Error ? error.message.slice(0,500) : "Đồng bộ thất bại";
     Object.assign(invocation,{status:"FAILED",error:message});
     // Preserve cursor; retry the unfinished batch on the next valid webhook.
-    if (jobIds.length) await db.syncJob.updateMany({ where: { id: jobIds.at(-1), status: "RUNNING" }, data: { status: "FAILED", error: message } });
+    if (failedJob) await db.$executeRaw`
+      UPDATE "SyncJob" SET status='FAILED',error=${message},progress=${JSON.stringify(failedJob.progress)}::jsonb
+      WHERE id=${failedJob.id} AND EXISTS(
+        SELECT 1 FROM "SyncLease" WHERE id='bank-sync' AND token=${token} AND "expiresAt">${new Date()}
+      )`;
     await enqueueSyncFailure();
     throw Object.assign(error instanceof Error?error:new Error(message),{affectedFundIds:[...affectedFundIds]});
   } finally {

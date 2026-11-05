@@ -71,5 +71,10 @@ try{
  assert.equal(await db.bankTransaction.count({where:{sourceId:{contains:"lost-lease"}}}),0,"lease check and ingest must be atomic");
  assert.equal(await db.bankTransaction.count(),before);assert.equal((await db.syncLease.findUniqueOrThrow({where:{id:"bank-sync"}})).token,"new-owner");
  globalThis.fetch=upstream;
+ await db.syncLease.deleteMany();
+ const nextDay=new Date(`${localDate(new Date(now.getTime()+86400000))}T10:01:00+07:00`);
+ for(let i=0;i<12;i++)await scheduledSync(nextDay);
+ assert.equal(await db.syncJob.count({where:{kind:"QUICK",slotKey:{startsWith:"QUICK:"}}}),2,"reuse only within the same day; next day starts a fresh quick scan");
+ assert.equal(await db.bankTransaction.count(),375,"new day receipts are ingested without duplicating yesterday");
  console.log("PASS: webhook accounting, overlap skip, 20/100 page sizes, schedule dedup, full-day continuation, retries, expired-lease rollback and no duplicate money");
 }finally{globalThis.fetch=originalFetch;await clean();await db.$disconnect();}
