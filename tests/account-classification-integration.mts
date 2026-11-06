@@ -25,10 +25,22 @@ try{
  const request={requestId:randomUUID(),sourceFundId:null,targetFundId:httb.id,reason:"Kiểm tra tài khoản nhận",rows:[{id:wrong.id,updatedAt:wrong.updatedAt.toISOString()}]};
  await assert.rejects(reassignTransactions(request,"qa"),/tài khoản/);
  assert.equal((await db.bankTransaction.findUniqueOrThrow({where:{id:wrong.id}})).fundId,null);
- await assert.rejects(reassignTransactions({...request,requestId:randomUUID(),targetFundId:shared.id},"qa"),/đúng 1 tài khoản/);
- await reassignTransactions({...request,requestId:randomUUID(),targetFundId:pscd.id},"qa");
- const moved=await db.bankTransaction.findUniqueOrThrow({where:{id:wrong.id}});
- assert.equal(moved.accountId,tram.id);assert.equal(moved.amount,wrong.amount);assert.equal(moved.fundId,pscd.id);assert.equal(moved.assignment,"MANUAL");
+ // Wrong-account flags must not block a shared fund that accepts the receiving account.
+ const alias=await db.bankTransaction.findFirstOrThrow({where:{sourceId:"wrong-alias"}});
+ const reverse=await db.bankTransaction.findFirstOrThrow({where:{sourceId:"reverse-wrong"}});
+ const bulkRows=[wrong,reverse].map(row=>({id:row.id,updatedAt:row.updatedAt.toISOString()}));
+ await assert.rejects(reassignTransactions({...request,requestId:randomUUID(),targetFundId:pscd.id,rows:bulkRows},"qa"),/tài khoản/);
+ assert.equal(await db.bankTransaction.count({where:{id:{in:[wrong.id,reverse.id]},fundId:null}}),2,"mixed-account batch rejects atomically for a single-account target");
+ await reassignTransactions({...request,requestId:randomUUID(),targetFundId:shared.id},"qa");
+ const singleMoved=await db.bankTransaction.findUniqueOrThrow({where:{id:wrong.id}});
+ assert.equal(singleMoved.accountId,tram.id);assert.equal(singleMoved.amount,wrong.amount);assert.equal(singleMoved.fundId,shared.id);assert.equal(singleMoved.assignment,"MANUAL");
+ await reassignTransactions({...request,requestId:randomUUID(),sourceFundId:undefined,targetFundId:shared.id,rows:[singleMoved,reverse].map(row=>({id:row.id,updatedAt:row.updatedAt.toISOString()}))},"qa");
+ for(const original of [wrong,reverse]){
+  const moved=await db.bankTransaction.findUniqueOrThrow({where:{id:original.id}});
+  assert.equal(moved.accountId,original.accountId);assert.equal(moved.amount,original.amount);assert.equal(moved.fundId,shared.id);assert.equal(moved.assignment,"MANUAL");
+ }
+ await reassignTransactions({...request,requestId:randomUUID(),targetFundId:pscd.id,rows:[{id:alias.id,updatedAt:alias.updatedAt.toISOString()}]},"qa");
+ assert.equal((await db.bankTransaction.findUniqueOrThrow({where:{id:alias.id}})).fundId,pscd.id,"matching single-account target remains allowed");
  // Closed funds reject new automatic receipts AND expenses, by code and alias.
  const {fundMembership}=await import("../src/lib/allocation");
  for(const status of ["PAUSED","COMPLETED"] as const){
