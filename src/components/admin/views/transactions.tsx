@@ -1,4 +1,6 @@
 "use client";
+import { FundAssignmentSelect } from "@/components/admin/fund-assignment-select";
+import { fundAssignmentWarning } from "@/lib/fund-assignment-warning";
 import { accountLabel, fundOptionLabel } from "@/lib/account-label";
 import { useRef, useState } from "react";
 import { useToast } from "@/components/toasts";
@@ -44,6 +46,8 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
   function toggleSelection(row:SelectedRow){setSelection(previous=>{const next=new Map(previous.scope===selectionScope?previous.rows:[]);if(next.has(row.id))next.delete(row.id);else next.set(row.id,row);return {scope:selectionScope,rows:next}})}
   async function assignSelected(){
     if(!selected.size||!target||reason.trim().length<5){toast("Chọn thiện pháp và nhập lý do ít nhất 5 ký tự.","error");return}
+    const warning=fundAssignmentWarning(funds.find(f=>f.id===target));
+    if(warning&&!window.confirm(`${warning} Tiếp tục gán?`))return;
     const payload={...(params.pending==="1"?{sourceFundId:null}:params.fund?{sourceFundId:params.fund}:{}),targetFundId:target,reason:reason.trim(),rows:[...selected.values()].map(r=>({id:r.id,updatedAt:r.updatedAt.toISOString()}))};
     const signature=JSON.stringify(payload);if(operation.current?.signature!==signature)operation.current={signature,id:crypto.randomUUID()};
     setBusy(true);
@@ -141,6 +145,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
           <div className="sheet-bulk-totals" aria-live="polite"><strong>Đã chọn {selected.size} giao dịch</strong><span>Thu: <b>{vnd([...selected.values()].filter(r=>r.direction==="CREDIT").reduce((sum,r)=>sum+r.amount,0n))}</b> · Chi: <b>{vnd([...selected.values()].filter(r=>r.direction==="DEBIT").reduce((sum,r)=>sum+r.amount,0n))}</b></span></div>
           {hasWrongAccount&&<div className="notice wrong-account-bulk-notice" role="status"><strong>{wrongAccountRows.length} giao dịch</strong> đã chọn bị đánh dấu <strong>Sai tài khoản nhận</strong> — có thể gán vào thiện pháp nhận nhiều tài khoản hoặc thiện pháp nhận một tài khoản trùng với tài khoản giao dịch. Danh sách bên dưới chỉ hiện thiện pháp hỗ trợ tất cả tài khoản đã chọn.</div>}
           <label>Gán thủ công vào thiện pháp<select value={effectiveTarget} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{eligibleFunds.map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select></label>
+          {fundAssignmentWarning(funds.find(f=>f.id===effectiveTarget))&&<div className="notice" role="status">{fundAssignmentWarning(funds.find(f=>f.id===effectiveTarget))}</div>}
           <label>Lý do chung / ghi chú công khai<input value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000} placeholder="Ví dụ: nội dung thiếu mã thiện pháp"/></label>
           <button type="button" className="button primary small" disabled={!selected.size||!effectiveTarget||reason.trim().length<5||loading} onClick={assignSelected}>{busy?<><LoadingSpinner size={16}/>Đang gán…</>:`Gán ${selected.size} giao dịch`}</button>
           <button type="button" className="button subtle small" disabled={!selected.size} onClick={()=>setSelection({scope:selectionScope,rows:new Map()})}>Bỏ chọn</button>
@@ -226,6 +231,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                           <ActionForm
                             action={assignTransaction}
                             closeOnSuccess
+                            confirm={form=>{const warning=fundAssignmentWarning(funds.find(f=>f.id===form.get("fundId")));return warning?`${warning} Tiếp tục gán?`:"";}}
                             label="Xác nhận gán"
                           >
                             <input
@@ -234,30 +240,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                               value={r.id}
                             />
                             {params.fund&&<input type="hidden" name="sourceFundId" value={params.fund}/>}
-                            <label>
-                              Thiện pháp
-                              <select
-                                name="fundId"
-                                defaultValue={r.fund?.id ?? ""}
-                                required
-                              >
-                                <option value="" disabled>
-                                  Chọn thiện pháp
-                                </option>
-                                {funds
-                                  .filter((f) => fundUsesAccount(f,r.accountId))
-                                  .map((f) => (
-                                    <option key={f.id} value={f.id}>
-                                      {fundOptionLabel(f,accounts)}
-                                      {f.status === "ACTIVE"
-                                        ? ""
-                                        : f.status === "PAUSED"
-                                          ? " (Tạm dừng)"
-                                          : " (Hoàn thành)"}
-                                    </option>
-                                  ))}
-                              </select>
-                            </label>
+                            <FundAssignmentSelect funds={funds.filter(f=>fundUsesAccount(f,r.accountId))} accounts={accounts} initial={r.fund?.id??""}/>
                             <label>
                               Lý do
                               <input

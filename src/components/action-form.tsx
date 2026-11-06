@@ -17,7 +17,7 @@ export function ActionForm({
   children?: React.ReactNode;
   label?: string;
   className?: string;
-  confirm?: string;
+  confirm?: string | ((form: FormData) => string);
   lockAfterSuccess?: boolean;
   closeOnSuccess?: boolean;
 }) {
@@ -38,7 +38,8 @@ export function ActionForm({
       onReset={event => event.preventDefault()}
       aria-busy={pending}
       onSubmit={(event) => {
-        if (confirm && !window.confirm(confirm)) event.preventDefault();
+        const message = typeof confirm === "function" ? confirm(new FormData(event.currentTarget)) : confirm;
+        if (message && !window.confirm(message)) event.preventDefault();
       }}
     >
       <fieldset disabled={pending} className="action-fields">{children}</fieldset>
