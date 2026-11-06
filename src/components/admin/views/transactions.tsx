@@ -225,6 +225,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                           </div>
                           <ActionForm
                             action={assignTransaction}
+                            closeOnSuccess
                             label="Xác nhận gán"
                           >
                             <input

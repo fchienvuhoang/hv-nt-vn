@@ -102,6 +102,7 @@ export default function Transfers() {
                           </div>
                           <ActionForm
                             action={reverseTransfer}
+                            closeOnSuccess
                             label="Xác nhận đảo điều chuyển"
                             confirm="Đảo toàn bộ khoản điều chuyển này?"
                           >

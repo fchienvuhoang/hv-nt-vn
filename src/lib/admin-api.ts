@@ -59,12 +59,19 @@ export function useAdminResource<T>(path:string,ttl=15000,enabled=true,keepPrevi
 export function refreshAdminData(){for(const entry of entries.values())entry.at=0;window.dispatchEvent(new Event("admin:data-changed"));
  if(typeof BroadcastChannel!=="undefined"){const channel=new BroadcastChannel("hvntvn-ledger");channel.postMessage("changed");channel.close();}
 }
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleAdminRefresh() {
+  // Invalidate immediately; notify on the next task so the save caller can close its dialog first.
+  for (const entry of entries.values()) entry.at = 0;
+  if (refreshTimer !== undefined) return;
+  refreshTimer = setTimeout(() => { refreshTimer = undefined; refreshAdminData(); }, 0);
+}
 async function write<T>(path:string,method:string,body:FormData|object,notify=true):Promise<T>{
   try {
   const isForm=body instanceof FormData;
   const result=await adminRequest<T&{error?:string;fieldErrors?:unknown}>(path,{method,body:isForm?body:JSON.stringify(body),headers:isForm?{}:{"Content-Type":"application/json"}});
   if(!result.error&&!result.fieldErrors){
-    if(notify)refreshAdminData();
+    if(notify)scheduleAdminRefresh();
     else for(const [key,entry] of entries)if(key.startsWith("sync?"))entry.at=0;
   }
   return result;

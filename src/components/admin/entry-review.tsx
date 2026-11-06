@@ -47,6 +47,7 @@ export function EntryReview({
       </div>
       <ActionForm
         action={resolveDuplicate}
+        closeOnSuccess
         label="Xác nhận kết quả kiểm tra"
         lockAfterSuccess
       >

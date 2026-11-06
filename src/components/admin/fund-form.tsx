@@ -4,7 +4,7 @@ import { MoneyInput } from "@/components/money-input";
 import { LoadingSpinner } from "@/components/loading-indicator";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import type { ActionState } from "@/app/admin/actions";
-import { useActionToast } from "@/components/toasts";
+import { useToast } from "@/components/toasts";
 import { useCloseModal } from "@/components/modal";
 import { saveFund } from "@/lib/admin-api";
 import { dateTime, fundUsesAccount, vnd } from "@/lib/domain";
@@ -16,10 +16,16 @@ export function FundForm({
   accounts: Pick<BankAccount, "id" | "number" | "label">[];
   fund?: Fund | null;
 }) {
-  const [state, dispatch, pending] = useActionState<ActionState, FormData>(saveFund, {});
-  const locked = pending || !!state.success;
   const closeModal = useCloseModal();
-  useActionToast(state, closeModal);
+  const toast = useToast();
+  const [state, dispatch, pending] = useActionState<ActionState, FormData>(async (previous, form) => {
+    const result = await saveFund(previous, form);
+    if (result.success && !result.error && !result.fieldErrors) closeModal?.();
+    if (result.success) toast(result.success);
+    else if (result.error) toast(result.error, "error");
+    return result;
+  }, {});
+  const locked = pending || !!state.success;
   const formRef = useRef<HTMLFormElement>(null);
   const prefix = useId();
   const [values, setValues] = useState({

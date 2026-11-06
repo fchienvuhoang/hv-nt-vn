@@ -2,7 +2,7 @@
 import { LoadingSpinner } from "@/components/loading-indicator";
 import { useCloseModal } from "@/components/modal";
 import { useActionState } from "react";
-import { useActionToast } from "@/components/toasts";
+import { useToast } from "@/components/toasts";
 import type { ActionState } from "@/app/admin/actions";
 export function ActionForm({
   action,
@@ -21,9 +21,16 @@ export function ActionForm({
   lockAfterSuccess?: boolean;
   closeOnSuccess?: boolean;
 }) {
-  const [state, dispatch, pending] = useActionState(action, {});
   const close=useCloseModal();
-  useActionToast(state,closeOnSuccess?close:undefined);
+  const toast=useToast();
+  const [state, dispatch, pending] = useActionState(async (previous: ActionState, form: FormData) => {
+    const result = await action(previous, form);
+    // Close the native dialog before React commits the action transition or reloads the list.
+    if (closeOnSuccess && result.success && !result.error && !result.fieldErrors) close?.();
+    if (result.success) toast(result.success);
+    else if (result.error) toast(result.error, "error");
+    return result;
+  }, {});
   return (
     <form
       action={dispatch}
