@@ -96,6 +96,8 @@ model TransactionNote {
 }
 
 model BankTransaction {
+  // Original direct split; subsequent internal transfers only change FundAllocation.
+  originalAllocations Json?
   allocations FundAllocation[]
   allocationTransfers TransferItem[]
   notes TransactionNote[]

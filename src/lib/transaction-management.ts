@@ -39,6 +39,13 @@ export async function reassignTransactions(input:BulkReassignment,actor:Actor) {
       :`Quản trị viên đã gán giao dịch vào ${target.code} (${target.name}). Lý do: ${values.reason}`;
     const allocated=rows.filter(r=>r.allocations.length),regular=rows.filter(r=>!r.allocations.length);
     if(allocated.length)await moveShares(tx,allocated.map(row=>({row,from:values.sourceFundId!,to:target.id,amount:fundShare(row,values.sourceFundId!)})),actor);
+    // Manual reassignment edits the initial split only before any internal transfer exists.
+    for(const row of rows.filter(r=>Array.isArray(r.originalAllocations))){
+      if(await tx.transferItem.count({where:{transactionId:row.id}}))continue;
+      const current=await tx.bankTransaction.findUniqueOrThrow({where:{id:row.id},include:{allocations:true}});
+      const shares=current.allocations.length?current.allocations.map(a=>({fundId:a.fundId,amount:a.amount.toString()})):[{fundId:values.targetFundId,amount:row.amount.toString()}];
+      await tx.bankTransaction.update({where:{id:row.id},data:{originalAllocations:shares}});
+    }
     if(regular.length)await tx.bankTransaction.updateMany({where:{id:{in:regular.map(r=>r.id)}},data:{fundId:target.id,assignment:"MANUAL",matchReason:values.reason,...updatedStamp(actor)}});
     const publicText=(row:typeof rows[number])=>values.sourceFundId===undefined?`Quản trị viên đã gán giao dịch từ ${row.fundId?sourceLabels.get(row.fundId)??"thiện pháp cũ":"Chưa phân loại"} sang ${target.code} (${target.name}). Lý do: ${values.reason}`:row.allocations.length&&values.sourceFundId?`Quản trị viên đã điều chuyển phần hùn phước ${vnd(fundShare(row,values.sourceFundId))} từ ${source?.code??"thiện pháp nguồn"} sang ${target.code}, trên giao dịch gốc ${vnd(row.amount)}. Các phần khác của giao dịch được giữ nguyên. Lý do: ${values.reason}`:text;
     await tx.transactionNote.createMany({data:rows.map(row=>({requestId:`${values.requestId}:${row.id}`,transactionId:row.id,text:publicText(row),kind:"REASSIGNMENT",...actorStamp(actor)}))});

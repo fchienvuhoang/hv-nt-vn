@@ -1,4 +1,6 @@
 "use server";
+import { splitTransaction } from "@/lib/transaction-split";
+import type { TransactionSplitInput } from "@/lib/transaction-split-input";
 import { db } from "@/lib/db";
 import { randomUUID } from "node:crypto";
 import { appendTransactionNote, reassignTransactions, fundTransactionList, type BulkReassignment } from "@/lib/transaction-management";
@@ -333,4 +335,11 @@ export async function getLatestReclassification(scope:ReclassificationScope) {
   const actor=await requireAdminActor();
   try { return {run:await latestTabReclassification(scope,actor)}; }
   catch(error) { return {error:importError(error)}; }
+}
+
+export async function splitBankTransaction(input:TransactionSplitInput) {
+  return execute(async actor=>{
+    const result=await splitTransaction(input,actor);
+    return `Đã chia giao dịch cho ${result.count} thiện pháp, giữ nguyên số tiền ngân hàng gốc.`;
+  });
 }

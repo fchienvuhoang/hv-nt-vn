@@ -23,7 +23,7 @@ export async function ingestBankPage(
 ) {
   items=items.filter(i=>allowedBankSyncTime(i.transactionTime));
   if(!items.length)return {inserted:0,updated:0,knownCount:0,affectedFundIds:[] as string[]};
-  const existing=await tx.bankTransaction.findMany({where:{accountId,sourceId:{in:items.map(i=>i.id)}},select:{id:true,sourceId:true,sourceHash:true,fundId:true}});
+  const existing=await tx.bankTransaction.findMany({where:{accountId,sourceId:{in:items.map(i=>i.id)}},select:{id:true,sourceId:true,sourceHash:true,fundId:true,originalAllocations:true,amount:true,direction:true}});
   const fingerprints=new Map(items.map(item=>[item.id,bankSourceFingerprint(item)]));
   const known = new Map(existing.map((row) => [row.sourceId, row]));
   if(items.every(item=>known.get(item.id)?.sourceHash===fingerprints.get(item.id)))return {inserted:0,updated:0,knownCount:existing.length,affectedFundIds:[] as string[]};
@@ -77,14 +77,15 @@ export async function ingestBankPage(
     };
     if (old) {
       const allocated=await tx.fundAllocation.findMany({where:{transactionId:old.id}});
-      if(allocated.length){
+      if(Array.isArray(old.originalAllocations)&&(amount!==old.amount||item.type!==old.direction))throw new Error("Giao dịch đã chia nhiều thiện pháp bị thay đổi số tiền hoặc chiều thu chi tại nguồn; cần kiểm tra lại phân bổ trước khi đồng bộ.");
+      if(allocated.length&&!Array.isArray(old.originalAllocations)){
         if(item.type!=="CREDIT"||!old.fundId)throw new Error("Giao dịch đã tách phân bổ bị đổi chiều; cần đảo các điều chuyển trước khi đồng bộ lại.");
         const fixed=allocated.filter(a=>a.fundId!==old.fundId).reduce((n,a)=>n+a.amount,0n),remainder=amount-fixed;
         if(remainder<0n)throw new Error("Số tiền nguồn mới nhỏ hơn phần đã điều chuyển; cần đảo các điều chuyển của giao dịch trước khi đồng bộ lại.");
         if(remainder>0n)await tx.fundAllocation.upsert({where:{transactionId_fundId:{transactionId:old.id,fundId:old.fundId}},create:{transactionId:old.id,fundId:old.fundId,accountId,amount:remainder},update:{amount:remainder}});
         else await tx.fundAllocation.deleteMany({where:{transactionId:old.id,fundId:old.fundId}});
-        for(const allocation of allocated)affectedFundIds.add(allocation.fundId);
       }
+      for(const allocation of allocated)affectedFundIds.add(allocation.fundId);
       await tx.bankTransaction.update({ where: { id: old.id }, data: values });
       await tx.auditLog.create({
         data: {
@@ -114,6 +115,8 @@ export async function ingestBankPage(
         ? "REVIEW"
         : "POSTED";
     const fundId = match.exact?.fundId ?? automatic.fundId;
+    const originalSplit=match.exact?excel.find(e=>e.id===match.exact?.id)?.originalAllocations:null;
+    if(Array.isArray(originalSplit))for(const share of originalSplit)if(share&&typeof share==='object'&&'fundId' in share&&typeof share.fundId==='string')affectedFundIds.add(share.fundId);
     if(fundId)affectedFundIds.add(fundId);
     additions.push({
       ...createdStamp(actor),
@@ -124,6 +127,7 @@ export async function ingestBankPage(
       origin: "BANK",
       entryStatus,
       fundId,
+      ...(Array.isArray(originalSplit)?{originalAllocations:originalSplit}:{}),
       assignment: match.exact ? "MANUAL" : fundId ? "AUTO" : "UNASSIGNED",
       matchReason: match.exact
         ? "Đối chiếu Excel: giữ thiện pháp đã nhập"

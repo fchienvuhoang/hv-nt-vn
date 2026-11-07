@@ -58,6 +58,7 @@ async function handleMeasured(request:NextRequest,context:{params:Promise<{resou
       case "PATCH funds/pin":result=await actions.pinFund({},await form());break;
       case "POST funds":case "PUT funds":result=await actions.saveFund({},await form());break;
       case "POST transactions/assignment":result=await actions.assignTransaction({},await form());break;
+      case "POST transactions/split":result=await actions.splitBankTransaction(await request.json());break;
       case "POST transactions/assignments":result=await actions.bulkAssignTransactions(await request.json());break;
       case "POST transaction-notes":{const data=await form();result=await actions.saveTransactionNote({},data);break;}
       case "POST public-cache":{

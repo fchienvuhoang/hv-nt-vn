@@ -98,3 +98,5 @@ export const getLatestReclassification=(scope:Parameters<typeof Actions.getLates
 
 export const previewTransfer=(input:import("./allocation-transfers").AllocationTransferInput)=>adminRequest<import("./allocation-transfers").AllocationTransferPreview>("transfers/preview",{method:"POST",body:JSON.stringify(input),headers:{"Content-Type":"application/json"}});
 export const createAllocationTransfer=(input:Parameters<typeof Actions.createAllocationTransfer>[0])=>write<Result<"createAllocationTransfer">>("transfers/allocate","POST",input);
+
+export const splitBankTransaction=(input:import("./transaction-split-input").TransactionSplitInput)=>write<Result<"splitBankTransaction">>("transactions/split","POST",input);

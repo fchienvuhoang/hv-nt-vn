@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { databaseConnectionString } from "./database-url";
 const globalDb = globalThis as unknown as { prisma?: ReturnType<typeof createClient>; prismaSchemaVersion?: string };
 // Replace the development singleton after Prisma schema additions during hot reload.
-const schemaVersion = "20261103-operations-v2";
+const schemaVersion = "20261107-direct-split-v1";
 function createClient(){return new PrismaClient({
  adapter:new PrismaPg({connectionString:databaseConnectionString(process.env.DATABASE_URL),max:3,connectionTimeoutMillis:10000}),
 }).$extends({query:{$allOperations:async({args,query})=>{countDatabaseQuery();return query(args);}}}) as unknown as PrismaClient;}

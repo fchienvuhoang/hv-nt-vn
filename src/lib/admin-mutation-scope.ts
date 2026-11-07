@@ -12,11 +12,13 @@ export async function mutationFundScope(resource:string,request:Request):Promise
  if(resource==='funds/visibility'||resource==='funds/pin')return string('fundId')?[string('fundId')!]:undefined;
  const ids=new Set<string>();
  for(const key of ['fundId','sourceFundId','targetFundId','fromFundId','toFundId'])if(string(key))ids.add(string(key)!);
- if(['transactions/assignment','transaction-notes','transactions/review'].includes(resource)){
+ if(resource==='transactions/split'&&Array.isArray(data.shares))for(const share of data.shares)if(share&&typeof share.fundId==='string')ids.add(share.fundId);
+ if(['transactions/split','transactions/assignment','transaction-notes','transactions/review'].includes(resource)){
   const id=string('transactionId')??string('id');if(!id)return undefined;
-  const rows=await db.bankTransaction.findMany({where:{id:{in:[id,...(string('targetId')?[string('targetId')!]:[])]}},select:{fundId:true,allocations:{select:{fundId:true}},allocationTransfers:{select:{transfer:{select:{fromFundId:true,toFundId:true}}}}}});
+  const rows=await db.bankTransaction.findMany({where:{id:{in:[id,...(string('targetId')?[string('targetId')!]:[])]}},select:{fundId:true,originalAllocations:true,allocations:{select:{fundId:true}},allocationTransfers:{select:{transfer:{select:{fromFundId:true,toFundId:true}}}}}});
   for(const row of rows){
    if(row.fundId)ids.add(row.fundId);
+   if(Array.isArray(row.originalAllocations))for(const share of row.originalAllocations)if(share&&typeof share==='object'&&'fundId' in share&&typeof share.fundId==='string')ids.add(share.fundId);
    for(const a of row.allocations)ids.add(a.fundId);
    for(const a of row.allocationTransfers){ids.add(a.transfer.fromFundId);ids.add(a.transfer.toFundId);}
   }
@@ -35,8 +37,8 @@ export async function mutationFundScope(resource:string,request:Request):Promise
  }
  if(resource==='transactions/assignments'){
   if(!Array.isArray(data.rows))return undefined;
-  const rows=await db.bankTransaction.findMany({where:{id:{in:data.rows.map((r:{id:string})=>r.id)}},select:{fundId:true,allocations:{select:{fundId:true}},allocationTransfers:{select:{transfer:{select:{fromFundId:true,toFundId:true}}}}}});
-  for(const row of rows){if(row.fundId)ids.add(row.fundId);for(const a of row.allocations)ids.add(a.fundId);for(const a of row.allocationTransfers){ids.add(a.transfer.fromFundId);ids.add(a.transfer.toFundId);}}
+  const rows=await db.bankTransaction.findMany({where:{id:{in:data.rows.map((r:{id:string})=>r.id)}},select:{fundId:true,originalAllocations:true,allocations:{select:{fundId:true}},allocationTransfers:{select:{transfer:{select:{fromFundId:true,toFundId:true}}}}}});
+  for(const row of rows){if(row.fundId)ids.add(row.fundId);if(Array.isArray(row.originalAllocations))for(const s of row.originalAllocations)if(s&&typeof s==='object'&&'fundId' in s&&typeof s.fundId==='string')ids.add(s.fundId);for(const a of row.allocations)ids.add(a.fundId);for(const a of row.allocationTransfers){ids.add(a.transfer.fromFundId);ids.add(a.transfer.toFundId);}}
   return [...ids];
  }
  if(resource==='transfers/allocate')return ids.size?[...ids]:undefined;

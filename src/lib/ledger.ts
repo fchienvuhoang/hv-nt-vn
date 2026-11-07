@@ -27,7 +27,7 @@ export async function fundTotals(client: LedgerClient = db, fundId?: string, bef
       where:{...(before?{createdAt:{lt:before}}:{}),mode:"BALANCE", ...(fundId ? {toFundId:fundId} : {})},
       _sum: { amount: true },
     }),
-    client.fundAllocation.groupBy({by:["fundId","accountId"],where:{...(fundId?{fundId}:{}),transaction:{entryStatus:"POSTED",direction:"CREDIT",...(before?{occurredAt:{lt:before}}:{})}},_sum:{amount:true},_count:true}),
+    Promise.all((["CREDIT","DEBIT"] as const).map(async direction=>(await client.fundAllocation.groupBy({by:["fundId","accountId"],where:{...(fundId?{fundId}:{}),transaction:{entryStatus:"POSTED",direction,...(before?{occurredAt:{lt:before}}:{})}},_sum:{amount:true},_count:true})).map(a=>({...a,direction})))).then(groups=>groups.flat()),
     client.transferBalanceItem.findMany({where:{transfer:{...(before?{createdAt:{lt:before}}:{}),...(fundId?{OR:[{fromFundId:fundId},{toFundId:fundId}]}:{})}},include:{transfer:{select:{fromFundId:true,toFundId:true}}}}),
   ]);
   for(const item of balanceItems){
@@ -35,7 +35,7 @@ export async function fundTotals(client: LedgerClient = db, fundId?: string, bef
     received.push({toFundId:item.transfer.toFundId,accountId:item.accountId,_sum:{amount:item.amount}});
   }
   const grouped=new Map<string,{fundId:string|null;accountId:string;direction:"CREDIT"|"DEBIT";entryStatus:string;openingAt:Date|null;_sum:{amount:bigint};_count:number}>();
-  for(const row of [...baseMovements,...allocations.map(a=>({...a,direction:"CREDIT" as const,entryStatus:"POSTED",_min:{occurredAt:null}}))]){
+  for(const row of [...baseMovements,...allocations.map(a=>({fundId:a.fundId,accountId:a.accountId,direction:a.direction,_sum:a._sum,_count:a._count,entryStatus:"POSTED",_min:{occurredAt:null}}))]){
     const key=JSON.stringify([row.fundId,row.accountId,row.direction,row.entryStatus]),old=grouped.get(key);
     grouped.set(key,{fundId:row.fundId,accountId:row.accountId,direction:row.direction,entryStatus:row.entryStatus,openingAt:row.entryStatus==="OPENING"?row._min.occurredAt:null,_sum:{amount:(old?._sum.amount??0n)+(row._sum.amount??0n)},_count:(old?._count??0)+row._count});
   }

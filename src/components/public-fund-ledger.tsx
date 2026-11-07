@@ -175,7 +175,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                       Nội dung{" "}
                       {direction === "CREDIT" ? "hùn phước" : "khoản chi"}
                     </th>
-                    <th scope="col" className="align-right">Số tiền gốc</th>
+                    <th scope="col" className="align-right">Số tiền</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,6 +187,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                         <p className="narrative">
                           {r.narrative || "Không có nội dung chuyển khoản"}
                         </p>
+                        {r.originalAmount&&r.originalAmount!==r.amount&&<small>Phần phân bổ từ giao dịch gốc {vnd(r.originalAmount)}</small>}
                         {r.opening&&<span className="sheet-source">Số dư chuyển sang đầu tháng · đã tính trong số dư</span>}
                         <small>{r.name}</small>
                         {r.notes.map(note=><div key={note.id} className="transaction-public-note"><strong>Ghi chú quản trị:</strong> {note.text}<small>{dateTime(note.at)}</small></div>)}
@@ -199,7 +200,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot><tr><th colSpan={3} scope="row">Tổng giao dịch gốc trên trang này</th><td className="money align-right nowrap">{vnd(fund.rows.reduce((sum,r)=>sum+BigInt(r.amount),0n))}</td></tr></tfoot>
+                <tfoot><tr><th colSpan={3} scope="row">Tổng số tiền trên trang này</th><td className="money align-right nowrap">{vnd(fund.rows.reduce((sum,r)=>sum+BigInt(r.amount),0n))}</td></tr></tfoot>
               </table>
             </div>
           )}

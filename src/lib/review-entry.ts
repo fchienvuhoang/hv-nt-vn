@@ -22,7 +22,7 @@ export async function reviewEntry(
       throw new Error(
         "Giao dịch không còn chờ kiểm tra. Tải lại trang để xem trạng thái mới",
       );
-    if(await tx.fundAllocation.count({where:{transactionId:{in:[entry.id,...(input.targetId?[input.targetId]:[])]}}}))throw new Error("Giao dịch đã tách phân bổ; hãy đảo các lượt điều chuyển trước khi đối chiếu/gộp giao dịch.");
+    if(Array.isArray(entry.originalAllocations)||await tx.fundAllocation.count({where:{transactionId:{in:[entry.id,...(input.targetId?[input.targetId]:[])]}}}))throw new Error("Giao dịch đã tách phân bổ; hãy đảo các lượt điều chuyển trước khi đối chiếu/gộp giao dịch.");
     const fund = input.fundId
       ? await tx.fund.findUniqueOrThrow({ where: { id: input.fundId } })
       : null;
@@ -53,6 +53,7 @@ export async function reviewEntry(
         throw new Error(
           "Giao dịch đối chiếu phải đang được tính tổng, cùng tài khoản, số tiền và chiều thu chi",
         );
+      if(Array.isArray(target.originalAllocations))throw new Error("Giao dịch đối chiếu đã chia nhiều thiện pháp; cần kiểm tra phân bổ trước khi gộp.");
       const bankIsEntry = entry.origin === "BANK" && target.origin === "EXCEL";
       const survivor = bankIsEntry ? entry : target,
         loser = bankIsEntry ? target : entry;

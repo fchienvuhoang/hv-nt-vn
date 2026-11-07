@@ -1,4 +1,5 @@
 "use client";
+import { TransactionSplit } from "@/components/admin/transaction-split";
 import { FundAssignmentSelect } from "@/components/admin/fund-assignment-select";
 import { fundAssignmentWarning } from "@/lib/fund-assignment-warning";
 import { accountLabel, fundOptionLabel } from "@/lib/account-label";
@@ -202,6 +203,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
                       </span>
                     </td>
                     <td className="sheet-row-actions">
+                      {r.entryStatus==="POSTED"&&r._count.allocationTransfers===0&&<TransactionSplit row={r} funds={funds} accounts={accounts}/>}
                       {r.entryStatus==="POSTED"&&<TransactionNoteEditor transactionId={r.id} narrative={r.narrative}/>}
                       {r.entryStatus==="OPENING"?<span className="badge neutral">Số dư chuyển sang</span>:r.entryStatus === "REVIEW" ? (
                         <EntryReview entry={r} funds={funds} accounts={accounts} />

@@ -23,6 +23,7 @@
     "test:public-directory": "node --conditions=react-server --import tsx tests/public-directory-http.mts",
     "test:transaction-summary": "node --conditions=react-server --import tsx tests/transaction-summary-integration.mts",
     "test:admin-rest": "node --conditions=react-server --import tsx tests/admin-rest-http.mts",
+    "test:transaction-split": "node --conditions=react-server --import tsx tests/transaction-split-integration.mts",
     "test:transaction-management": "node --conditions=react-server --import tsx tests/transaction-management-integration.mts"
   },
   "dependencies": {
