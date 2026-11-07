@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { Modal, useCloseModal } from "@/components/modal";
+import { LoadingSpinner } from "@/components/loading-indicator";
 import { MoneyInput } from "@/components/money-input";
 import { splitBankTransaction } from "@/lib/admin-api";
 import { fundUsesAccount, vnd } from "@/lib/domain";
@@ -51,6 +52,6 @@ function SplitForm({ row, funds, accounts }: Props) {
       <label>Lý do chia giao dịch<textarea value={reason} onChange={e => setReason(e.target.value)} minLength={5} maxLength={1000} required rows={2} /></label>
     </fieldset>
     {error && <div role="alert" className="notice danger">{error}</div>}
-    <button className="button primary" type="submit" disabled={busy || !valid}>{busy ? "Đang lưu…" : "Lưu phân bổ"}</button>
+    <button className="button primary" type="submit" disabled={busy || !valid} aria-busy={busy}>{busy && <LoadingSpinner size={16} />}{busy ? "Đang lưu…" : "Lưu phân bổ"}</button>
   </form>;
 }
