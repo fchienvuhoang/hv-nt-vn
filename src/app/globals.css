@@ -4727,26 +4727,6 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
   .transfers-history-scroll.table-card tbody tr:hover { background: inherit; }
 }
 
-/* A continuous, naturally scaled mural across the entire admin header. */
-.workspace-header {
-  background-color: #702d3b;
-  background-image:
-    linear-gradient(90deg, #702d3bcc, #702d3b8c 55%, #702d3ba6),
-    url("/images/chu-thien-hoi-chung.webp");
-  background-size: 100% 100%, auto 150%;
-  background-position: center, center 35%;
-  background-repeat: no-repeat, repeat-x;
-}
-@media (max-width: 680px) {
-  .workspace-header {
-    background-image:
-      linear-gradient(90deg, #702d3bcc, #702d3b99),
-      url("/images/chu-thien-hoi-chung.webp");
-    background-position: center, center 35%;
-    background-size: 100% 100%, auto 125%;
-  }
-}
-
 /* Mobile transfer history reads vertically, without a nested or sideways scroller. */
 @media (max-width: 680px) {
   .transfers-history-scroll.table-card.workspace-table {
