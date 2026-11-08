@@ -71,7 +71,6 @@ export function PublicFundLedger({slug}:{slug:string}) {
           <h1><span>{fund.name}</span></h1>
           <div className="intro-meta">
             <Status status={fund.status} />
-            <span>Ngân hàng MB</span>
           </div>
 
         </div>
