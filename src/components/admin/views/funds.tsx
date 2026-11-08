@@ -37,7 +37,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
     try{await navigator.clipboard.writeText(new URL(`/t/${slug}`,SITE_ORIGIN).href);toast("Đã sao chép link trang công khai.");}
     catch{toast("Không sao chép được. Vui lòng cho phép truy cập bộ nhớ tạm rồi thử lại.","error");}
   }
-  const all=[...(bootstrap?.funds??[])].sort((a,b)=>(b.pinnedAt?.getTime()??0)-(a.pinnedAt?.getTime()??0)),balances=bootstrap?.balances??[];
+  const all=[...(bootstrap?.funds??[])].sort((a,b)=>(b.pinnedAt?.getTime()??0)-(a.pinnedAt?.getTime()??0)||b.createdAt.getTime()-a.createdAt.getTime()||a.id.localeCompare(b.id)),balances=bootstrap?.balances??[];
   const query = (params.q ?? "").trim().toLocaleLowerCase("vi");
   const status = ["ACTIVE", "COMPLETED", "PAUSED", "ALL"].includes(params.status ?? "")
     ? params.status! : "ACTIVE";

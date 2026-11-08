@@ -5,7 +5,6 @@ import {PublicAdminRefresh} from "@/components/public-admin-refresh";
 import {PwaAdminReturn} from "@/components/pwa-admin-return";
 import { PublicFundGoal } from "@/components/public-fund-goal";
 import { PublicTransferContent } from "@/components/public-transfer-content";
-import { accountLabel } from "@/lib/account-label";
 import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
 
 import { useEffect,useRef,useState } from "react";
@@ -72,7 +71,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
           <h1><span>{fund.name}</span></h1>
           <div className="intro-meta">
             <Status status={fund.status} />
-            <span>Tài khoản {accountLabel(fund.account)}</span>
+            <span>Ngân hàng MB</span>
           </div>
 
         </div>
@@ -112,7 +111,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
         {fund.isLongTerm&&<p className="public-carry-note">Dư / thiếu tháng trước chuyển sang: <strong>{vnd(fund.carryBalance)}</strong></p>}
         {(BigInt(fund.receivedAllocation)>0n||BigInt(fund.sentAllocation)>0n)&&<div className="public-allocation-summary"><span>Hùn phước ban đầu: <b>{vnd(fund.originalIncome)}</b></span><span>Nhận điều chuyển ròng: <b>+{vnd(fund.receivedAllocation)}</b></span><span>Đã chuyển đi ròng: <b>−{vnd(fund.sentAllocation)}</b></span><strong>Tổng hùn phước sau điều chuyển: {vnd(fund.goalIncome)}</strong><small>Danh sách bên dưới giữ nguyên các khoản hùn phước gốc. Phần điều chuyển được ghi riêng, không cộng lặp vào tổng.</small></div>}
         {!fund.isLongTerm&&BigInt(fund.excessExpense)>0n&&<p className="public-deficit-note">Thiện pháp đã chi vượt quỹ <strong>{vnd(fund.excessExpense)}</strong>. Số dư khả dụng hiển thị 0₫; phần thiếu vẫn được giữ khi đối chiếu sổ.</p>}
-        {!fund.isLongTerm&&BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={accountLabel(a.account)}>TK {accountLabel(a.account)}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
+        {!fund.isLongTerm&&BigInt(fund.openingBalance)!==0n&&<div className="public-opening-balance"><strong>Khoản chuyển sang từ Excel: {vnd(fund.openingBalance)}</strong><div>{fund.openingBalances.map(a=><span key={a.account}>TK {a.account}: <b>{vnd(a.amount)}</b>{a.at?` · Từ ${dateTime(a.at)}`:""}</span>)}</div><small>Đã tính vào tổng hùn phước/đã chi tương ứng; số dư được tính từ thu trừ chi, không cộng thêm khoản này lần nữa.</small></div>}
         <div className={`public-ledger-card ${styles.ledger}`}>
         <Section
           title="Danh sách hùn phước & khoản chi"
@@ -182,7 +181,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
                   {fund.rows.map((r,index) => (
                     <tr key={r.id} >
                       <td className="public-row-number">{(fund.page-1)*PUBLIC_PAGE_SIZE+index+1}</td>
-                      <td className="nowrap">{r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.at)}<small>TK {accountLabel(r.account)}</small></td>
+                      <td className="nowrap">{r.dateUnknown?"Chưa có ngày trong Excel":dateTime(r.at)}<small>TK {r.account}</small></td>
                       <td>
                         <p className="narrative">
                           {r.narrative || "Không có nội dung chuyển khoản"}
