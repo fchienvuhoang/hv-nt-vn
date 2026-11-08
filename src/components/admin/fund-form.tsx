@@ -127,18 +127,7 @@ export function FundForm({
           Không được trùng mã hoặc từ khóa của thiện pháp khác, kể cả đã hoàn thành hoặc tạm dừng. Không phân biệt hoa/thường, dấu tiếng Việt và khoảng trắng.
         </small>
       </label>
-      <label>
-        Mô tả công khai
-        <textarea
-          name="description"
-          rows={3}
-          maxLength={3000}
-          value={values.description}
-          onChange={event => change("description", event.target.value)}
-          {...errorProps("description")}
-        />
-        {errorMessage("description")}
-      </label>
+      <input type="hidden" name="description" value={values.description} />
       <div className="notice">
         Chỉ thiện pháp đang hoạt động nhận phân loại tự động. Thay đổi cấu hình
         không tự sửa giao dịch đã gán.
