@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classify, maskPhones, normalize, openingBalance, parseSourceTime, localDate, startOfVietnamDay } from "../src/lib/domain";
+import { classify, maskPhones, normalize, openingBalance, parseSourceTime, localDate, startOfVietnamDay, vietnamMonth, dateTime, vnd } from "../src/lib/domain";
 import { parseCsv } from "../src/lib/csv";
 const a = { id: "a", accountId: "0572", code: "TP112", keywords: ["CHÙA NGÀI 10"], status: "ACTIVE" };
 const b = { id: "b", accountId: "0572", code: "TP113", keywords: ["CHÙA NGÀI 10", "KHAC"], status: "ACTIVE" };
@@ -58,4 +58,13 @@ test("wrong-account codes and aliases require manual review without falling thro
  }
  assert.equal(classify("TP112","tram",[restricted,shared]).fundId,"shared");
  assert.equal(classify("HTTB","my",[restricted,shared]).fundId,"httb");
+});
+
+
+test("reused formatters preserve Vietnam month boundaries and exact VND", () => {
+  const before = new Date("2026-10-31T16:59:59Z"), after = new Date("2026-10-31T17:00:00Z");
+  assert.equal(localDate(before), "2026-10-31");assert.equal(localDate(after), "2026-11-01");
+  assert.equal(vietnamMonth(before), "2026-10");assert.equal(vietnamMonth(after), "2026-11");
+  assert.equal(vnd(9007199254740993n), new Intl.NumberFormat("vi-VN", {style:"currency", currency:"VND", maximumFractionDigits:0}).format(9007199254740993n));
+  assert.equal(dateTime(after), new Intl.DateTimeFormat("vi-VN", {dateStyle:"short", timeStyle:"short", timeZone:"Asia/Ho_Chi_Minh"}).format(after));
 });

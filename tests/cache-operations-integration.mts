@@ -16,8 +16,8 @@ try{
  assert.ok(await readPublicSnapshot(slug));
  await store.set(`revision:${fundId}`,3,{ttl:60});assert.equal(await readPublicSnapshot(slug),null);
  await store.set(`revision:${fundId}`,2,{ttl:60});
- await store.set(`fund:${slug}:chunk`,JSON.stringify({...snapshot,credit:{...payload,month:'2000-01'}}),{ttl:60});assert.equal(await readPublicSnapshot(slug),null);
-}finally{db.publicCacheRefresh.findUnique=lookup;await store.delete(`fund:${slug}`);await store.delete(`fund:${slug}:chunk`);await store.delete(`revision:${fundId}`);}
+ await store.set(`fund:${slug}:next-chunk`,JSON.stringify({...snapshot,credit:{...payload,month:'2000-01'}}),{ttl:60});await store.set(`fund:${slug}`,{chunks:[`fund:${slug}:next-chunk`]},{ttl:60});assert.equal(await readPublicSnapshot(slug),null);
+}finally{db.publicCacheRefresh.findUnique=lookup;await store.delete(`fund:${slug}`);await store.delete(`fund:${slug}:chunk`);await store.delete(`revision:${fundId}`);await store.delete(`fund:${slug}:next-chunk`);}
 const request=(data:object)=>new Request('https://example.test/api/admin/funds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
 assert.deepEqual(await mutationFundScope('funds',request({id:'one'})),['one']);
 assert.deepEqual(await mutationFundScope('transfers/allocate',request({fromFundId:'one',toFundId:'two'})),['one','two']);

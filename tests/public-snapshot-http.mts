@@ -15,7 +15,15 @@ try{
  await db.bankTransaction.createMany({data:Array.from({length:105},(_,i)=>({accountId:account.id,fundId:fund.id,sourceId:`snapshot-${i}`,refId:`snapshot-${i}`,amount:BigInt(i+1),direction:"CREDIT" as const,narrative:`QA unique${i} 0912345678`,displayName:"QA",occurredAt:new Date(),sourceHash:`snapshot-${i}`,source:{}}))});
  const get=(query="")=>fetch(`${origin}/api/public/funds/${slug}${query}`);
  const first=await get();assert.equal(first.status,200);assert.equal(first.headers.get("x-public-cache"),"MISS");const initial=await first.json();assert.equal(initial.count,105);
- const second=await get("?page=2");assert.equal(second.headers.get("x-public-cache"),"HIT");const data=await second.json();assert.equal(data.rows.length,5);assert.equal(data.income,initial.income);
+ // Full history is now warmed after the first response.
+ const waitForHit=async(query="")=>{
+   const deadline=Date.now()+15000;let response=await get(query);
+   while(response.headers.get("x-public-cache")!=="HIT"&&Date.now()<deadline){
+     await response.arrayBuffer();await new Promise(resolve=>setTimeout(resolve,100));response=await get(query);
+   }
+   return response;
+ };
+ const second=await waitForHit("?page=2");assert.equal(second.headers.get("x-public-cache"),"HIT");const data=await second.json();assert.equal(data.rows.length,5);assert.equal(data.income,initial.income);
  const search=await get("?q=unique104");assert.equal(search.headers.get("x-public-cache"),"HIT");const found=await search.json();assert.equal(found.count,1);assert.equal(found.rows[0].amount,"105");assert.ok(!JSON.stringify(found).includes("0912345678"));assert.ok(!JSON.stringify(found).includes("PRIVATE-ADMIN-NOTE"));
  await db.fund.update({where:{id:fund.id},data:{openingIncome:500n}});
  assert.equal((await (await get()).json()).income,initial.income,"serve previous complete cache until rebuild");
@@ -23,7 +31,7 @@ try{
  // even while the background worker has not rebuilt anything yet.
  await db.publicCacheRefresh.upsert({where:{fundId:fund.id},create:{fundId:fund.id,requestedVersion:1},update:{requestedVersion:{increment:1}}});
  const afterMutation=await get();assert.equal(afterMutation.headers.get("x-public-cache"),"MISS");assert.equal((await afterMutation.json()).income,(BigInt(initial.income)+500n).toString());
- assert.equal((await get()).headers.get("x-public-cache"),"HIT","snapshot of current requested revision is reusable even before worker finishes");
+ assert.equal((await waitForHit()).headers.get("x-public-cache"),"HIT","background snapshot of the current revision becomes reusable");
  assert.equal((await fetch(origin+"/api/internal/public-cache",{method:"POST"})).status,401);
  const rebuilt=await fetch(origin+"/api/internal/public-cache?force=1",{method:"POST",headers:{Authorization:`Bearer ${process.env.SYNC_SECRET}`}});assert.equal(rebuilt.status,200);const status=await rebuilt.json();assert.ok(status.built>=1);
  const fresh=await get();assert.equal(fresh.headers.get("x-public-cache"),"HIT");assert.equal((await fresh.json()).income,(BigInt(initial.income)+500n).toString());

@@ -5,7 +5,7 @@ import {PUBLIC_DIRECTORY_TAG,publicFundTag} from "./cache-tags";
 import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { fundTotals } from "./ledger";
-import { maskPhones,normalize } from "./domain";
+import { maskPhones,normalize,vietnamMonth } from "./domain";
 import { matchesPublicTransaction } from "./public-search";
 export const PUBLIC_PAGE_SIZE = 100;
 export const PUBLIC_TAG = "public-ledger";
@@ -105,7 +105,7 @@ async function publicFundSummary(slug:string,month:string){
 }
 
 // Cache public, masked rows by stable page, never by a visitor's search term.
-const publicTransactionPage = async (fundId: string, direction: "CREDIT" | "DEBIT", page: number,month="") => unstable_cache(async()=>{
+export const publicTransactionPage = async (fundId: string, direction: "CREDIT" | "DEBIT", page: number,month="") => unstable_cache(async()=>{
   const membership=await publicOriginalMembership(fundId);
   const rows = await db.bankTransaction.findMany({
     where:{...membership,direction,entryStatus:{in:month?["POSTED"]:["POSTED","OPENING"]},...(month?{occurredAt:{gte:new Date(`${month}-01T00:00:00+07:00`),lt:new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7)),1)-7*3600000)}}:{})},
@@ -117,7 +117,7 @@ const publicTransactionPage = async (fundId: string, direction: "CREDIT" | "DEBI
 },["public-transaction-page-v9",fundId,direction,String(page),month],{...options,tags:[PUBLIC_TAG,publicFundTag(fundId)]})();
 
 export async function publicFund(slug: string, page: number, direction: "CREDIT" | "DEBIT", search = "", month = "") {
-  const current=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit"}).format(new Date());
+  const current=vietnamMonth();
   // Public long-term funds only expose the current Vietnam month, regardless of URL input.
   void month;
   const selected=current;

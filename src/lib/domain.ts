@@ -16,12 +16,19 @@ export function normalize(value: string) {
     .trim()
     .replace(/\s+/g, " ");
 }
+const keywordPatterns = new Map<string, RegExp>();
 function contains(text: string, keyword: string) {
   // Ignore spaces *inside* a code/phrase, while retaining word boundaries.
   // TP112, tp 112 and T P 112 match; TP1120 and XTP112 do not.
-  const letters = normalize(keyword).replace(/ /g, "");
-  if (!letters) return false;
-  return new RegExp(`(?:^| )${letters.split("").join(" *")}(?= |$)`).test(text);
+  let pattern = keywordPatterns.get(keyword);
+  if (!pattern) {
+    const letters = normalize(keyword).replace(/ /g, "");
+    if (!letters) return false;
+    pattern = new RegExp(`(?:^| )${letters.split("").join(" *")}(?= |$)`);
+    if (keywordPatterns.size >= 2048) keywordPatterns.delete(keywordPatterns.keys().next().value!);
+    keywordPatterns.set(keyword, pattern);
+  }
+  return pattern.test(text);
 }
 export function classify(
   narrative: string,
@@ -86,27 +93,30 @@ export function openingBalance(fund: {
 }) {
   return fund.openingIncome - fund.openingExpense + fund.openingTransferNet;
 }
+// Reuse ICU formatters across rows and bank pages instead of rebuilding them.
+const moneyFormatter = new Intl.NumberFormat("vi-VN", {
+  style: "currency", currency: "VND", maximumFractionDigits: 0,
+});
+const dateTimeFormatter = new Intl.DateTimeFormat("vi-VN", {
+  dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh",
+});
+const localDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit",
+});
+const localMonthFormatter = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit",
+});
 export function vnd(value: bigint | string | number) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(BigInt(value));
+  return moneyFormatter.format(BigInt(value));
 }
 export function dateTime(value: Date | string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "Asia/Ho_Chi_Minh",
-  }).format(new Date(value));
+  return dateTimeFormatter.format(new Date(value));
 }
 export function localDate(value = new Date()) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(value);
+  return localDateFormatter.format(value);
+}
+export function vietnamMonth(value = new Date()) {
+  return localMonthFormatter.format(value);
 }
 export function startOfVietnamDay(date: string) {
   return new Date(`${date}T00:00:00+07:00`);
