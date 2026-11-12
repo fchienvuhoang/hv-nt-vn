@@ -49,3 +49,11 @@ test("public name falls back to visible narrative for missing or generated donor
  result=await api.loadRecognition({slug:"tp63"});assert.ok(result);
  assert.equal(result.rows[0].name,"Nội dung được ẩn theo nguồn sao kê");assert.equal(result.rows[1].name,"Tên đã xác nhận");
 });
+
+test("recognition total covers every qualifying page and preserves integer precision",async()=>{
+ const {api,entries}=fixture();const base=entries[0];
+ entries.splice(0,entries.length,...Array.from({length:105},(_,index)=>({...base,id:`row-${index}`,amount:9007199254740993n})));
+ const first=await api.loadRecognition({slug:"tp63"},1),second=await api.loadRecognition({slug:"tp63"},2);
+ assert.ok(first);assert.ok(second);assert.equal(first.rows.length,100);assert.equal(second.rows.length,5);
+ assert.equal(first.totalAmount,(9007199254740993n*105n).toString());assert.equal(second.totalAmount,first.totalAmount);
+});

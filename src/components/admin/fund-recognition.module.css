@@ -1,0 +1,13 @@
+.table table { width: 100%; min-width: 870px; table-layout: fixed; }
+.numberColumn { width: 40px; }
+.transactionColumn { width: 180px; }
+.nameColumn { width: 200px; }
+.editorColumn { width: 300px; }
+.amountColumn { width: 150px; }
+.table td { vertical-align: top; }
+.table .transaction { font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
+.transaction small { display: block; margin-top: 5px; font-size: 11px; line-height: 1.45; color: #758078; }
+.table .name { white-space: normal; overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
+.editor { display: flex; align-items: flex-start; gap: 6px; }
+.editor input { min-width: 0; width: 100%; flex: 1; }
+.editor button { flex-shrink: 0; }

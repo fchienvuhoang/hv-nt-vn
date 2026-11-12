@@ -13,7 +13,7 @@ export async function recognitionSettings(where:{slug:string}|{id:string}){
 export async function loadRecognition(where:{slug:string}|{id:string},requestedPage=1){
  // Check enabled/configuration outside the cache so a disabled page immediately closes.
  const fund=await recognitionSettings(where);if(!fund)return null;
- const rows=await unstable_cache(async()=>{
+ const listing=await unstable_cache(async()=>{
    const membership=await publicOriginalMembership(fund.id);
    const entries=await db.bankTransaction.findMany({
      where:{AND:[membership,{direction:"CREDIT",entryStatus:"POSTED",amount:{gte:fund.recognitionAmount!}}]},
@@ -21,7 +21,7 @@ export async function loadRecognition(where:{slug:string}|{id:string},requestedP
        recognitionNames:{where:{fundId:fund.id},select:{name:true,updatedAt:true}}},
      orderBy:[{occurredAt:"asc"},{id:"asc"}],
    });
-   return entries.flatMap(entry=>{
+   const rows=entries.flatMap(entry=>{
      const amount=originalFundShare(entry,fund.id);if(amount<fund.recognitionAmount!)return [];
      const narrative=entry.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(entry.narrative);
      const sourceName=entry.displayName.trim();
@@ -33,8 +33,10 @@ export async function loadRecognition(where:{slug:string}|{id:string},requestedP
        nameOverride:entry.recognitionNames[0]?.name??"",
        narrative}];
    });
- },["fund-recognition-v2",fund.id,fund.recognitionAmount.toString()],{revalidate:false,tags:["public-ledger",publicFundTag(fund.id)]})();
+   return {rows,totalAmount:rows.reduce((sum,row)=>sum+BigInt(row.amount),0n).toString()};
+ },["fund-recognition-v3",fund.id,fund.recognitionAmount.toString()],{revalidate:false,tags:["public-ledger",publicFundTag(fund.id)]})();
+ const {rows,totalAmount}=listing;
  const pageSize=100,page=Math.min(Math.max(1,Math.floor(requestedPage)||1),Math.max(1,Math.ceil(rows.length/pageSize)));
- return {fund:{code:fund.code,name:maskPhones(fund.name),slug:fund.slug,title:fund.recognitionTitle,amount:fund.recognitionAmount.toString()},page,pageSize,count:rows.length,rows:rows.slice((page-1)*pageSize,page*pageSize)};
+ return {totalAmount,fund:{code:fund.code,name:maskPhones(fund.name),slug:fund.slug,title:fund.recognitionTitle,amount:fund.recognitionAmount.toString()},page,pageSize,count:rows.length,rows:rows.slice((page-1)*pageSize,page*pageSize)};
 }
 export type RecognitionData=NonNullable<Awaited<ReturnType<typeof loadRecognition>>>;

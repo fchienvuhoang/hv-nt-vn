@@ -1,7 +1,7 @@
 "use client";
 import styles from "./public-recognition.module.css";
 import {useEffect,useState} from "react";
-import {Brand} from "@/components/ui";
+import {PublicDevotionalBanner} from "@/components/public-devotional-banner";
 import {LoadingIndicator} from "@/components/loading-indicator";
 import {PublicLink,usePublicSearch,publicNavigate} from "@/components/public-link";
 import {dateTime,vnd} from "@/lib/domain";
@@ -21,15 +21,19 @@ export function PublicRecognition({slug}:{slug:string}){
    return()=>controller.abort();
  },[slug,page,retry]);
  const data=state.page===page?state.data:undefined,error=state.page===page?state.error:undefined;
- return <div className="public-site"><header className="public-header"><Brand href={`/t/${slug}`}/></header><main className="public-detail public-compact">
-   <a className="button subtle" href={`/t/${slug}`}>Về sao kê thiện pháp</a>
-   <header className={styles.intro}>
+ return <div className="public-site"><main className="public-detail public-compact">
+   <PublicDevotionalBanner><header className={styles.intro}>
      <p className={styles.eyebrow}>Danh sách phương danh{data?` · ${data.fund.title}`:""}</p>
      <h1>{data?.fund.name??"Danh sách phương danh"}</h1>
-     {data&&<span className="code">{data.fund.code}</span>}
-   </header>
+     {data&&<span className={styles.fundBadge}>{data.fund.code} · {data.fund.title}</span>}
+   </header></PublicDevotionalBanner>
    {error?<div role="alert" className="notice danger">{error} <button className="button subtle" onClick={()=>{setState({page:0});setRetry(n=>n+1)}}>Thử lại</button></div>:!data?<LoadingIndicator label="Đang tải phương danh…"/>:<>
-     <p>Một {data.fund.title}: {vnd(data.fund.amount)}. Danh sách gồm {data.count} giao dịch hùn phước từ mức này trở lên, xét riêng từng giao dịch và không cộng dồn.</p>
+     <section className={styles.summary} aria-label="Tổng hợp phương danh">
+       <div className={styles.total}><span>Tổng hùn phước trong danh sách</span><strong>{vnd(data.totalAmount)}</strong><small>Tổng tất cả các trang phương danh</small></div>
+       <div><span>Giao dịch đủ điều kiện</span><strong>{data.count.toLocaleString("vi-VN")}</strong><small>Xét riêng từng giao dịch</small></div>
+       <div><span>Một {data.fund.title}</span><strong>{vnd(data.fund.amount)}</strong><small>Ghi nhận từ mức này trở lên</small></div>
+     </section>
+     <p className={styles.explanation}>Danh sách dành cho các khoản hùn phước đạt mức cổ phần, không cộng dồn giữa các giao dịch.</p>
      <div className={`table-scroll table-card ${styles.table}`}><table className="public-ledger-table" aria-label="Danh sách phương danh cổ phần"><thead><tr><th className="public-row-number">#</th><th>Thời gian</th><th>Phương danh / nội dung hùn phước</th><th className="align-right">Số tiền hùn phước</th></tr></thead><tbody>
        {data.rows.map((row,index)=><tr key={index}>
          <td className="public-row-number">{(data.page-1)*data.pageSize+index+1}</td>

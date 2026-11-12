@@ -1,17 +1,17 @@
 .intro {
-  margin: 24px 0 18px;
+  margin: 0;
 }
 .eyebrow {
   margin: 0 0 10px;
   color: var(--muted, #667085);
   font-size: 14px;
 }
-.intro h1 {
+.intro.intro h1 {
   margin: 0 0 12px;
-  max-width: 1200px;
-  font-size: clamp(28px, 3.5vw, 44px);
+  max-width: 1100px;
+  font-size: clamp(23px, 2.5vw, 34px);
   line-height: 1.25;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: -.6px;
   overflow-wrap: anywhere;
 }
@@ -25,21 +25,66 @@
 }
 .table .identity .name {
   margin: 0;
-  font-size: 19px;
+  font-size: 15px;
   line-height: 1.5;
-  font-weight: 650;
+  font-weight: 550;
   overflow-wrap: anywhere;
 }
 .table .identity small.narrative {
   display: block;
-  margin-top: 6px;
-  font-size: 13px;
+  margin-top: 5px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--muted, #667085);
   overflow-wrap: anywhere;
 }
 @media (max-width: 640px) {
-  .intro { margin-top: 18px; }
+  .intro { margin-top: 0; }
   .table .identity { min-width: 240px; }
-  .table .identity .name { font-size: 17px; }
+  .table .identity .name { font-size: 14px; }
+}
+
+.fundBadge {
+  display: inline-flex;
+  padding: 5px 11px;
+  border: 1px solid #cbb88a;
+  border-radius: 999px;
+  background: #fff9e8;
+  color: #79602b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.summary {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 12px;
+  margin: 4px 0 12px;
+}
+.summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 18px 20px;
+  border: 1px solid #e3e8df;
+  border-radius: 14px;
+  background: #fffefb;
+}
+.summary > .total {
+  border-color: #c5d6c6;
+  background: linear-gradient(120deg, #eef5eb, #fafbf4);
+}
+.summary span { color: #657362; font-size: 12px; font-weight: 550; }
+.summary strong { color: #2b513c; font-size: clamp(20px, 2vw, 28px); line-height: 1.2; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+.summary small { color: #7e8577; font-size: 11px; }
+.explanation { margin: 12px 0; color: #78816f; font-size: 12px; line-height: 1.6; }
+.table { border-radius: 14px; border: 1px solid #e0e6dc; overflow: auto; }
+:global(.public-compact) .table :global(table.public-ledger-table) thead th { background: #eff3eb; color: #4e624c; border-color: #dfe6d9; padding: 12px; font-size: 12px; }
+:global(.public-compact) .table :global(table.public-ledger-table) tbody td { padding: 12px; border-color: #edf0e9; vertical-align: top; }
+.table :global(.public-ledger-table) tbody tr { background: #fffefb; }
+.table :global(.public-ledger-table) tbody tr:nth-child(even) { background: #f8faf6; }
+@media (max-width: 640px) {
+  .summary { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .summary > div { padding: 13px; }
+  .summary > .total { grid-column: 1 / -1; }
+  .summary strong { font-size: 21px; }
 }
