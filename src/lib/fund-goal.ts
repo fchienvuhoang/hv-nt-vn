@@ -64,13 +64,20 @@ export function goalArea(config: LengthGoalConfig) {
 function fundedLengthUnits(income: bigint, config: LengthGoalConfig) {
   return (income > 0n ? income : 0n) * SCALE * SCALE / (BigInt(config.unitPrice) * measureUnits(config.width));
 }
-export function fundedLength(income: bigint, config: LengthGoalConfig) {
-  const units = fundedLengthUnits(income, config);
+function displayLengthUnits(units: bigint, compact: boolean) {
+  if (compact) {
+    if (units > 0n && units < SCALE / 10n) return "<0,1";
+    const tenths = (units + SCALE / 20n) / (SCALE / 10n);
+    return `${(tenths / 10n).toLocaleString("vi-VN")},${tenths % 10n}`;
+  }
   return formatMeasure(`${units / SCALE}.${(units % SCALE).toString().padStart(4, "0")}`);
 }
+export function fundedLength(income: bigint, config: LengthGoalConfig, compact = false) {
+  return displayLengthUnits(fundedLengthUnits(income, config), compact);
+}
 
-export function remainingLength(income: bigint, config: LengthGoalConfig) {
+export function remainingLength(income: bigint, config: LengthGoalConfig, compact = false) {
   const target = measureUnits(config.quantity), funded = fundedLengthUnits(income, config);
   const units = target > funded ? target - funded : 0n;
-  return formatMeasure(`${units / SCALE}.${(units % SCALE).toString().padStart(4, "0")}`);
+  return displayLengthUnits(units, compact);
 }

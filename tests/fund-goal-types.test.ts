@@ -49,3 +49,11 @@ test("remaining metres round conservatively and never show zero before the targe
   assert.equal(remainingLength(goal.goalAmount, goal.goalConfig), "0");
   assert.equal(remainingLength(goal.goalAmount + 1n, goal.goalConfig), "0");
 });
+
+test("compact public metre values show one decimal and preserve nonzero small remainders", async () => {
+  const { remainingLength } = await import("../src/lib/fund-goal");
+  const goal = calculateLengthGoal("10000", "1", "350");
+  assert.equal(fundedLength(78914n, goal.goalConfig, true), "7,9");
+  assert.equal(fundedLength(70000n, goal.goalConfig, true), "7,0");
+  assert.equal(remainingLength(goal.goalAmount - 1n, goal.goalConfig, true), "<0,1");
+});
