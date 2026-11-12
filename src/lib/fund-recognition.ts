@@ -3,14 +3,14 @@ import {unstable_cache} from "next/cache";
 import {db} from "./db";
 import {publicOriginalMembership} from "./public-original-transactions";
 import {originalFundShare} from "./transaction-split-input";
-import {maskPhones} from "./domain";
+import {maskPhones,normalize,vnd} from "./domain";
 import {publicFundTag} from "./cache-tags";
 
 export async function recognitionSettings(where:{slug:string}|{id:string}){
  const fund=await db.fund.findUnique({where,select:{id:true,slug:true,code:true,name:true,recognitionEnabled:true,recognitionTitle:true,recognitionAmount:true}});
  return fund?.recognitionEnabled&&fund.recognitionAmount&&fund.recognitionAmount>0n?{...fund,recognitionAmount:fund.recognitionAmount}:null;
 }
-export async function loadRecognition(where:{slug:string}|{id:string},requestedPage=1){
+export async function loadRecognition(where:{slug:string}|{id:string},requestedPage=1,search=""){
  // Check enabled/configuration outside the cache so a disabled page immediately closes.
  const fund=await recognitionSettings(where);if(!fund)return null;
  const listing=await unstable_cache(async()=>{
@@ -36,7 +36,10 @@ export async function loadRecognition(where:{slug:string}|{id:string},requestedP
    return {rows,totalAmount:rows.reduce((sum,row)=>sum+BigInt(row.amount),0n).toString()};
  },["fund-recognition-v3",fund.id,fund.recognitionAmount.toString()],{revalidate:false,tags:["public-ledger",publicFundTag(fund.id)]})();
  const {rows,totalAmount}=listing;
- const pageSize=100,page=Math.min(Math.max(1,Math.floor(requestedPage)||1),Math.max(1,Math.ceil(rows.length/pageSize)));
- return {totalAmount,fund:{code:fund.code,name:maskPhones(fund.name),slug:fund.slug,title:fund.recognitionTitle,amount:fund.recognitionAmount.toString()},page,pageSize,count:rows.length,rows:rows.slice((page-1)*pageSize,page*pageSize)};
+ const query=search.trim().slice(0,100),terms=normalize(query).split(" ").filter(Boolean);
+ const amountDigits=/^[\d.,\s]+(?:\s*(?:VND|đ|₫))?$/i.test(query)?query.replace(/\D/g,""):"";
+ const matches=amountDigits?rows.filter(row=>BigInt(row.amount)===BigInt(amountDigits)):terms.length?rows.filter(row=>{const text=normalize(`${row.name} ${row.narrative} ${row.amount} ${vnd(row.amount)}`);return terms.every(term=>text.includes(term))}):rows;
+ const pageSize=100,page=Math.min(Math.max(1,Math.floor(requestedPage)||1),Math.max(1,Math.ceil(matches.length/pageSize)));
+ return {totalAmount,totalCount:rows.length,search:query,fund:{code:fund.code,name:maskPhones(fund.name),slug:fund.slug,title:fund.recognitionTitle,amount:fund.recognitionAmount.toString()},page,pageSize,count:matches.length,rows:matches.slice((page-1)*pageSize,page*pageSize)};
 }
 export type RecognitionData=NonNullable<Awaited<ReturnType<typeof loadRecognition>>>;

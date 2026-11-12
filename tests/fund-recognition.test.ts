@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import {originalFundShare} from "../src/lib/transaction-split-input";
-import {maskPhones} from "../src/lib/domain";
+import {maskPhones,normalize,vnd} from "../src/lib/domain";
 function fixture(){
  const fund={id:"fund",slug:"tp63",code:"TP63",name:"Thiện pháp",recognitionEnabled:true,recognitionTitle:"Cổ phần",recognitionAmount:3000000n};
  const entry=(id:string,amount:bigint)=>({id,amount,originalAllocations:null,occurredAt:new Date("2026-11-12T00:00:00Z"),displayName:"Thí chủ 0912345678",narrative:"TP63 0912345678",hiddenNarrative:false,recognitionNames:[] as {name:string}[]});
@@ -14,7 +14,7 @@ function fixture(){
   "server-only":{},"next/cache":{unstable_cache:(fn:unknown)=>fn},
   "./db":{db:{fund:{findUnique:async()=>fund},bankTransaction:{findMany:async(input:{where:unknown})=>{where=input.where;return entries}}}},
   "./public-original-transactions":{publicOriginalMembership:async()=>({original:true})},
-  "./transaction-split-input":{originalFundShare},"./domain":{maskPhones},"./cache-tags":{publicFundTag:(id:string)=>id},
+  "./transaction-split-input":{originalFundShare},"./domain":{maskPhones,normalize,vnd},"./cache-tags":{publicFundTag:(id:string)=>id},
  };
  const api={} as typeof import("../src/lib/fund-recognition");
  vm.runInNewContext(ts.transpile(readFileSync("src/lib/fund-recognition.ts","utf8"),{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}),{exports:api,require:(name:string)=>{if(!(name in dependencies))throw Error(name);return dependencies[name]}});
@@ -56,4 +56,14 @@ test("recognition total covers every qualifying page and preserves integer preci
  const first=await api.loadRecognition({slug:"tp63"},1),second=await api.loadRecognition({slug:"tp63"},2);
  assert.ok(first);assert.ok(second);assert.equal(first.rows.length,100);assert.equal(second.rows.length,5);
  assert.equal(first.totalAmount,(9007199254740993n*105n).toString());assert.equal(second.totalAmount,first.totalAmount);
+});
+
+
+test("search matches public names, narratives and amounts across pages without changing the total",async()=>{
+ const {api,entries}=fixture();entries[0].displayName="Nguyễn Văn An";entries[1].narrative="Cúng dường bảo tháp";
+ const all=await api.loadRecognition({slug:"tp63"});assert.ok(all);
+ const named=await api.loadRecognition({slug:"tp63"},99,"nguyen van an");assert.ok(named);assert.equal(named.count,1);assert.equal(named.page,1);assert.equal(named.totalAmount,all.totalAmount);assert.equal(named.totalCount,3);
+ const content=await api.loadRecognition({slug:"tp63"},1,"bao thap");assert.ok(content);assert.equal(content.count,1);
+ const amount=await api.loadRecognition({slug:"tp63"},1,"6.000.000");assert.ok(amount);assert.equal(amount.count,1);
+ const hidden=await api.loadRecognition({slug:"tp63"},1,"0912345678");assert.ok(hidden);assert.equal(hidden.count,0);
 });

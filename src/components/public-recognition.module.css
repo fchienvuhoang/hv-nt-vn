@@ -114,3 +114,22 @@
   .summary > .total { grid-column: 1 / -1; }
   .summary strong { font-size: 21px; }
 }
+
+.search { display: grid; gap: 8px; margin: 16px 0; }
+.search label { font-size: 13px; font-weight: 600; color: #35513e; }
+.search > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.search input { flex: 1; min-width: 180px; border: 1px solid #dce3d7; border-radius: 10px; padding: 11px 13px; background: #fffefb; }
+.search small { color: #697660; font-size: 12px; }
+@media (max-width: 680px) {
+  .search input { width: 100%; flex-basis: 100%; }
+  :global(.public-compact) .table { overflow: hidden; }
+  :global(.public-compact) .table :global(table.public-ledger-table) { display: block; min-width: 0; width: 100%; }
+  .table :global(.public-ledger-table) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .table :global(.public-ledger-table) tbody { display: block; width: 100%; }
+  .table :global(.public-ledger-table) tbody tr { display: grid; grid-template-columns: 22px minmax(0,1fr) auto; gap: 7px; padding: 13px 11px; border-bottom: 1px solid #e2e8dc; }
+  :global(.public-compact) .table :global(table.public-ledger-table) tbody td { width: auto; min-width: 0; padding: 0; border: 0; white-space: normal; }
+  .table :global(.public-ledger-table) tbody td:nth-child(2) { font-size: 11px; color: #6b796d; }
+  :global(.public-compact) .table :global(table.public-ledger-table) tbody td.identity { grid-column: 2 / -1; grid-row: 2; min-width: 0; }
+  :global(.public-compact) .table :global(table.public-ledger-table) tbody td:last-child { grid-column: 3; grid-row: 1; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .table .identity .name { font-size: 14px; }
+}
