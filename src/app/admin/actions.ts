@@ -363,7 +363,7 @@ export async function saveRecognitionName(input:unknown){
      if(!fund.recognitionEnabled||!fund.recognitionAmount)throw new Error("Thiện pháp chưa bật cấu hình cổ phần.");
      const membership=await publicOriginalMembership(fund.id);
      const entry=await tx.bankTransaction.findFirst({where:{AND:[membership,{id:data.transactionId,direction:"CREDIT",entryStatus:"POSTED"}]},select:{amount:true,originalAllocations:true}});
-     if(!entry||originalFundShare(entry,fund.id)<fund.recognitionAmount)throw new Error("Giao dịch không còn đủ điều kiện ghi phương danh.");
+     if(!entry||originalFundShare(entry,fund.id)<fund.recognitionAmount)throw new Error("Khoản hùn phước không còn đủ điều kiện ghi phương danh.");
      const before=await tx.fundRecognitionName.findUnique({where:{fundId_transactionId:{fundId:fund.id,transactionId:data.transactionId}}});
      await tx.fundRecognitionName.upsert({where:{fundId_transactionId:{fundId:fund.id,transactionId:data.transactionId}},create:data,update:{name:data.name}});
      await audit(tx,actor,"RECOGNITION_NAME_UPDATED",data.transactionId,{fundId:fund.id,before:before?.name??"",after:data.name});

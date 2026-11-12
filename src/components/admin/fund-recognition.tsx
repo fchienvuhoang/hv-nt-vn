@@ -24,14 +24,14 @@ export function FundRecognition({fundId,slug,title}:{fundId:string;slug:string;t
  const [open,setOpen]=useState(false),[page,setPage]=useState(1);
  const {data,error,loading}=useAdminResource<RecognitionData>(`recognition?${new URLSearchParams({fundId,page:String(page)})}`,15000,open);
  const toast=useToast(),url=new URL(`/t/${slug}/phuong-danh`,SITE_ORIGIN).href;
- return <Modal wide title={`Phương danh · ${title}`} trigger="Danh sách phương danh" triggerClassName="button subtle small" onOpen={()=>setOpen(true)} onDismiss={()=>setOpen(false)} footerNote="Mỗi dòng là một giao dịch đạt mức cổ phần. Tên bổ sung hiển thị công khai và không thay đổi sao kê gốc. Để trống để dùng lại tên trên sao kê.">
+ return <Modal wide title={`Phương danh · ${title}`} trigger="Danh sách phương danh" triggerClassName="button subtle small" onOpen={()=>setOpen(true)} onDismiss={()=>setOpen(false)} footerNote="Mỗi dòng là một khoản hùn phước đạt mức cổ phần. Tên bổ sung hiển thị công khai và không thay đổi sao kê gốc. Để trống để dùng lại tên trên sao kê.">
    <div className="inline-actions"><a className="button subtle" href={url} target="_blank" rel="noreferrer">Mở trang công khai</a><button className="button subtle" onClick={async()=>{try{await navigator.clipboard.writeText(url);toast("Đã sao chép link phương danh");}catch{toast("Không sao chép được link","error");}}}>Sao chép link</button></div>
    {error?<p role="alert">{error}</p>:loading&&!data?<LoadingIndicator label="Đang tải danh sách phương danh…"/>:data&&<>
-     <p>{data.count} giao dịch đạt mức {vnd(data.fund.amount)} trở lên · {data.fund.title}</p>
-     <div className={`table-scroll ${styles.table}`}><table><colgroup><col className={styles.numberColumn}/><col className={styles.transactionColumn}/><col className={styles.nameColumn}/><col className={styles.editorColumn}/><col className={styles.amountColumn}/></colgroup><thead><tr><th>#</th><th>Giao dịch</th><th>Tên phương danh</th><th>Bổ sung / sửa tên công khai</th><th className="align-right">Số tiền</th></tr></thead><tbody>
+     <p>{data.count} khoản hùn phước đạt mức {vnd(data.fund.amount)} trở lên · {data.fund.title}</p>
+     <div className={`table-scroll ${styles.table}`}><table><colgroup><col className={styles.numberColumn}/><col className={styles.transactionColumn}/><col className={styles.nameColumn}/><col className={styles.editorColumn}/><col className={styles.amountColumn}/></colgroup><thead><tr><th>#</th><th>Khoản hùn phước</th><th>Tên phương danh</th><th>Bổ sung / sửa tên công khai</th><th className="align-right">Số tiền</th></tr></thead><tbody>
        {data.rows.map((row,index)=><tr key={row.id}><td>{(data.page-1)*data.pageSize+index+1}</td><td className={styles.transaction}>{dateTime(row.at)}<small>{row.narrative}</small></td><td className={styles.name}>{row.name||"Chưa có tên"}</td><td><NameEditor key={`${row.id}:${row.nameOverride}`} fundId={fundId} row={row}/></td><td className="money align-right nowrap">{vnd(row.amount)}</td></tr>)}
      </tbody></table></div>
-     {!data.rows.length&&<p>Chưa có giao dịch đạt mức cổ phần.</p>}
+     {!data.rows.length&&<p>Chưa có khoản hùn phước đạt mức cổ phần.</p>}
      <div className="inline-actions"><button className="button subtle" disabled={data.page<=1} onClick={()=>setPage(data.page-1)}>Trang trước</button><span>Trang {data.page} / {Math.max(1,Math.ceil(data.count/data.pageSize))}</span><button className="button subtle" disabled={data.page*data.pageSize>=data.count} onClick={()=>setPage(data.page+1)}>Trang sau</button></div>
    </>}
  </Modal>;

@@ -118,7 +118,7 @@ export function FundForm({
         <label>Tên cổ phần<input name="recognitionTitle" maxLength={100} value={values.recognitionTitle} required={values.recognitionEnabled==="1"} onChange={event=>change("recognitionTitle",event.target.value)}/>{errorMessage("recognitionTitle")}</label>
         <label>Giá trị một cổ phần (₫)<MoneyInput name="recognitionAmount" value={values.recognitionAmount} onValueChange={value=>change("recognitionAmount",value)} {...errorProps("recognitionAmount")}/>{errorMessage("recognitionAmount")}</label>
       </div>
-      <small>Xét từng giao dịch hùn phước gốc từ mức này trở lên, không cộng dồn. Không thay đổi tổng thu, chi hay số dư. Tên ghi phương danh có thể bổ sung riêng.</small>
+      <small>Xét từng khoản hùn phước gốc từ mức này trở lên, không cộng dồn. Không thay đổi tổng thu, chi hay số dư. Tên ghi phương danh có thể bổ sung riêng.</small>
       <label>
         Ghi chú nội bộ
         <textarea name="adminNote" rows={3} maxLength={3000} placeholder="Ghi chú theo dõi thiện pháp…" value={values.adminNote} onChange={event=>change("adminNote",event.target.value)} {...errorProps("adminNote")} />

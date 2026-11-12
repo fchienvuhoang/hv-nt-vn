@@ -1,12 +1,38 @@
 .intro {
-  margin: 0;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 16px 0 18px;
+  padding: 30px 34px;
+  border: 1px solid #a68b53;
+  border-radius: 18px;
+  background: radial-gradient(ellipse at 100% 0%, #4d6545 0%, transparent 60%), linear-gradient(120deg, #203d31, #304d3a);
+  box-shadow: 0 6px 22px #203d3114;
+}
+.intro::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 390px;
+  aspect-ratio: 1;
+  right: -140px;
+  top: -180px;
+  border: 1px solid #d1b7783b;
+  border-radius: 50%;
+  box-shadow: 0 0 0 28px #d1b7780a, 0 0 0 56px #d1b7780a, 0 0 0 84px #d1b77808;
+  pointer-events: none;
 }
 .eyebrow {
   margin: 0 0 10px;
-  color: var(--muted, #667085);
-  font-size: 14px;
+  color: #e6cc91;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 1.8px;
+  line-height: 1.6;
 }
 .intro.intro h1 {
+  color: #fff5df;
+  text-wrap: balance;
   margin: 0 0 12px;
   max-width: 1100px;
   font-size: clamp(23px, 2.5vw, 34px);
@@ -39,7 +65,7 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 640px) {
-  .intro { margin-top: 0; }
+  .intro { margin-top: 12px; padding: 23px 20px; border-radius: 14px; }
   .table .identity { min-width: 240px; }
   .table .identity .name { font-size: 14px; }
 }
@@ -47,10 +73,10 @@
 .fundBadge {
   display: inline-flex;
   padding: 5px 11px;
-  border: 1px solid #cbb88a;
+  border: 1px solid #dcc38b66;
   border-radius: 999px;
-  background: #fff9e8;
-  color: #79602b;
+  background: #fff5df0d;
+  color: #f4dfaf;
   font-size: 12px;
   font-weight: 600;
 }
