@@ -37,3 +37,15 @@ test("separate small donations from one name never combine into a qualifying tra
  const {api,entries}=fixture();entries.splice(0,entries.length,...["a","b"].map(id=>({id,amount:4000000n,originalAllocations:[{fundId:"fund",amount:"2000000"}],occurredAt:new Date(),displayName:"Cùng tên",narrative:"",hiddenNarrative:false,recognitionNames:[]})));
  const result=await api.loadRecognition({slug:"tp63"});assert.ok(result);assert.equal(result.count,0);
 });
+
+test("public name falls back to visible narrative for missing or generated donor names",async()=>{
+ const {api,entries}=fixture();
+ entries[0].displayName="   ";entries[0].narrative="Hùn phước TP63 0912345678";
+ entries[1].displayName="Người hùn phước";entries[1].narrative="Nội dung giao dịch";
+ let result=await api.loadRecognition({slug:"tp63"});assert.ok(result);
+ assert.equal(result.rows[0].name,maskPhones(entries[0].narrative));assert.equal(result.rows[1].name,"Nội dung giao dịch");
+ entries[0].hiddenNarrative=true;
+ entries[1].displayName="Người ủng hộ ẩn danh";entries[1].recognitionNames=[{name:"Tên đã xác nhận"}];
+ result=await api.loadRecognition({slug:"tp63"});assert.ok(result);
+ assert.equal(result.rows[0].name,"Nội dung được ẩn theo nguồn sao kê");assert.equal(result.rows[1].name,"Tên đã xác nhận");
+});

@@ -34,8 +34,8 @@ function FundingProgress({ income, goal }: { income: bigint; goal: bigint | null
 
 export default function Funds({ params = {},bootstrap }: { params?: AdminParams;bootstrap?:AdminBootstrap }) {
   const toast=useToast();
-  async function copyPublicLink(slug:string){
-    try{await navigator.clipboard.writeText(new URL(`/t/${slug}`,SITE_ORIGIN).href);toast("Đã sao chép link trang công khai.");}
+  async function copyPublicLink(slug:string,recognition=false){
+    try{await navigator.clipboard.writeText(new URL(`/t/${slug}${recognition?"/phuong-danh":""}`,SITE_ORIGIN).href);toast(recognition?"Đã sao chép link phương danh.":"Đã sao chép link trang công khai.");}
     catch{toast("Không sao chép được. Vui lòng cho phép truy cập bộ nhớ tạm rồi thử lại.","error");}
   }
   const all=[...(bootstrap?.funds??[])].sort((a,b)=>(b.pinnedAt?.getTime()??0)-(a.pinnedAt?.getTime()??0)||b.createdAt.getTime()-a.createdAt.getTime()||a.id.localeCompare(b.id)),balances=bootstrap?.balances??[];
@@ -175,7 +175,12 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </td>
                     <td>
                       <Status status={f.status} />
-                      <div className="fund-status-public-link"><Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={13} /><span>Trang công khai</span></Link><button type="button" className="fund-copy-link" onClick={()=>void copyPublicLink(f.slug)} title={`Sao chép link công khai ${f.code}`} aria-label={`Sao chép link công khai ${f.code}`}><Copy size={13}/></button></div>
+                      <div className="fund-status-public-link"><Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={13} /><span>Trang công khai</span></Link><button type="button" className="fund-copy-link" onClick={()=>void copyPublicLink(f.slug)} title={`Sao chép link công khai ${f.code}`} aria-label={`Sao chép link công khai ${f.code}`}><Copy size={13}/></button>
+                        {f.recognitionEnabled&&f.recognitionAmount!=null&&f.recognitionAmount>0n&&<>
+                          <Link className="fund-public-link" href={`/t/${f.slug}/phuong-danh`} target="_blank" rel="noopener noreferrer" title={`Mở phương danh ${f.code}`} aria-label={`Mở phương danh ${f.code} (tab mới)`}><ExternalLink size={13}/><span>Phương danh</span></Link>
+                          <button type="button" className="fund-copy-link" onClick={()=>void copyPublicLink(f.slug,true)} title={`Sao chép link phương danh ${f.code}`} aria-label={`Sao chép link phương danh ${f.code}`}><Copy size={13}/></button>
+                        </>}
+                      </div>
                     </td>
                     <td data-label="Hùn phước" className="money align-right nowrap">
                       {vnd(f.fundingIncome)}

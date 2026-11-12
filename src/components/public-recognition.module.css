@@ -1,0 +1,45 @@
+.intro {
+  margin: 24px 0 18px;
+}
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--muted, #667085);
+  font-size: 14px;
+}
+.intro h1 {
+  margin: 0 0 12px;
+  max-width: 1200px;
+  font-size: clamp(28px, 3.5vw, 44px);
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -.6px;
+  overflow-wrap: anywhere;
+}
+.table table {
+  width: 100%;
+}
+.table .identity {
+  min-width: 260px;
+  width: 100%;
+  white-space: normal;
+}
+.table .identity .name {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.5;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.table .identity small.narrative {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted, #667085);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .intro { margin-top: 18px; }
+  .table .identity { min-width: 240px; }
+  .table .identity .name { font-size: 17px; }
+}

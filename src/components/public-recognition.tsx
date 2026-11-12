@@ -1,4 +1,5 @@
 "use client";
+import styles from "./public-recognition.module.css";
 import {useEffect,useState} from "react";
 import {Brand} from "@/components/ui";
 import {LoadingIndicator} from "@/components/loading-indicator";
@@ -22,12 +23,20 @@ export function PublicRecognition({slug}:{slug:string}){
  const data=state.page===page?state.data:undefined,error=state.page===page?state.error:undefined;
  return <div className="public-site"><header className="public-header"><Brand href={`/t/${slug}`}/></header><main className="public-detail public-compact">
    <a className="button subtle" href={`/t/${slug}`}>Về sao kê thiện pháp</a>
-   <h1>Danh sách phương danh{data?` · ${data.fund.title}`:""}</h1>
+   <header className={styles.intro}>
+     <p className={styles.eyebrow}>Danh sách phương danh{data?` · ${data.fund.title}`:""}</p>
+     <h1>{data?.fund.name??"Danh sách phương danh"}</h1>
+     {data&&<span className="code">{data.fund.code}</span>}
+   </header>
    {error?<div role="alert" className="notice danger">{error} <button className="button subtle" onClick={()=>{setState({page:0});setRetry(n=>n+1)}}>Thử lại</button></div>:!data?<LoadingIndicator label="Đang tải phương danh…"/>:<>
-     <h2>{data.fund.code} · {data.fund.name}</h2>
      <p>Một {data.fund.title}: {vnd(data.fund.amount)}. Danh sách gồm {data.count} giao dịch hùn phước từ mức này trở lên, xét riêng từng giao dịch và không cộng dồn.</p>
-     <div className="table-scroll table-card"><table><thead><tr><th>#</th><th>Phương danh</th><th>Thời gian</th><th>Số tiền hùn phước</th><th>Nội dung đối chiếu</th></tr></thead><tbody>
-       {data.rows.map((row,index)=><tr key={index}><td>{(data.page-1)*data.pageSize+index+1}</td><td>{row.name||"Đang bổ sung phương danh"}</td><td>{dateTime(row.at)}</td><td className="money">{vnd(row.amount)}</td><td>{row.narrative}</td></tr>)}
+     <div className={`table-scroll table-card ${styles.table}`}><table className="public-ledger-table" aria-label="Danh sách phương danh cổ phần"><thead><tr><th className="public-row-number">#</th><th>Thời gian</th><th>Phương danh / nội dung hùn phước</th><th className="align-right">Số tiền hùn phước</th></tr></thead><tbody>
+       {data.rows.map((row,index)=><tr key={index}>
+         <td className="public-row-number">{(data.page-1)*data.pageSize+index+1}</td>
+         <td className="nowrap">{dateTime(row.at)}</td>
+         <td className={styles.identity}><p className={styles.name}>{row.name||row.narrative||"Đang bổ sung phương danh"}</p>{row.name&&row.narrative&&row.name!==row.narrative&&<small className={styles.narrative}>{row.narrative}</small>}</td>
+         <td className="money align-right nowrap positive">{vnd(row.amount)}</td>
+       </tr>)}
      </tbody></table></div>
      {!data.rows.length&&<p>Chưa có giao dịch đạt mức cổ phần.</p>}
      <nav className="inline-actions" aria-label="Phân trang phương danh">
