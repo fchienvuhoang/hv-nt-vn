@@ -1,12 +1,13 @@
 import "server-only";
+import {readLengthGoal,formatMeasure} from "./fund-goal";
 import { db } from "./db";
 import { vnd } from "./domain";
 import type { Prisma } from "@/generated/prisma/client";
 const actions=["FUND_CREATED","FUND_UPDATED","Hiển thị trên trang Minh bạch","Ẩn khỏi trang Minh bạch","Ghim thiện pháp","Bỏ ghim thiện pháp"];
 function record(value:unknown):Record<string,unknown>{return value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{}}
 function words(value:unknown):string[]{return Array.isArray(value)?value.filter((v):v is string=>typeof v==="string"):[]}
-const fields=[ ["code","Mã thiện pháp"],["name","Tên thiện pháp"],["status","Trạng thái"],["description","Mô tả"],["sourceUrl","Link Excel nguồn"],["goalAmount","Mục tiêu thành tựu"],["adminNote","Ghi chú nội bộ"],["publicListed","Hiển thị trang Minh bạch"] ] as const;
-function display(key:string,value:unknown){if(value===undefined)return "Không có dữ liệu cũ";if(value===null||value==="")return "(trống)";if(key==="goalAmount"&&/^\d+$/.test(String(value)))return vnd(String(value));if(key==="status")return ({ACTIVE:"Đang hoạt động",PAUSED:"Tạm dừng",COMPLETED:"Hoàn thành"} as Record<string,string>)[String(value)]??String(value);if(typeof value==="boolean")return value?"Bật":"Tắt";return String(value)}
+const fields=[ ["code","Mã thiện pháp"],["name","Tên thiện pháp"],["status","Trạng thái"],["description","Mô tả"],["sourceUrl","Link Excel nguồn"],["goalAmount","Mục tiêu thành tựu"],["goalType","Loại mục tiêu"],["goalConfig","Cấu hình mục tiêu"],["adminNote","Ghi chú nội bộ"],["publicListed","Hiển thị trang Minh bạch"] ] as const;
+function display(key:string,value:unknown){if(value===undefined)return "Không có dữ liệu cũ";if(value===null||value==="")return "(trống)";if(key==="goalType")return value==="LENGTH"?"Theo chiều dài (mét)":value==="MONEY"?"Theo số tiền":String(value);if(key==="goalConfig"){const length=readLengthGoal("LENGTH",value);return length?`${formatMeasure(length.quantity)} m dài × ${formatMeasure(length.width)} m rộng × ${vnd(length.unitPrice)}/m²`:JSON.stringify(value)}if(key==="goalAmount"&&/^\d+$/.test(String(value)))return vnd(String(value));if(key==="status")return ({ACTIVE:"Đang hoạt động",PAUSED:"Tạm dừng",COMPLETED:"Hoàn thành"} as Record<string,string>)[String(value)]??String(value);if(typeof value==="boolean")return value?"Bật":"Tắt";return String(value)}
 export function describeFundChange(action:string,details:Prisma.JsonValue){
   const data=record(details),created=action==="FUND_CREATED",before=record(data.before),after=created?data:record(data.after);
   if(action!=="FUND_CREATED"&&action!=="FUND_UPDATED")return {label:action,added:[] as string[],removed:[] as string[],changes:[{field:action.includes("ghim")||action.includes("Ghim")?"Ghim thiện pháp":"Hiển thị trang Minh bạch",before:display("",data.before),after:display("",data.after)}]};

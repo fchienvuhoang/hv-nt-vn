@@ -1,6 +1,7 @@
 "use server";
 import { splitTransaction } from "@/lib/transaction-split";
 import type { TransactionSplitInput } from "@/lib/transaction-split-input";
+import { resolveFundGoal } from "@/lib/fund-goal";
 import { db } from "@/lib/db";
 import { randomUUID } from "node:crypto";
 import { appendTransactionNote, reassignTransactions, fundTransactionList, type BulkReassignment } from "@/lib/transaction-management";
@@ -21,7 +22,7 @@ import {
   type FundImportSummary,
 } from "@/lib/fund-imports";
 import { reviewEntry } from "@/lib/review-entry";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 export type ActionState = { error?: string; success?: string; fieldErrors?: Record<string, string[]> };
 const id = z.string().min(1).max(100);
 const money = z
@@ -51,6 +52,10 @@ const fundSchema = z.object({
   name: z.string().trim().min(3).max(200),
   description: z.string().trim().max(3000),
   adminNote: z.string().trim().transform(value=>value.replace(/\r\n?/g,"\n")).pipe(z.string().max(3000,"Ghi chú tối đa 3.000 ký tự")).optional(),
+  goalType: z.enum(["MONEY","LENGTH"]).optional(),
+  goalUnitPrice: z.string().max(30).optional(),
+  goalWidth: z.string().max(30).optional(),
+  goalQuantity: z.string().max(30).optional(),
   goalAmount: z.union([z.literal("").transform(()=>null),money.refine(value=>value>0n,"Mục tiêu phải lớn hơn 0")]).optional(),
   sourceUrl: z.string().trim().max(2000).refine(value => !value || (URL.canParse(value) && ["https:", "http:"].includes(new URL(value).protocol)), "Link phải bắt đầu bằng https:// hoặc http://").optional(),
   keywords: z.string().max(3000),
@@ -146,11 +151,13 @@ export async function saveFund(_state: ActionState, form: FormData) {
       const recognitionTitle=data.recognitionTitle??existing?.recognitionTitle??"Cổ phần";
       const recognitionAmount=data.recognitionAmount===undefined?existing?.recognitionAmount??null:data.recognitionAmount;
       if(recognitionEnabled&&(!recognitionTitle||!recognitionAmount))throw new Error("Khi bật phương danh, cần nhập tên cổ phần và giá trị một cổ phần lớn hơn 0.");
+      const goal = resolveFundGoal(data, existing);
+      const { goalUnitPrice, goalWidth, goalQuantity, ...fundData } = data; void goalUnitPrice; void goalWidth; void goalQuantity;
       const fields = {
-        ...data, recognitionEnabled,recognitionTitle,recognitionAmount, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
+        ...fundData, recognitionEnabled,recognitionTitle,recognitionAmount, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
         sourceUrl: data.sourceUrl ?? existing?.sourceUrl ?? "",
         adminNote: data.adminNote ?? existing?.adminNote ?? "",
-        goalAmount: data.goalAmount === undefined ? existing?.goalAmount ?? null : data.goalAmount,
+        goalType: goal.goalType, goalAmount: goal.goalAmount, goalConfig: goal.goalConfig as Prisma.InputJsonValue | null,
         accountIds: [...new Set(existing?.accountIds ?? accounts.map(a => a.id))].filter(id => id !== accountId),
         keywords: validateFundKeywords(data.code, data.keywords, rules, fundId),
       };
@@ -158,7 +165,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
         const before = await tx.fund.findUniqueOrThrow({
           where: { id: fundId },
         });
-        await tx.fund.update({ where: { id: fundId }, data: { ...fields, ...updatedStamp(actor) } });
+        await tx.fund.update({ where: { id: fundId }, data: { ...fields, goalConfig: fields.goalConfig ?? Prisma.DbNull, ...updatedStamp(actor) } });
         await audit(tx, actor, "FUND_UPDATED", fundId, {
           before: {
             code: before.code,
@@ -169,6 +176,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
             sourceUrl: before.sourceUrl,
             adminNote: before.adminNote,
             goalAmount: before.goalAmount?.toString() ?? null,
+            goalType: before.goalType, goalConfig: before.goalConfig,
             publicListed: before.publicListed,
             recognitionEnabled:before.recognitionEnabled,recognitionTitle:before.recognitionTitle,recognitionAmount:before.recognitionAmount?.toString()??null,
           },
@@ -177,7 +185,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
       } else {
         const created = await tx.fund.create({
           data: {
-            ...fields, ...createdStamp(actor), ...updatedStamp(actor),
+            ...fields, goalConfig: fields.goalConfig ?? Prisma.DbNull, ...createdStamp(actor), ...updatedStamp(actor),
             slug: `${account.number}-${data.code.toLowerCase()}`,
           },
         });

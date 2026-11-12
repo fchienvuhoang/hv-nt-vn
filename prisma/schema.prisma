@@ -63,6 +63,8 @@ model Fund {
   recognitionAmount  BigInt?
   recognitionNames   FundRecognitionName[]
   goalAmount         BigInt?
+  goalType           String @default("MONEY")
+  goalConfig         Json?
   adminNote          String     @default("")
   keywords           String[]
   status             FundStatus @default(ACTIVE)

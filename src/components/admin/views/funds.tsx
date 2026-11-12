@@ -1,4 +1,5 @@
 "use client";
+import {readLengthGoal,formatMeasure} from "@/lib/fund-goal";
 import {FundRecognition} from "@/components/admin/fund-recognition";
 import {SITE_ORIGIN} from "@/lib/site-url";
 import { useToast } from "@/components/toasts";
@@ -22,12 +23,13 @@ import type { AdminBootstrap } from "@/lib/admin-read-model";
 import { Status, Empty } from "@/components/ui";
 import { vnd, fundUsesAccount } from "@/lib/domain";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
-function FundingProgress({ income, goal }: { income: bigint; goal: bigint | null }) {
+function FundingProgress({ income, goal, goalType, goalConfig }: { income: bigint; goal: bigint | null; goalType?:string; goalConfig?:unknown }) {
   if (goal === null || goal <= 0n) return null;
+  const length=readLengthGoal(goalType,goalConfig);
   const percentage = Number((income > 0n ? income : 0n) * 1000n / goal) / 10;
   const label = `${percentage.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`;
   return <div className="fund-funding-progress">
-    <div><span>Mục tiêu: <b>{vnd(goal)}</b></span><strong>{label}</strong></div>
+    <div><span>Mục tiêu: <b>{length?`${formatMeasure(length.quantity)} m`:vnd(goal)}</b></span><strong>{label}</strong></div>
     <progress max={100} value={Math.min(100, percentage)} aria-label="Tiến độ thành tựu" aria-valuetext={label}/>
   </div>;
 }
@@ -184,7 +186,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                     </td>
                     <td data-label="Hùn phước" className="money align-right nowrap">
                       {vnd(f.fundingIncome)}
-                      <FundingProgress income={f.fundingIncome} goal={f.goalAmount}/>
+                      <FundingProgress income={f.fundingIncome} goal={f.goalAmount} goalType={f.goalType} goalConfig={f.goalConfig}/>
                       {(f.transferIn!==0n||f.transferOut!==0n)&&<small>Đã tính điều chuyển ròng</small>}
                       {f.adminNote && <div className="fund-income-note"><strong>Ghi chú:</strong> {f.adminNote}</div>}
                     </td>

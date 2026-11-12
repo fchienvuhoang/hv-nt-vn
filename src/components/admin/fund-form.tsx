@@ -1,4 +1,5 @@
 "use client";
+import { FUND_GOAL_TYPES, calculateLengthGoal, readLengthGoal, formatMeasure, goalArea } from "@/lib/fund-goal";
 import { accountLabel } from "@/lib/account-label";
 import { MoneyInput } from "@/components/money-input";
 import { LoadingSpinner } from "@/components/loading-indicator";
@@ -28,15 +29,24 @@ export function FundForm({
   const locked = pending || !!state.success;
   const formRef = useRef<HTMLFormElement>(null);
   const prefix = useId();
+  const lengthGoal = readLengthGoal(fund?.goalType, fund?.goalConfig);
   const [values, setValues] = useState({
     code: fund?.code ?? "", name: fund?.name ?? "", status: fund?.status ?? "ACTIVE",
     keywords: fund?.keywords.join("\n") ?? "", description: fund?.description ?? "",
     goalAmount: fund?.goalAmount?.toString() ?? "",
+    goalType: fund?.goalType ?? "MONEY",
+    goalUnitPrice: lengthGoal?.unitPrice ?? "",
+    goalWidth: lengthGoal?.width ?? "",
+    goalQuantity: lengthGoal?.quantity ?? "",
     adminNote: fund?.adminNote ?? "",
     recognitionEnabled:fund?.recognitionEnabled?"1":"0",
     recognitionTitle:fund?.recognitionTitle??"Cổ phần",
     recognitionAmount:fund?.recognitionAmount?.toString()??"",
   });
+  let lengthPreview: ReturnType<typeof calculateLengthGoal> | null = null;
+  if (values.goalType === "LENGTH") {
+    try { lengthPreview = calculateLengthGoal(values.goalUnitPrice, values.goalWidth, values.goalQuantity); } catch { /* Preview appears only when all inputs are valid. */ }
+  }
   const [edited, setEdited] = useState<Record<string, boolean>>({});
   function change(field: keyof typeof values, value: string) {
     setValues(previous => ({ ...previous, [field]: value }));
@@ -103,12 +113,28 @@ export function FundForm({
         />
         {errorMessage("name")}
       </label>
-      <label>
-        Mục tiêu thành tựu (₫)
-        <MoneyInput name="goalAmount" placeholder="Ví dụ: 100.000.000" value={values.goalAmount} onValueChange={value=>change("goalAmount",value)} {...errorProps("goalAmount")} />
-        {errorMessage("goalAmount")}
-        <small>{/^\d{1,15}$/.test(values.goalAmount) ? vnd(values.goalAmount) : "Để trống nếu chưa có mục tiêu. Tự phân cách hàng nghìn khi nhập hoặc dán số tiền."}</small>
-      </label>
+      <div className="fund-goal-editor">
+        <label>Loại mục tiêu thành tựu
+          <select name="goalType" aria-label="Loại mục tiêu thành tựu" value={values.goalType} onChange={event=>change("goalType",event.target.value)} {...errorProps("goalType")}>
+            {FUND_GOAL_TYPES.map(type=><option key={type.value} value={type.value}>{type.label}</option>)}
+          </select>
+          {errorMessage("goalType")}
+        </label>
+        {values.goalType==="MONEY" ? <label>
+          Mục tiêu thành tựu (₫)
+          <MoneyInput name="goalAmount" placeholder="Ví dụ: 100.000.000" value={values.goalAmount} onValueChange={value=>change("goalAmount",value)} {...errorProps("goalAmount")} />
+          {errorMessage("goalAmount")}
+          <small>{/^\d{1,15}$/.test(values.goalAmount) ? vnd(values.goalAmount) : "Để trống nếu chưa có mục tiêu. Tự phân cách hàng nghìn khi nhập hoặc dán số tiền."}</small>
+        </label> : <>
+          <label>Bề rộng cố định (m)<input name="goalWidth" type="text" inputMode="decimal" maxLength={14} value={values.goalWidth} onChange={event=>change("goalWidth",event.target.value)} placeholder="Ví dụ: 3" required {...errorProps("goalWidth")}/>{errorMessage("goalWidth")}</label>
+          <div className="form-row">
+            <label>Đơn giá mỗi m² (₫)<MoneyInput name="goalUnitPrice" value={values.goalUnitPrice} onValueChange={value=>change("goalUnitPrice",value)} placeholder="Ví dụ: 1.500.000" required {...errorProps("goalUnitPrice")}/>{errorMessage("goalUnitPrice")}</label>
+            <label>Chiều dài mục tiêu (m)<input name="goalQuantity" type="text" inputMode="decimal" maxLength={14} value={values.goalQuantity} onChange={event=>change("goalQuantity",event.target.value)} placeholder="Ví dụ: 350 hoặc 12,5" required {...errorProps("goalQuantity")}/>{errorMessage("goalQuantity")}</label>
+          </div>
+          <div className="fund-goal-preview" role="status">{lengthPreview ? <><strong>Tổng mục tiêu: {vnd(lengthPreview.goalAmount)}</strong><span>{formatMeasure(lengthPreview.goalConfig.quantity)} m dài × {formatMeasure(lengthPreview.goalConfig.width)} m rộng = {goalArea(lengthPreview.goalConfig)} m² · {vnd(lengthPreview.goalConfig.unitPrice)}/m²</span></> : <span>Nhập bề rộng, đơn giá và chiều dài để tính tổng mục tiêu.</span>}</div>
+          <small>Số mét hỗ trợ tối đa 4 chữ số thập phân. Tổng tiền = chiều dài × bề rộng × đơn giá/m², làm tròn lên đến 1 đồng nếu cần. Tiến độ mét dài quy đổi từ tiền hùn phước.</small>
+        </>}
+      </div>
       <label>Danh sách ghi phương danh
         <select name="recognitionEnabled" value={values.recognitionEnabled} onChange={event=>change("recognitionEnabled",event.target.value)}>
           <option value="0">Tắt</option><option value="1">Bật trang công khai theo cổ phần</option>

@@ -54,6 +54,7 @@ async function publicFundSummary(slug:string,month:string){
       recognitionEnabled:fund.recognitionEnabled,recognitionTitle:fund.recognitionTitle,
       code: fund.code,
       goalAmount: fund.goalAmount?.toString() ?? null,
+      goalType: fund.goalType, goalConfig: fund.goalConfig,
       fundingVersion: 3,
       originalIncome:originalIncome.toString(),
       receivedAllocation:(netReallocation>0n?netReallocation:0n).toString(),
@@ -166,8 +167,8 @@ const directoryFunds=unstable_cache(async()=>{
    for(const id of origins){const key=`${id}:${row.direction}`;counts.set(key,(counts.get(key)??0)+1)}
   }
   const count=(id:string,type:string)=>counts.get(`${id}:${type}`)??0;
-  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,goalAmount:f.goalAmount?.toString()??null,name:maskPhones(f.name),description:maskPhones(f.description),income:f.fundingIncome.toString(),expense:f.expense.toString(),balance:f.balance.toString(),availableBalance:f.availableBalance.toString(),excessExpense:f.excessExpense.toString(),openingBalance:f.openingBalance.toString(),count:count(f.id,"CREDIT")+count(f.id,"DEBIT"),incomeCount:count(f.id,"CREDIT"),expenseCount:count(f.id,"DEBIT")}));
-},["public-directory-funds-v13"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
+  return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,goalAmount:f.goalAmount?.toString()??null,goalType:f.goalType,goalConfig:f.goalConfig,name:maskPhones(f.name),description:maskPhones(f.description),income:f.fundingIncome.toString(),expense:f.expense.toString(),balance:f.balance.toString(),availableBalance:f.availableBalance.toString(),excessExpense:f.excessExpense.toString(),openingBalance:f.openingBalance.toString(),count:count(f.id,"CREDIT")+count(f.id,"DEBIT"),incomeCount:count(f.id,"CREDIT"),expenseCount:count(f.id,"DEBIT")}));
+},["public-directory-funds-v14"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
 export async function publicDirectory(search="",requestedPage=1){
  const funds=await directoryFunds(),query=search.trim().slice(0,100);
  type Preview=Omit<Awaited<ReturnType<typeof publicTransactionPage>>[number],"id">&{direction:"CREDIT"|"DEBIT"};

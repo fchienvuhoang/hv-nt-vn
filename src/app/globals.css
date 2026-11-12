@@ -4855,3 +4855,9 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
   .transfers-row-actions { width: 100%; min-width: 0; flex-direction: row; flex-wrap: wrap; }
   .transfers-history-scroll.table-card table td .transfers-row-actions > .button { flex: 1 1 120px; min-height: 40px; }
 }
+
+.fund-goal-editor { display: grid; gap: 12px; min-width: 0; padding: 14px; border: 1px solid #dfd4c2; border-radius: 10px; background: #fdfaf4; }
+.fund-goal-editor .form-row { margin: 0; }
+.fund-goal-preview { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; padding: 10px 12px; border: 1px solid #d6e3d8; border-radius: 8px; background: #edf5ee; font-size: 13px; color: #315b3e; }
+.fund-goal-preview span { font-size: 12px; }
+.public-goal-area-note { display: block; margin: 3px 0 7px; line-height: 1.6; }
