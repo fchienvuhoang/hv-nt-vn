@@ -4878,3 +4878,8 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
 .public-goal-unit-price > span b { font-weight: 600; }
 .public-goal-unit-price > strong { color: #795731; font-size: 16px; font-weight: 700; line-height: 1.4; font-variant-numeric: tabular-nums; }
 .public-goal-length .public-goal-raised > strong { font-size: 23px; }
+
+.public-goal-money-summary { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 8px 0 12px; }
+.public-goal-money-summary > span { flex: 1 1 150px; min-width: 0; color: #68584b; font-size: 14px; line-height: 1.5; }
+.public-goal-money-summary strong { display: block; margin-top: 2px; color: #344e42; font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.public-goal-raised > span, .public-goal-target > span { font-size: 14px; }
