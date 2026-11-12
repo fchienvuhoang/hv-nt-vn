@@ -61,7 +61,16 @@ export function goalArea(config: LengthGoalConfig) {
   const units = measureUnits(config.width) * measureUnits(config.quantity), scale = SCALE * SCALE;
   return formatMeasure(`${units / scale}.${(units % scale).toString().padStart(8, "0")}`);
 }
+function fundedLengthUnits(income: bigint, config: LengthGoalConfig) {
+  return (income > 0n ? income : 0n) * SCALE * SCALE / (BigInt(config.unitPrice) * measureUnits(config.width));
+}
 export function fundedLength(income: bigint, config: LengthGoalConfig) {
-  const units = (income > 0n ? income : 0n) * SCALE * SCALE / (BigInt(config.unitPrice) * measureUnits(config.width));
+  const units = fundedLengthUnits(income, config);
+  return formatMeasure(`${units / SCALE}.${(units % SCALE).toString().padStart(4, "0")}`);
+}
+
+export function remainingLength(income: bigint, config: LengthGoalConfig) {
+  const target = measureUnits(config.quantity), funded = fundedLengthUnits(income, config);
+  const units = target > funded ? target - funded : 0n;
   return formatMeasure(`${units / SCALE}.${(units % SCALE).toString().padStart(4, "0")}`);
 }

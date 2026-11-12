@@ -39,3 +39,13 @@ test("funded length uses the width and remains a monetary equivalent, not constr
   assert.equal(goalEmailMilestone({ status: "ACTIVE", goalAmount: goal.goalAmount, income: 1260000000n }), 80);
   assert.ok(goalAchievementKey({ id: "f", status: "ACTIVE", goalAmount: goal.goalAmount, income: 1575000000n }));
 });
+
+test("remaining metres round conservatively and never show zero before the target is funded", async () => {
+  const { remainingLength } = await import("../src/lib/fund-goal");
+  const goal = calculateLengthGoal("1500000", "3", "350");
+  assert.equal(remainingLength(0n, goal.goalConfig), "350");
+  assert.equal(remainingLength(56250000n, goal.goalConfig), "337,5");
+  assert.equal(remainingLength(goal.goalAmount - 1n, goal.goalConfig), "0,0001");
+  assert.equal(remainingLength(goal.goalAmount, goal.goalConfig), "0");
+  assert.equal(remainingLength(goal.goalAmount + 1n, goal.goalConfig), "0");
+});
