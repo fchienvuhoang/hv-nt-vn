@@ -101,7 +101,7 @@ async function publicFundSummary(slug:string,month:string){
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v21",slug,month],
+  ["public-fund-summary-v22",slug,month],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }
@@ -168,7 +168,7 @@ const directoryFunds=unstable_cache(async()=>{
   }
   const count=(id:string,type:string)=>counts.get(`${id}:${type}`)??0;
   return totals.filter(f=>f.status==="ACTIVE"&&f.publicListed).map(f=>({id:f.id,slug:f.slug,code:f.code,goalAmount:f.goalAmount?.toString()??null,goalType:f.goalType,goalConfig:f.goalConfig,name:maskPhones(f.name),description:maskPhones(f.description),income:f.fundingIncome.toString(),expense:f.expense.toString(),balance:f.balance.toString(),availableBalance:f.availableBalance.toString(),excessExpense:f.excessExpense.toString(),openingBalance:f.openingBalance.toString(),count:count(f.id,"CREDIT")+count(f.id,"DEBIT"),incomeCount:count(f.id,"CREDIT"),expenseCount:count(f.id,"DEBIT")}));
-},["public-directory-funds-v14"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
+},["public-directory-funds-v15"],{...options,tags:[PUBLIC_TAG,PUBLIC_DIRECTORY_TAG]});
 export async function publicDirectory(search="",requestedPage=1){
  const funds=await directoryFunds(),query=search.trim().slice(0,100);
  type Preview=Omit<Awaited<ReturnType<typeof publicTransactionPage>>[number],"id">&{direction:"CREDIT"|"DEBIT"};

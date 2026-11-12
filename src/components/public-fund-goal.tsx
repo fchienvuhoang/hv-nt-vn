@@ -7,10 +7,11 @@ export function PublicFundGoal({ goalAmount, income, goalType, goalConfig }: { g
   const goal = BigInt(goalAmount), raised = BigInt(income);
   const percentage = Number((raised > 0n ? raised : 0n) * 1000n / goal) / 10;
   const remaining = goal > raised ? goal - raised : 0n;
-  return <div className="public-fund-goal">
+  return <div className={`public-fund-goal${length ? " public-goal-length" : ""}`}>
+    {length&&<div className="public-goal-unit-price"><span>Hùn phước <b>1 mét dài</b></span><strong>{vnd(length.unitPrice)}</strong></div>}
     <div className="public-goal-raised"><span>{length ? "Đã hùn phước (quy đổi)" : "Đã hùn phước"}</span><strong>{length ? `${fundedLength(raised,length,true)} mét / ${formatMeasure(length.quantity)} mét` : vnd(income)}</strong></div>
     {!length&&<div className="public-goal-target"><span>Mục tiêu thành tựu</span><strong>{vnd(goalAmount)}</strong></div>}
-    {length&&<small className="public-goal-area-note">Rộng {formatMeasure(length.width)} m · Đơn giá {vnd(length.unitPrice)}/m²<br />Đã hùn phước {vnd(income)} · Tổng mục tiêu {vnd(goalAmount)}</small>}
+    {length&&<small className="public-goal-area-note">Rộng {formatMeasure(length.width)} m (mô tả)<br />Đã hùn phước {vnd(income)} · Tổng mục tiêu {vnd(goalAmount)}</small>}
     <progress max={100} value={Math.min(100, percentage)} aria-label="Tiến độ hùn phước"/>
     <div className="public-goal-summary"><small>{remaining > 0n ? <>Còn cần: <b>{length ? `${remainingLength(raised,length,true)} mét` : vnd(remaining)}</b>{length&&<> · {vnd(remaining)}</>}</> : "Đã đạt mục tiêu thành tựu"}</small><strong>{percentage.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%</strong></div>
   </div>;

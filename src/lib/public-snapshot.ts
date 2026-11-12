@@ -64,6 +64,8 @@ export async function readPublicSnapshot(slug:string){
  if(revision!==null&&(snapshot.revision??0)<revision)return null;
  if (snapshot.credit.fundingVersion!==3 || snapshot.debit.fundingVersion!==3) return null;
  if (!("goalAmount" in snapshot.credit) || !("goalAmount" in snapshot.debit)) return null;
+ // Reject metre targets cached with the former area-price calculation.
+ for(const fund of [snapshot.credit,snapshot.debit])if(fund.goalType==="LENGTH"&&(!fund.goalConfig||typeof fund.goalConfig!=="object"||!("version" in fund.goalConfig)||fund.goalConfig.version!==2))return null;
  // Never disclose the previous month's rows, even if a daily warmup has not finished yet.
  if(snapshot.credit.isLongTerm&&snapshot.credit.month!==vietnamMonth())return null;
  return snapshot;

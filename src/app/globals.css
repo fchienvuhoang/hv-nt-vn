@@ -4861,3 +4861,25 @@ html:has(.admin-workspace),body:has(.admin-workspace){width:100%;max-width:100%;
 .fund-goal-preview { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; padding: 10px 12px; border: 1px solid #d6e3d8; border-radius: 8px; background: #edf5ee; font-size: 13px; color: #315b3e; }
 .fund-goal-preview span { font-size: 12px; }
 .public-goal-area-note { display: block; margin: 3px 0 7px; line-height: 1.6; }
+
+.public-goal-unit-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid #d8b66f;
+  border-radius: 10px;
+  background: linear-gradient(110deg, #fff5dc, #fffaf0);
+  color: #69481c;
+}
+.public-goal-unit-price > span { font-size: 13px; }
+.public-goal-unit-price > span b { font-weight: 750; }
+.public-goal-unit-price > strong { color: #7a421d; font-size: 28px; font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.public-goal-length .public-goal-raised > strong { font-size: 18px; }
+@media (max-width: 640px) {
+  .public-goal-unit-price { padding: 10px 12px; }
+  .public-goal-unit-price > strong { font-size: 25px; }
+}

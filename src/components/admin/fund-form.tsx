@@ -1,5 +1,5 @@
 "use client";
-import { FUND_GOAL_TYPES, calculateLengthGoal, readLengthGoal, formatMeasure, goalArea } from "@/lib/fund-goal";
+import { FUND_GOAL_TYPES, calculateLengthGoal, readLengthGoal, formatMeasure } from "@/lib/fund-goal";
 import { accountLabel } from "@/lib/account-label";
 import { MoneyInput } from "@/components/money-input";
 import { LoadingSpinner } from "@/components/loading-indicator";
@@ -126,13 +126,13 @@ export function FundForm({
           {errorMessage("goalAmount")}
           <small>{/^\d{1,15}$/.test(values.goalAmount) ? vnd(values.goalAmount) : "Để trống nếu chưa có mục tiêu. Tự phân cách hàng nghìn khi nhập hoặc dán số tiền."}</small>
         </label> : <>
-          <label>Bề rộng cố định (m)<input name="goalWidth" type="text" inputMode="decimal" maxLength={14} value={values.goalWidth} onChange={event=>change("goalWidth",event.target.value)} placeholder="Ví dụ: 3" required {...errorProps("goalWidth")}/>{errorMessage("goalWidth")}</label>
+          <label>Bề rộng mô tả (m)<input name="goalWidth" type="text" inputMode="decimal" maxLength={14} value={values.goalWidth} onChange={event=>change("goalWidth",event.target.value)} placeholder="Ví dụ: 3" required {...errorProps("goalWidth")}/>{errorMessage("goalWidth")}</label>
           <div className="form-row">
-            <label>Đơn giá mỗi m² (₫)<MoneyInput name="goalUnitPrice" value={values.goalUnitPrice} onValueChange={value=>change("goalUnitPrice",value)} placeholder="Ví dụ: 1.500.000" required {...errorProps("goalUnitPrice")}/>{errorMessage("goalUnitPrice")}</label>
+            <label>Đơn giá mỗi mét dài (₫)<MoneyInput name="goalUnitPrice" value={values.goalUnitPrice} onValueChange={value=>change("goalUnitPrice",value)} placeholder="Ví dụ: 430.000" required {...errorProps("goalUnitPrice")}/>{errorMessage("goalUnitPrice")}</label>
             <label>Chiều dài mục tiêu (m)<input name="goalQuantity" type="text" inputMode="decimal" maxLength={14} value={values.goalQuantity} onChange={event=>change("goalQuantity",event.target.value)} placeholder="Ví dụ: 350 hoặc 12,5" required {...errorProps("goalQuantity")}/>{errorMessage("goalQuantity")}</label>
           </div>
-          <div className="fund-goal-preview" role="status">{lengthPreview ? <><strong>Tổng mục tiêu: {vnd(lengthPreview.goalAmount)}</strong><span>{formatMeasure(lengthPreview.goalConfig.quantity)} m dài × {formatMeasure(lengthPreview.goalConfig.width)} m rộng = {goalArea(lengthPreview.goalConfig)} m² · {vnd(lengthPreview.goalConfig.unitPrice)}/m²</span></> : <span>Nhập bề rộng, đơn giá và chiều dài để tính tổng mục tiêu.</span>}</div>
-          <small>Số mét hỗ trợ tối đa 4 chữ số thập phân. Tổng tiền = chiều dài × bề rộng × đơn giá/m², làm tròn lên đến 1 đồng nếu cần. Tiến độ mét dài quy đổi từ tiền hùn phước.</small>
+          <div className="fund-goal-preview" role="status">{lengthPreview ? <><strong>Tổng mục tiêu: {vnd(lengthPreview.goalAmount)}</strong><span>{formatMeasure(lengthPreview.goalConfig.quantity)} mét dài × {vnd(lengthPreview.goalConfig.unitPrice)}/mét dài · Rộng {formatMeasure(lengthPreview.goalConfig.width)}m (mô tả)</span></> : <span>Nhập bề rộng, đơn giá và chiều dài để tính tổng mục tiêu.</span>}</div>
+          <small>Số mét hỗ trợ tối đa 4 chữ số thập phân. Tổng tiền = chiều dài × đơn giá/mét dài, làm tròn lên đến 1 đồng nếu cần. Bề rộng chỉ để mô tả, không nhân vào tiền. Tiến độ mét dài quy đổi từ tiền hùn phước.</small>
         </>}
       </div>
       <label>Danh sách ghi phương danh

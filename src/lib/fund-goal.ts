@@ -6,7 +6,7 @@ export const FUND_GOAL_TYPES = [
   { value: "LENGTH", label: "Theo chiều dài (mét)" },
 ] as const;
 export type FundGoalType = typeof FUND_GOAL_TYPES[number]["value"];
-export type LengthGoalConfig = { version: 1; unit: "m"; unitPrice: string; width: string; quantity: string };
+export type LengthGoalConfig = { version: 2; unit: "m"; unitPrice: string; width: string; quantity: string };
 const MAX_MONEY = 999999999999999n;
 const SCALE = 10000n;
 const decimalPattern = /^\d{1,9}(?:[.,]\d{1,4})?$/;
@@ -21,7 +21,7 @@ function normalizedMeasure(value: string) {
 }
 const dimension = z.string().trim().regex(decimalPattern, "Nhập số mét hợp lệ, tối đa 4 chữ số thập phân");
 const lengthSchema = z.object({
-  goalUnitPrice: z.string().regex(/^[1-9]\d{0,14}$/, "Đơn giá mỗi m² phải là số tiền VND nguyên lớn hơn 0"),
+  goalUnitPrice: z.string().regex(/^[1-9]\d{0,14}$/, "Đơn giá mỗi mét dài phải là số tiền VND nguyên lớn hơn 0"),
   goalWidth: dimension,
   goalQuantity: dimension,
 }).superRefine((value, ctx) => {
@@ -29,13 +29,13 @@ const lengthSchema = z.object({
   const width = measureUnits(value.goalWidth), length = measureUnits(value.goalQuantity);
   if (width <= 0n) ctx.addIssue({ code: "custom", path: ["goalWidth"], message: "Bề rộng phải lớn hơn 0" });
   if (length <= 0n) ctx.addIssue({ code: "custom", path: ["goalQuantity"], message: "Chiều dài mục tiêu phải lớn hơn 0" });
-  if ((width * length * BigInt(value.goalUnitPrice) + SCALE * SCALE - 1n) / (SCALE * SCALE) > MAX_MONEY)
+  if ((length * BigInt(value.goalUnitPrice) + SCALE - 1n) / SCALE > MAX_MONEY)
     ctx.addIssue({ code: "custom", path: ["goalQuantity"], message: "Tổng mục tiêu không được vượt 999.999.999.999.999₫" });
 }).transform(value => ({
   goalType: "LENGTH" as const,
   // Round only the final fractional VND up, never intermediate unit costs or lengths.
-  goalAmount: (measureUnits(value.goalWidth) * measureUnits(value.goalQuantity) * BigInt(value.goalUnitPrice) + SCALE * SCALE - 1n) / (SCALE * SCALE),
-  goalConfig: { version: 1, unit: "m", unitPrice: value.goalUnitPrice, width: normalizedMeasure(value.goalWidth), quantity: normalizedMeasure(value.goalQuantity) } as LengthGoalConfig,
+  goalAmount: (measureUnits(value.goalQuantity) * BigInt(value.goalUnitPrice) + SCALE - 1n) / SCALE,
+  goalConfig: { version: 2, unit: "m", unitPrice: value.goalUnitPrice, width: normalizedMeasure(value.goalWidth), quantity: normalizedMeasure(value.goalQuantity) } as LengthGoalConfig,
 }));
 export function calculateLengthGoal(unitPrice: string, width: string, quantity: string) {
   return lengthSchema.parse({ goalUnitPrice: unitPrice, goalWidth: width, goalQuantity: quantity });
@@ -43,7 +43,7 @@ export function calculateLengthGoal(unitPrice: string, width: string, quantity: 
 export function readLengthGoal(goalType?: string, config?: unknown): LengthGoalConfig | null {
   if (goalType !== "LENGTH" || !config || typeof config !== "object") return null;
   const value = config as Record<string, unknown>;
-  if (value.version !== 1 || value.unit !== "m" || typeof value.unitPrice !== "string" || typeof value.width !== "string" || typeof value.quantity !== "string") return null;
+  if ((value.version !== 1 && value.version !== 2) || value.unit !== "m" || typeof value.unitPrice !== "string" || typeof value.width !== "string" || typeof value.quantity !== "string") return null;
   const result = lengthSchema.safeParse({ goalUnitPrice: value.unitPrice, goalWidth: value.width, goalQuantity: value.quantity });
   return result.success ? result.data.goalConfig : null;
 }
@@ -62,7 +62,7 @@ export function goalArea(config: LengthGoalConfig) {
   return formatMeasure(`${units / scale}.${(units % scale).toString().padStart(8, "0")}`);
 }
 function fundedLengthUnits(income: bigint, config: LengthGoalConfig) {
-  return (income > 0n ? income : 0n) * SCALE * SCALE / (BigInt(config.unitPrice) * measureUnits(config.width));
+  return (income > 0n ? income : 0n) * SCALE / BigInt(config.unitPrice);
 }
 function displayLengthUnits(units: bigint, compact: boolean) {
   if (compact) {
