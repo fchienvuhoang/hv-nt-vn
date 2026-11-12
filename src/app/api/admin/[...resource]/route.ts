@@ -1,3 +1,4 @@
+import {loadRecognition} from "@/lib/fund-recognition";
 import {measureOperations} from "@/lib/operation-metrics";
 import {mutationScope,mutationFundScope} from "@/lib/admin-mutation-scope";
 import {loadFundActivity} from "@/lib/fund-activity";
@@ -29,6 +30,10 @@ async function handleMeasured(request:NextRequest,context:{params:Promise<{resou
   try{
     if(request.method==="GET"){
       switch(resource){
+        case "recognition":{
+          const data=await loadRecognition({id:z.string().min(1).max(100).parse(query.fundId)},z.coerce.number().int().min(1).max(100000).default(1).parse(query.page));
+          return data?json(data):json({error:"Thiện pháp chưa bật cấu hình cổ phần."},404);
+        }
         case "session":return json({isAdmin:true});
         case "fund-history":return json(await loadFundHistory(z.string().min(1).max(100).parse(query.fundId),z.coerce.number().int().min(1).max(100000).default(1).parse(query.page)));
         case "revision":return json(await loadAdminRevision());
@@ -54,6 +59,7 @@ async function handleMeasured(request:NextRequest,context:{params:Promise<{resou
     let result:unknown;
     const form=()=>request.formData();
     switch(`${request.method} ${resource}`){
+      case "POST recognition-name":result=await actions.saveRecognitionName(await request.json());break;
       case "PATCH funds/visibility":result=await actions.setFundVisibility({},await form());break;
       case "PATCH funds/pin":result=await actions.pinFund({},await form());break;
       case "POST funds":case "PUT funds":result=await actions.saveFund({},await form());break;
@@ -76,7 +82,7 @@ async function handleMeasured(request:NextRequest,context:{params:Promise<{resou
       case "PATCH reclassification":result=await actions.advanceReclassification(z.object({id:z.string().min(1).max(100),phase:z.enum(["CHECK","APPLY"])}).parse(await request.json()));break;
       default:return json({error:"Phương thức hoặc API không hợp lệ."},405);
     }
-    if(scoped?.length!==0&&!["transfers/preview","funds/pin","imports"].includes(resource)){
+    if(scoped?.length!==0&&!["transfers/preview","funds/pin","imports","recognition-name"].includes(resource)){
       if(resource==="imports/commit"||resource==="reclassification"||(!(result as {error?:unknown;fieldErrors?:unknown})?.error&&!(result as {fieldErrors?:unknown})?.fieldErrors))await queuePublicRefresh(scoped);
       after(async()=>{await Promise.allSettled([refreshPublicSafely(),dispatchAdminNotificationsSafely()]);});
     }

@@ -1,4 +1,5 @@
 "use client";
+import {FundRecognition} from "@/components/admin/fund-recognition";
 import {SITE_ORIGIN} from "@/lib/site-url";
 import { useToast } from "@/components/toasts";
 import { accountLabel } from "@/lib/account-label";
@@ -202,6 +203,7 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       </details>
                       <div className="inline-actions table-actions">
                         <AdminDialogButton kind="fund-transactions" fundId={f.id} className="button subtle small"><List size={15}/>Xem giao dịch</AdminDialogButton>
+                        {f.recognitionEnabled&&<FundRecognition fundId={f.id} slug={f.slug} title={f.recognitionTitle}/>}
                         <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
                           <Settings2 size={14} />Cấu hình
                         </AdminDialogButton>

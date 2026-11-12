@@ -83,6 +83,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
           </div>
         )}
         {fund.isLongTerm&&<div className="public-month-picker">Thống kê tháng {fund.month.slice(5,7)}/{fund.month.slice(0,4)} · Tháng hiện tại</div>}
+        {fund.recognitionEnabled&&<a className="button subtle" href={`/t/${slug}/phuong-danh`}>Danh sách phương danh · {fund.recognitionTitle}</a>}
         <PublicFundGoal goalAmount={fund.goalAmount} income={fund.goalIncome}/>
         {fund.isLongTerm?<div className="metrics public-longterm-metrics">
           <Metric label="Tổng hùn phước" value={fund.goalIncome} note="Đã tính phần chuyển sang và điều chuyển ròng" accent/>

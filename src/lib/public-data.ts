@@ -51,6 +51,7 @@ async function publicFundSummary(slug:string,month:string){
     const netReallocation=total.fundingIncome-originalIncome;
     return {
       isLongTerm:fund.isLongTerm,month:period,carryBalance:prior?.balance.toString()??"0",
+      recognitionEnabled:fund.recognitionEnabled,recognitionTitle:fund.recognitionTitle,
       code: fund.code,
       goalAmount: fund.goalAmount?.toString() ?? null,
       fundingVersion: 3,
@@ -99,7 +100,7 @@ async function publicFundSummary(slug:string,month:string){
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v20",slug,month],
+  ["public-fund-summary-v21",slug,month],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }

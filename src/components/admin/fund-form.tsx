@@ -33,6 +33,9 @@ export function FundForm({
     keywords: fund?.keywords.join("\n") ?? "", description: fund?.description ?? "",
     goalAmount: fund?.goalAmount?.toString() ?? "",
     adminNote: fund?.adminNote ?? "",
+    recognitionEnabled:fund?.recognitionEnabled?"1":"0",
+    recognitionTitle:fund?.recognitionTitle??"Cổ phần",
+    recognitionAmount:fund?.recognitionAmount?.toString()??"",
   });
   const [edited, setEdited] = useState<Record<string, boolean>>({});
   function change(field: keyof typeof values, value: string) {
@@ -106,6 +109,16 @@ export function FundForm({
         {errorMessage("goalAmount")}
         <small>{/^\d{1,15}$/.test(values.goalAmount) ? vnd(values.goalAmount) : "Để trống nếu chưa có mục tiêu. Tự phân cách hàng nghìn khi nhập hoặc dán số tiền."}</small>
       </label>
+      <label>Danh sách ghi phương danh
+        <select name="recognitionEnabled" value={values.recognitionEnabled} onChange={event=>change("recognitionEnabled",event.target.value)}>
+          <option value="0">Tắt</option><option value="1">Bật trang công khai theo cổ phần</option>
+        </select>
+      </label>
+      <div className="form-row">
+        <label>Tên cổ phần<input name="recognitionTitle" maxLength={100} value={values.recognitionTitle} required={values.recognitionEnabled==="1"} onChange={event=>change("recognitionTitle",event.target.value)}/>{errorMessage("recognitionTitle")}</label>
+        <label>Giá trị một cổ phần (₫)<MoneyInput name="recognitionAmount" value={values.recognitionAmount} onValueChange={value=>change("recognitionAmount",value)} {...errorProps("recognitionAmount")}/>{errorMessage("recognitionAmount")}</label>
+      </div>
+      <small>Xét từng giao dịch hùn phước gốc từ mức này trở lên, không cộng dồn. Không thay đổi tổng thu, chi hay số dư. Tên ghi phương danh có thể bổ sung riêng.</small>
       <label>
         Ghi chú nội bộ
         <textarea name="adminNote" rows={3} maxLength={3000} placeholder="Ghi chú theo dõi thiện pháp…" value={values.adminNote} onChange={event=>change("adminNote",event.target.value)} {...errorProps("adminNote")} />

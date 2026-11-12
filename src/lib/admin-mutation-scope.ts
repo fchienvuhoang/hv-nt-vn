@@ -8,6 +8,7 @@ export async function mutationFundScope(resource:string,request:Request):Promise
  const copy=request.clone();
  const data:Record<string,unknown>=copy.headers.get('content-type')?.includes('application/json')?await copy.json():Object.fromEntries(await copy.formData());
  const string=(key:string)=>typeof data[key]==='string'?data[key] as string:undefined;
+ if(resource==='recognition-name')return string('fundId')?[string('fundId')!]:undefined;
  if(resource==='funds')return string('id')?[string('id')!]:undefined;
  if(resource==='funds/visibility'||resource==='funds/pin')return string('fundId')?[string('fundId')!]:undefined;
  const ids=new Set<string>();

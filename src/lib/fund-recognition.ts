@@ -1,0 +1,35 @@
+import "server-only";
+import {unstable_cache} from "next/cache";
+import {db} from "./db";
+import {publicOriginalMembership} from "./public-original-transactions";
+import {originalFundShare} from "./transaction-split-input";
+import {maskPhones} from "./domain";
+import {publicFundTag} from "./cache-tags";
+
+export async function recognitionSettings(where:{slug:string}|{id:string}){
+ const fund=await db.fund.findUnique({where,select:{id:true,slug:true,code:true,name:true,recognitionEnabled:true,recognitionTitle:true,recognitionAmount:true}});
+ return fund?.recognitionEnabled&&fund.recognitionAmount&&fund.recognitionAmount>0n?{...fund,recognitionAmount:fund.recognitionAmount}:null;
+}
+export async function loadRecognition(where:{slug:string}|{id:string},requestedPage=1){
+ // Check enabled/configuration outside the cache so a disabled page immediately closes.
+ const fund=await recognitionSettings(where);if(!fund)return null;
+ const rows=await unstable_cache(async()=>{
+   const membership=await publicOriginalMembership(fund.id);
+   const entries=await db.bankTransaction.findMany({
+     where:{AND:[membership,{direction:"CREDIT",entryStatus:"POSTED",amount:{gte:fund.recognitionAmount!}}]},
+     select:{id:true,amount:true,originalAllocations:true,occurredAt:true,displayName:true,narrative:true,hiddenNarrative:true,
+       recognitionNames:{where:{fundId:fund.id},select:{name:true,updatedAt:true}}},
+     orderBy:[{occurredAt:"asc"},{id:"asc"}],
+   });
+   return entries.flatMap(entry=>{
+     const amount=originalFundShare(entry,fund.id);if(amount<fund.recognitionAmount!)return [];
+     return [{id:entry.id,at:entry.occurredAt.toISOString(),amount:amount.toString(),
+       name:maskPhones(entry.recognitionNames[0]?.name||entry.displayName),
+       nameOverride:entry.recognitionNames[0]?.name??"",
+       narrative:entry.hiddenNarrative?"Nội dung được ẩn theo nguồn sao kê":maskPhones(entry.narrative)}];
+   });
+ },["fund-recognition-v1",fund.id,fund.recognitionAmount.toString()],{revalidate:false,tags:["public-ledger",publicFundTag(fund.id)]})();
+ const pageSize=100,page=Math.min(Math.max(1,Math.floor(requestedPage)||1),Math.max(1,Math.ceil(rows.length/pageSize)));
+ return {fund:{code:fund.code,name:maskPhones(fund.name),slug:fund.slug,title:fund.recognitionTitle,amount:fund.recognitionAmount.toString()},page,pageSize,count:rows.length,rows:rows.slice((page-1)*pageSize,page*pageSize)};
+}
+export type RecognitionData=NonNullable<Awaited<ReturnType<typeof loadRecognition>>>;

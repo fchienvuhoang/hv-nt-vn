@@ -58,6 +58,10 @@ model Fund {
   slug               String     @unique
   description        String     @default("")
   sourceUrl          String     @default("")
+  recognitionEnabled Boolean @default(false)
+  recognitionTitle   String @default("Cổ phần")
+  recognitionAmount  BigInt?
+  recognitionNames   FundRecognitionName[]
   goalAmount         BigInt?
   adminNote          String     @default("")
   keywords           String[]
@@ -100,6 +104,7 @@ model BankTransaction {
   originalAllocations Json?
   allocations FundAllocation[]
   allocationTransfers TransferItem[]
+  recognitionNames FundRecognitionName[]
   notes TransactionNote[]
   id             String      @id @default(cuid())
   accountId      String
@@ -466,4 +471,15 @@ model TransferBalanceItem {
  destinationAfter BigInt
  @@unique([transferId,accountId])
  @@index([accountId])
+}
+
+model FundRecognitionName {
+  fundId String
+  transactionId String
+  fund Fund @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  transaction BankTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  name String
+  updatedAt DateTime @updatedAt
+  @@id([fundId, transactionId])
+  @@index([transactionId])
 }

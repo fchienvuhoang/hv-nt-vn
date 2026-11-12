@@ -43,6 +43,9 @@ const code = z
       ),
   );
 const fundSchema = z.object({
+  recognitionEnabled: z.enum(["1","0"]).optional().transform(v=>v===undefined?undefined:v==="1"),
+  recognitionTitle: z.string().trim().max(100).optional(),
+  recognitionAmount: z.union([z.literal("").transform(()=>null),money.refine(value=>value>0n,"Mức cổ phần phải lớn hơn 0")]).optional(),
   publicListed: z.enum(["1","0"]).optional().transform(v=>v===undefined?undefined:v==="1"),
   code,
   name: z.string().trim().min(3).max(200),
@@ -139,8 +142,12 @@ export async function saveFund(_state: ActionState, form: FormData) {
       // Reading every fund in the serializable transaction also protects against
       // concurrent creates/edits claiming the same normalized keyword.
       const rules = await tx.fund.findMany({ select: { id: true, code: true, name: true, keywords: true } });
+      const recognitionEnabled=data.recognitionEnabled??existing?.recognitionEnabled??false;
+      const recognitionTitle=data.recognitionTitle??existing?.recognitionTitle??"Cổ phần";
+      const recognitionAmount=data.recognitionAmount===undefined?existing?.recognitionAmount??null:data.recognitionAmount;
+      if(recognitionEnabled&&(!recognitionTitle||!recognitionAmount))throw new Error("Khi bật phương danh, cần nhập tên cổ phần và giá trị một cổ phần lớn hơn 0.");
       const fields = {
-        ...data, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
+        ...data, recognitionEnabled,recognitionTitle,recognitionAmount, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
         sourceUrl: data.sourceUrl ?? existing?.sourceUrl ?? "",
         adminNote: data.adminNote ?? existing?.adminNote ?? "",
         goalAmount: data.goalAmount === undefined ? existing?.goalAmount ?? null : data.goalAmount,
@@ -163,8 +170,9 @@ export async function saveFund(_state: ActionState, form: FormData) {
             adminNote: before.adminNote,
             goalAmount: before.goalAmount?.toString() ?? null,
             publicListed: before.publicListed,
+            recognitionEnabled:before.recognitionEnabled,recognitionTitle:before.recognitionTitle,recognitionAmount:before.recognitionAmount?.toString()??null,
           },
-          after: { ...fields, goalAmount: fields.goalAmount?.toString() ?? null },
+          after: { ...fields, goalAmount: fields.goalAmount?.toString() ?? null, recognitionAmount: fields.recognitionAmount?.toString()??null },
         });
       } else {
         const created = await tx.fund.create({
@@ -173,7 +181,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
             slug: `${account.number}-${data.code.toLowerCase()}`,
           },
         });
-        await audit(tx, actor, "FUND_CREATED", created.id, { ...fields, goalAmount: fields.goalAmount?.toString() ?? null });
+        await audit(tx, actor, "FUND_CREATED", created.id, { ...fields, goalAmount: fields.goalAmount?.toString() ?? null, recognitionAmount: fields.recognitionAmount?.toString()??null });
       }
     });
     return "Đã lưu thiện pháp. Giao dịch cũ không bị tự động phân loại lại.";
@@ -342,4 +350,24 @@ export async function splitBankTransaction(input:TransactionSplitInput) {
     const result=await splitTransaction(input,actor);
     return `Đã chia giao dịch cho ${result.count} thiện pháp, giữ nguyên số tiền ngân hàng gốc.`;
   });
+}
+
+
+export async function saveRecognitionName(input:unknown){
+ return execute(async actor=>{
+   const data=z.object({fundId:id,transactionId:id,name:z.string().trim().max(200,"Tên phương danh tối đa 200 ký tự")}).parse(input);
+   const {publicOriginalMembership}=await import("@/lib/public-original-transactions");
+   const {originalFundShare}=await import("@/lib/transaction-split-input");
+   await serializable(async tx=>{
+     const fund=await tx.fund.findUniqueOrThrow({where:{id:data.fundId}});
+     if(!fund.recognitionEnabled||!fund.recognitionAmount)throw new Error("Thiện pháp chưa bật cấu hình cổ phần.");
+     const membership=await publicOriginalMembership(fund.id);
+     const entry=await tx.bankTransaction.findFirst({where:{AND:[membership,{id:data.transactionId,direction:"CREDIT",entryStatus:"POSTED"}]},select:{amount:true,originalAllocations:true}});
+     if(!entry||originalFundShare(entry,fund.id)<fund.recognitionAmount)throw new Error("Giao dịch không còn đủ điều kiện ghi phương danh.");
+     const before=await tx.fundRecognitionName.findUnique({where:{fundId_transactionId:{fundId:fund.id,transactionId:data.transactionId}}});
+     await tx.fundRecognitionName.upsert({where:{fundId_transactionId:{fundId:fund.id,transactionId:data.transactionId}},create:data,update:{name:data.name}});
+     await audit(tx,actor,"RECOGNITION_NAME_UPDATED",data.transactionId,{fundId:fund.id,before:before?.name??"",after:data.name});
+   });
+   return "Đã lưu tên ghi phương danh. Sao kê gốc không thay đổi.";
+ });
 }
