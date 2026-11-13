@@ -1,4 +1,5 @@
 import "server-only";
+import {resolveTransferKeyword} from "./fund-keywords";
 import {originalFundShare} from "./transaction-split-input";
 import {publicOriginalMembership,originalReceiptTotals} from "./public-original-transactions";
 import {PUBLIC_DIRECTORY_TAG,publicFundTag} from "./cache-tags";
@@ -53,6 +54,7 @@ async function publicFundSummary(slug:string,month:string){
       isLongTerm:fund.isLongTerm,month:period,carryBalance:prior?.balance.toString()??"0",
       recognitionEnabled:fund.recognitionEnabled,recognitionTitle:fund.recognitionTitle,
       code: fund.code,
+      transferKeyword:resolveTransferKeyword(fund.code,fund.keywords,undefined,fund.transferKeyword)??fund.code,
       goalAmount: fund.goalAmount?.toString() ?? null,
       goalType: fund.goalType, goalConfig: fund.goalConfig,
       fundingVersion: 3,
@@ -101,7 +103,7 @@ async function publicFundSummary(slug:string,month:string){
       generatedAt: new Date().toISOString(),
     };
   },
-  ["public-fund-summary-v22",slug,month],
+  ["public-fund-summary-v23",slug,month],
   {...options,tags:[PUBLIC_TAG,publicFundTag(identity.id)]},
  )();
 }

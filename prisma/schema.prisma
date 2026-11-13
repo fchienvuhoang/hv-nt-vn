@@ -66,6 +66,7 @@ model Fund {
   goalType           String @default("MONEY")
   goalConfig         Json?
   adminNote          String     @default("")
+  transferKeyword    String?
   keywords           String[]
   status             FundStatus @default(ACTIVE)
   isLongTerm         Boolean @default(false)

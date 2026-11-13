@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminActor } from "@/lib/auth";
 import { actorStamp, createdStamp, updatedStamp, type Actor } from "@/lib/actor";
 import { serializable } from "@/lib/ledger";
-import { validateFundKeywords, FundKeywordError } from "@/lib/fund-keywords";
+import { validateFundKeywords, resolveTransferKeyword, FundKeywordError } from "@/lib/fund-keywords";
 import { startTabReclassification, advanceTabReclassification, latestTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
 import {invalidateMutation} from "@/lib/admin-mutation-scope";
 import {commitAllocationTransfer,type AllocationTransferInput} from "@/lib/allocation-transfers";
@@ -44,6 +44,7 @@ const code = z
       ),
   );
 const fundSchema = z.object({
+  transferKeyword:z.string().trim().max(3000).optional(),
   recognitionEnabled: z.enum(["1","0"]).optional().transform(v=>v===undefined?undefined:v==="1"),
   recognitionTitle: z.string().trim().max(100).optional(),
   recognitionAmount: z.union([z.literal("").transform(()=>null),money.refine(value=>value>0n,"Mức cổ phần phải lớn hơn 0")]).optional(),
@@ -153,13 +154,15 @@ export async function saveFund(_state: ActionState, form: FormData) {
       if(recognitionEnabled&&(!recognitionTitle||!recognitionAmount))throw new Error("Khi bật phương danh, cần nhập tên cổ phần và giá trị một cổ phần lớn hơn 0.");
       const goal = resolveFundGoal(data, existing);
       const { goalUnitPrice, goalWidth, goalQuantity, ...fundData } = data; void goalUnitPrice; void goalWidth; void goalQuantity;
+      const keywords=validateFundKeywords(data.code, data.keywords, rules, fundId);
+      const transferKeyword=resolveTransferKeyword(data.code,keywords,data.transferKeyword,existing?.transferKeyword);
       const fields = {
         ...fundData, recognitionEnabled,recognitionTitle,recognitionAmount, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
         sourceUrl: data.sourceUrl ?? existing?.sourceUrl ?? "",
         adminNote: data.adminNote ?? existing?.adminNote ?? "",
         goalType: goal.goalType, goalAmount: goal.goalAmount, goalConfig: goal.goalConfig as Prisma.InputJsonValue | null,
         accountIds: [...new Set(existing?.accountIds ?? accounts.map(a => a.id))].filter(id => id !== accountId),
-        keywords: validateFundKeywords(data.code, data.keywords, rules, fundId),
+        keywords,transferKeyword,
       };
       if (fundId) {
         const before = await tx.fund.findUniqueOrThrow({
@@ -171,6 +174,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
             code: before.code,
             name: before.name,
             keywords: before.keywords,
+            transferKeyword:before.transferKeyword,
             status: before.status,
             description: before.description,
             sourceUrl: before.sourceUrl,

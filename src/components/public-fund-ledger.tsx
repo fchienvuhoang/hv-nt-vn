@@ -75,7 +75,7 @@ export function PublicFundLedger({slug}:{slug:string}) {
 
         </div>
         </PublicDevotionalBanner>
-        {fund.status === "ACTIVE" && <PublicTransferContent code={fund.code}/>}
+        {fund.status === "ACTIVE" && <PublicTransferContent code={fund.transferKeyword||fund.code}/>}
         {fund.pendingImports > 0 && (
           <div className="notice">
             <LoadingSpinner size={20}/> Đang nhập lịch sử Excel; số liệu có thể chưa đầy đủ cho tới khi nhập

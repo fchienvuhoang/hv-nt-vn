@@ -25,3 +25,19 @@ test("matching ignores case, accents and inserted/missing spaces without losing 
  for(const status of ["PAUSED","COMPLETED"])
    assert.equal(classify("tp 112 thuocbs","a",[{...fund,status}]).fundId,null);
 });
+
+test("public transfer keyword selects a configured alias without changing classification",async()=>{
+ const {resolveTransferKeyword}=await import("../src/lib/fund-keywords");
+ const aliases=["LAMDUONG","THON NGHIA TIN"];
+ assert.equal(resolveTransferKeyword("TP130",aliases,"làm đường"),"LAMDUONG");
+ assert.equal(resolveTransferKeyword("TP130",aliases,"THON NGHIA TIN"),"THON NGHIA TIN");
+ assert.equal(resolveTransferKeyword("TP130",aliases,"TP130"),null);
+ assert.equal(resolveTransferKeyword("TP130",aliases,""),null);
+ assert.equal(resolveTransferKeyword("TP130",aliases,undefined,"LAMDUONG"),"LAMDUONG");
+ assert.equal(resolveTransferKeyword("TP130",[],undefined,"LAMDUONG"),null);
+ assert.throws(()=>resolveTransferKeyword("TP130",aliases,"TP131"),/Chọn mã chính/);
+ for(const text of ["TP130 NGUYEN VAN A","LAMDUONG NGUYEN VAN A","THON NGHIA TIN NGUYEN VAN A"]){
+   const {classify}=await import("../src/lib/domain");
+   assert.equal(classify(text,"a",[{id:"fund",accountId:"a",code:"TP130",keywords:aliases,status:"ACTIVE"}]).fundId,"fund");
+ }
+});

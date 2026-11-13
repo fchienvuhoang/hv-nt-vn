@@ -1,5 +1,6 @@
 "use client";
 import { FUND_GOAL_TYPES, calculateLengthGoal, readLengthGoal, formatMeasure } from "@/lib/fund-goal";
+import {keywordKey} from "@/lib/fund-keywords";
 import { accountLabel } from "@/lib/account-label";
 import { MoneyInput } from "@/components/money-input";
 import { LoadingSpinner } from "@/components/loading-indicator";
@@ -8,7 +9,7 @@ import type { ActionState } from "@/app/admin/actions";
 import { useToast } from "@/components/toasts";
 import { useCloseModal } from "@/components/modal";
 import { saveFund } from "@/lib/admin-api";
-import { dateTime, fundUsesAccount, vnd } from "@/lib/domain";
+import { dateTime, fundUsesAccount, vnd, normalize } from "@/lib/domain";
 import type { BankAccount, Fund } from "@/generated/prisma/client";
 export function FundForm({
   accounts,
@@ -32,6 +33,7 @@ export function FundForm({
   const lengthGoal = readLengthGoal(fund?.goalType, fund?.goalConfig);
   const [values, setValues] = useState({
     code: fund?.code ?? "", name: fund?.name ?? "", status: fund?.status ?? "ACTIVE",
+    transferKeyword:fund?.transferKeyword??"",
     keywords: fund?.keywords.join("\n") ?? "", description: fund?.description ?? "",
     goalAmount: fund?.goalAmount?.toString() ?? "",
     goalType: fund?.goalType ?? "MONEY",
@@ -43,6 +45,8 @@ export function FundForm({
     recognitionTitle:fund?.recognitionTitle??"Cổ phần",
     recognitionAmount:fund?.recognitionAmount?.toString()??"",
   });
+  const transferChoices=[...new Map(values.keywords.split(/[\r\n;,]/).map(normalize).filter(value=>value&&keywordKey(value)!==keywordKey(values.code)).map(value=>[keywordKey(value),value])).values()];
+  const selectedTransferKeyword=transferChoices.find(value=>keywordKey(value)===keywordKey(values.transferKeyword))??"";
   let lengthPreview: ReturnType<typeof calculateLengthGoal> | null = null;
   if (values.goalType === "LENGTH") {
     try { lengthPreview = calculateLengthGoal(values.goalUnitPrice, values.goalWidth, values.goalQuantity); } catch { /* Preview appears only when all inputs are valid. */ }
@@ -165,6 +169,15 @@ export function FundForm({
         <small>
           Không được trùng mã hoặc từ khóa của thiện pháp khác, kể cả đã hoàn thành hoặc tạm dừng. Không phân biệt hoa/thường, dấu tiếng Việt và khoảng trắng.
         </small>
+      </label>
+      <label>
+        Từ khóa hiển thị khi chuyển khoản
+        <select name="transferKeyword" value={selectedTransferKeyword} onChange={event=>change("transferKeyword",event.target.value)} {...errorProps("transferKeyword")}>
+          <option value="">Dùng mã chính ({values.code||"mã thiện pháp"})</option>
+          {transferChoices.map(value=><option key={value} value={value}>{value}</option>)}
+        </select>
+        {errorMessage("transferKeyword")}
+        <small>Mẫu công khai: {selectedTransferKeyword||values.code||"MÃ"} TÊN SĐT. Chỉ đổi nội dung hướng dẫn, mã và link thiện pháp giữ nguyên. Nếu xóa từ khóa đã chọn, mẫu trở về mã chính.</small>
       </label>
       <input type="hidden" name="description" value={values.description} />
       <div className="notice">

@@ -40,3 +40,15 @@ export function validateFundKeywords(
   });
   return own.slice(1).map(term => normalize(term.value));
 }
+
+
+/** The public payment hint must always identify this same fund. */
+export function resolveTransferKeyword(code:string,keywords:string[],requested:string|null|undefined,previous?:string|null){
+ const candidate=requested===undefined?previous:requested;
+ if(!candidate?.trim()||keywordKey(candidate)===keywordKey(code))return null;
+ const match=keywords.find(value=>keywordKey(value)===keywordKey(candidate));
+ if(match)return match;
+ // Older forms may omit the field. Removing an old alias safely restores the code.
+ if(requested===undefined)return null;
+ throw new FundKeywordError({transferKeyword:["Chọn mã chính hoặc một từ khóa mở rộng của thiện pháp này."]});
+}
