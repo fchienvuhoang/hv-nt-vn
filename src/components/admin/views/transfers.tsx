@@ -56,7 +56,7 @@ export default function Transfers() {
               <tbody>
                 {transfers.map((t) => (
                   <tr key={t.id}>
-                    <td data-label="Tài khoản" className="nowrap">{accountLabel(t.account?.number ?? (t.mode==="ALLOCATION"?"Nhiều tài khoản":t.fromFund.account.number))}</td>
+                    <td data-label="Tài khoản" className="nowrap">{accountLabel(t.account?.number ?? (["ALLOCATION","BALANCE_ONLY"].includes(t.mode)?"Nhiều tài khoản":t.fromFund.account.number))}</td>
 
                     <td data-label="Thiện pháp nguồn">
                       <span className="code">{t.fromFund.code}</span>
@@ -66,7 +66,7 @@ export default function Transfers() {
                       <span className="code">{t.toFund.code}</span>
                       <small>{t.toFund.name}</small>
                     </td>
-                    <td data-label="Lý do" className="transfer-reason">{t.reason}<small>{t.mode==="ALLOCATION"?"Điều chuyển hùn phước / số dư":"Điều chuyển số dư cũ"}{t.targetIncome!==null?` · Mức thành tựu ${vnd(t.targetIncome)}`:""}</small></td>
+                    <td data-label="Lý do" className="transfer-reason">{t.reason}<small>{t.mode==="ALLOCATION"?"Điều chuyển hùn phước / số dư":t.mode==="BALANCE_ONLY"?"Điều chuyển số dư":"Điều chuyển số dư cũ"}{t.targetIncome!==null?` · Mức thành tựu ${vnd(t.targetIncome)}`:""}</small></td>
                     <td data-label="Số tiền" className="money align-right nowrap">
                       {vnd(t.amount)}
                     </td>

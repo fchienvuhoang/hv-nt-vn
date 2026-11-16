@@ -13,7 +13,8 @@ import { serializable } from "@/lib/ledger";
 import { validateFundKeywords, resolveTransferKeyword, FundKeywordError } from "@/lib/fund-keywords";
 import { startTabReclassification, advanceTabReclassification, latestTabReclassification, type ReclassificationScope } from "@/lib/reclassify";
 import {invalidateMutation} from "@/lib/admin-mutation-scope";
-import {commitAllocationTransfer,type AllocationTransferInput} from "@/lib/allocation-transfers";
+import {commitBalanceTransfer} from "@/lib/balance-transfers";
+import {type AllocationTransferInput} from "@/lib/allocation-transfers";
 import { transferFunds, reverseFundTransfer } from "@/lib/transfers";
 import {
   listFundImports,
@@ -227,7 +228,7 @@ export async function advanceReclassification(input: { id: string; phase: "CHECK
   } catch (error) { return { error: importError(error) }; }
 }
 export async function createAllocationTransfer(input:AllocationTransferInput&{requestId:string;fingerprint:string}){
- return execute(async actor=>{await commitAllocationTransfer(input,actor);return "Đã điều chuyển đúng số tiền, lưu các phần tách và ghi chú công khai.";});
+ return execute(async actor=>{await commitBalanceTransfer(input,actor);return "Đã điều chuyển số dư và lưu lịch sử. Danh sách hùn phước giữ nguyên.";});
 }
 export async function createTransfer(_state: ActionState, form: FormData) {
   return execute(async (actor) => {

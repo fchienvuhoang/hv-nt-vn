@@ -6,7 +6,7 @@ import {fundTotals,serializable,type LedgerClient} from "./ledger";
 import {fundMembership,fundShare} from "./allocation";
 import {moveShares} from "./allocation-write";
 import {actorStamp,type Actor} from "./actor";
-import {fundUsesAccount,vnd} from "./domain";
+import {vnd} from "./domain";
 import {transferBalanceError} from "./transfer-balance";
 export class AllocationTransferError extends Error {
  readonly allocationTransferError=true;
@@ -39,7 +39,6 @@ async function plan(tx:LedgerClient,input:AllocationTransferInput){
   if(!remaining)break;
   const available=fundShare(row,source.id),budget=budgets.get(row.accountId)??0n;
   if(!budget||!available)continue;
-  if(!fundUsesAccount(destination,row.accountId))throw new AllocationTransferError("Thiện pháp nhận không hỗ trợ tài khoản của giao dịch");
   const take=[available,budget,remaining].reduce((a,b)=>a<b?a:b),toBefore=fundShare(row,destination.id);
   if(take<=0n)continue;
   items.push({transactionId:row.id,updatedAt:row.updatedAt.toISOString(),accountId:row.accountId,accountNumber:row.account.number,refId:row.refId,narrative:row.narrative,displayName:row.displayName,at:row.occurredAt.toISOString(),originalAmount:row.amount.toString(),sourceBefore:available.toString(),sourceAfter:(available-take).toString(),destinationBefore:toBefore.toString(),destinationAfter:(toBefore+take).toString(),amount:take.toString(),split:take<available});
@@ -53,7 +52,7 @@ async function plan(tx:LedgerClient,input:AllocationTransferInput){
   const accounts=await tx.bankAccount.findMany({select:{id:true,number:true}});
   for(const [accountId,budget]of budgets){
    if(!remaining)break;
-   if(budget<=0n||!fundUsesAccount(destination,accountId))continue;
+   if(budget<=0n)continue;
    const take=budget<remaining?budget:remaining;
    const sourceBefore=source.byAccount.find(a=>a.accountId===accountId)!.balance-items.filter(i=>i.accountId===accountId).reduce((n,i)=>n+BigInt(i.amount),0n);
    const destinationBefore=(destination.byAccount.find(a=>a.accountId===accountId)?.balance??0n)+items.filter(i=>i.accountId===accountId).reduce((n,i)=>n+BigInt(i.amount),0n);
@@ -61,7 +60,7 @@ async function plan(tx:LedgerClient,input:AllocationTransferInput){
    remaining-=take;
   }
  }
- if(remaining)throw new AllocationTransferError("Không đủ số dư trong các tài khoản mà thiện pháp nhận hỗ trợ. Hãy kiểm tra phạm vi tài khoản.");
+ if(remaining)throw new AllocationTransferError("Không đủ số dư khả dụng trong phạm vi tài khoản đã chọn.");
  const result={fromFundId:source.id,toFundId:destination.id,fromCode:source.code,toCode:destination.code,fromName:source.name,toName:destination.name,amount:amount.toString(),incomeBefore:sourceIncome.toString(),incomeAfter:(sourceIncome-amount).toString(),destinationIncomeAfter:(destinationIncome+amount).toString(),sourceBalanceBefore:source.balance.toString(),sourceBalanceAfter:(source.balance-amount).toString(),destinationBalanceBefore:destination.balance.toString(),destinationBalanceAfter:(destination.balance+amount).toString(),items,balanceItems};
  return {...result,fingerprint:hash({input:{...data,value:data.value.toString()},plan:result})};
 }

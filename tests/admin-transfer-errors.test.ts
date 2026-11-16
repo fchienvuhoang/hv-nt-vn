@@ -12,7 +12,8 @@ function route(error:Error,authorized=true){
   '@/lib/admin-codec':{encodeAdmin:(value:unknown)=>value},
   '@/lib/operation-metrics':{measureOperations:async(_flow:string,work:()=>Promise<unknown>)=>work()},
   '@/lib/admin-mutation-scope':{mutationScope:{run:async(_scope:unknown,work:()=>Promise<unknown>)=>work()}},
-  '@/lib/allocation-transfers':{previewAllocationTransfer:async()=>{throw error},isAllocationTransferError:(value:Error)=>value.name==='AllocationTransferError'},
+  '@/lib/balance-transfers':{previewBalanceTransfer:async()=>{throw error}},
+  '@/lib/allocation-transfers':{isAllocationTransferError:(value:Error)=>value.name==='AllocationTransferError'},
  };
  const api={} as {POST:(request:unknown,context:unknown)=>Promise<Response>};
  vm.runInNewContext(ts.transpile(readFileSync('src/app/api/admin/[...resource]/route.ts','utf8'),{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}),{exports:api,require:(name:string)=>dependencies[name]??{},console:{error:()=>{}}});

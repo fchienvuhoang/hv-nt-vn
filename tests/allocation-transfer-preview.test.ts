@@ -40,3 +40,20 @@ test('preview falls back to carried balance after exhausting receipts and still 
  funds[0].byAccount[0].balance=20n;
  await assert.rejects(api.previewAllocationTransfer(input),/Không đủ số dư/);
 });
+
+test('single-account destination accepts original receipts held in another bank account',async()=>{
+ const {api,input,funds,rows}=fixture();
+ funds[1].accountId='other-account';funds[1].accountIds=[];funds[1].byAccount=[{accountId:'other-account',balance:0n}];
+ const result=await api.previewAllocationTransfer(input);
+ assert.equal(result.amount,'15');assert.equal(result.items.length,2);
+ assert.ok(result.items.every(item=>item.accountId==='account'));
+ assert.equal(rows[0].accountId,'account');assert.equal(funds[1].accountId,'other-account');
+});
+test('single-account destination accepts carried balance from another original account',async()=>{
+ const {api,input,funds}=fixture(0);
+ funds[1].accountId='other-account';funds[1].byAccount=[{accountId:'other-account',balance:0n}];
+ const result=await api.previewAllocationTransfer(input);
+ assert.equal(result.items.length,0);assert.equal(result.balanceItems.length,1);
+ assert.equal(result.balanceItems[0].accountId,'account');assert.equal(result.balanceItems[0].amount,'15');
+ assert.equal(result.balanceItems[0].destinationBefore,'0');assert.equal(result.balanceItems[0].destinationAfter,'15');
+});

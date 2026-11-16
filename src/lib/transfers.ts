@@ -1,7 +1,6 @@
 import "server-only";
 import {reverseAllocationTransfer} from "./allocation-transfers";
 import { actorStamp, type Actor } from "./actor";
-import { fundUsesAccount } from "./domain";
 import { fundTotals, serializable } from "./ledger";
 export async function transferFunds(
   input: {
@@ -40,8 +39,6 @@ export async function transferFunds(
       to = totals.find((f) => f.id === input.toFundId);
     if (!from || !to) throw new Error("Không tìm thấy thiện pháp");
     const accountId = input.accountId ?? from.accountId;
-    if (!fundUsesAccount(from, accountId) || !fundUsesAccount(to, accountId))
-      throw new Error("Hai thiện pháp phải có cùng tài khoản sao kê đã chọn");
     if (
       (from.byAccount.find((a) => a.accountId === accountId)?.balance ?? 0n) <
       input.amount
@@ -81,7 +78,7 @@ export async function reverseFundTransfer(
     });
     if (original.reversal || original.reversalOf)
       throw new Error("Điều chuyển đã được đảo hoặc là bút toán đảo");
-    if(original.mode==="ALLOCATION")return reverseAllocationTransfer(tx,original,reason,actor);
+    if(original.mode==="ALLOCATION"||original.mode==="BALANCE_ONLY")return reverseAllocationTransfer(tx,original,reason,actor);
     const totals = await fundTotals(tx),
       source = totals.find((f) => f.id === original.toFundId)!;
     const accountId = original.accountId ?? source.accountId;

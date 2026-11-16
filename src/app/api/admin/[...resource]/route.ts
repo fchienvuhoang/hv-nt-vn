@@ -10,7 +10,8 @@ import {queuePublicRefresh,refreshPublicSafely,runPublicRefresh} from "@/lib/pub
 import {loadFundHistory} from "@/lib/fund-history";
 import {loadAdminRevision} from "@/lib/admin-revision";
 import { loadTransactionSummary } from "@/lib/transaction-summary";
-import {previewAllocationTransfer,isAllocationTransferError} from "@/lib/allocation-transfers";
+import {previewBalanceTransfer} from "@/lib/balance-transfers";
+import {isAllocationTransferError} from "@/lib/allocation-transfers";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth, allowedAdmin } from "@/auth";
@@ -71,7 +72,7 @@ async function handleMeasured(request:NextRequest,context:{params:Promise<{resou
         await queuePublicRefresh();
         return json(await runPublicRefresh(100));
       }
-      case "POST transfers/preview":return json(await previewAllocationTransfer(await request.json()));
+      case "POST transfers/preview":return json(await previewBalanceTransfer(await request.json()));
       case "POST transfers/allocate":result=await actions.createAllocationTransfer(await request.json());break;
       case "POST transfers":result=await actions.createTransfer({},await form());break;
       case "POST transfers/reversal":result=await actions.reverseTransfer({},await form());break;
