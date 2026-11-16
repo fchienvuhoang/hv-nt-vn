@@ -27,7 +27,7 @@ export function PublicFundCatalogView() {
   const [funds, setFunds] = useState<PublicFundCatalog | null>(null), [error, setError] = useState(""), [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/public/catalog", { signal: controller.signal }).then(async response => {
+    void fetch("/api/ds-7c9e2a84b6f1", { signal: controller.signal, cache: "no-store" }).then(async response => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Không tải được danh sách");
       if (!controller.signal.aborted) setFunds(data.funds);
@@ -38,15 +38,15 @@ export function PublicFundCatalogView() {
     const next = new URLSearchParams();
     if (nextStatus !== "ALL") next.set("status", nextStatus);
     if (nextQuery.trim()) next.set("q", nextQuery.trim());
-    publicNavigate(`/thien-phap${next.size ? `?${next}` : ""}`);
+    publicNavigate(`${window.location.pathname}${next.size ? `?${next}` : ""}`);
   }
   const terms = normalize(q).split(" ").filter(Boolean);
   const matching = funds?.filter(f => terms.every(term => normalize(`${f.code} ${f.name}`).includes(term))) ?? [];
   const visible = matching.filter(f => status === "ALL" || f.status === status);
   return <div className="public-site">
-    <header className="public-header"><Brand href="/thien-phap" /></header>
+    <header className={`public-header ${styles.header}`}><Brand href="/ds-7c9e2a84b6f1" /></header>
     <main className={styles.main}>
-      <section className={styles.hero}><span>MINH BẠCH THIỆN PHÁP</span><h1>Cùng theo dõi các thiện pháp</h1><p>Tra cứu sao kê hùn phước và danh sách phương danh thí chủ cổ phần.</p></section>
+      <section className={styles.hero}><span>DANH SÁCH DÀNH CHO QUẢN TRỊ</span><h1>Tổng hợp các thiện pháp</h1><p>Tra cứu, mở và sao chép link sao kê, phương danh thí chủ cổ phần.</p></section>
       <form className={styles.search} role="search" key={q} onSubmit={event => { event.preventDefault(); navigate(status, String(new FormData(event.currentTarget).get("q") ?? "")); }}>
         <Search size={19} /><input aria-label="Tìm theo mã hoặc tên thiện pháp" name="q" type="search" defaultValue={q} maxLength={100} placeholder="Tìm theo mã hoặc tên thiện pháp…" /><button className="button primary" type="submit">Tìm kiếm</button>
       </form>
