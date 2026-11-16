@@ -61,3 +61,9 @@
 .badges{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .termBadge{font-size:10px;padding:2px 6px;border-radius:5px;background:#f3e9db;color:#82613a;white-space:nowrap}
 .longTerm{background:#e4eeef;color:#346774}
+
+.section{margin-top:18px}
+.sectionTitle{display:flex;align-items:center;gap:10px;font-size:14px;line-height:1.5;color:#315646;margin:0 0 8px;padding:8px 12px;background:#e9eee4;border-left:3px solid #698363;border-radius:4px}
+.sectionTitle span{font-size:11px;background:#fff9ee;padding:1px 7px;border-radius:10px;color:#6a6e58}
+.emptyGroup{font-size:12px;color:#847b70;margin:8px 12px}
+@media(max-width:640px){.section{margin-top:14px}.sectionTitle{font-size:12px;padding:7px 9px}}
