@@ -24,6 +24,7 @@ export function PublicFundCatalogView() {
   const search = usePublicSearch(), params = new URLSearchParams(search);
   const q = (params.get("q") ?? "").slice(0, 100), requestedStatus = params.get("status");
   const status = tabs.some(([key]) => key === requestedStatus) ? requestedStatus! : "ALL";
+  const term = params.get("term") === "long" ? "long" : params.get("term") === "short" ? "short" : "all";
   const [funds, setFunds] = useState<PublicFundCatalog | null>(null), [error, setError] = useState(""), [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
@@ -34,14 +35,15 @@ export function PublicFundCatalogView() {
     }).catch(error => { if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Không tải được danh sách"); });
     return () => controller.abort();
   }, [retry]);
-  function navigate(nextStatus: string, nextQuery: string) {
+  function navigate(nextStatus: string, nextQuery: string, nextTerm = term) {
     const next = new URLSearchParams();
+    if (nextTerm !== "all") next.set("term", nextTerm);
     if (nextStatus !== "ALL") next.set("status", nextStatus);
     if (nextQuery.trim()) next.set("q", nextQuery.trim());
     publicNavigate(`${window.location.pathname}${next.size ? `?${next}` : ""}`);
   }
   const terms = normalize(q).split(" ").filter(Boolean);
-  const matching = funds?.filter(f => terms.every(term => normalize(`${f.code} ${f.name}`).includes(term))) ?? [];
+  const matching = funds?.filter(f => terms.every(term => normalize(`${f.code} ${f.name}`).includes(term)) && (term === "all" || f.isLongTerm === (term === "long"))) ?? [];
   const visible = matching.filter(f => status === "ALL" || f.status === status);
   return <div className="public-site">
     <header className={`public-header ${styles.header}`}><Brand href="/ds-7c9e2a84b6f1" /></header>
@@ -51,13 +53,14 @@ export function PublicFundCatalogView() {
         <Search size={19} /><input aria-label="Tìm theo mã hoặc tên thiện pháp" name="q" type="search" defaultValue={q} maxLength={100} placeholder="Tìm theo mã hoặc tên thiện pháp…" /><button className="button primary" type="submit">Tìm kiếm</button>
       </form>
       <nav className={styles.tabs} aria-label="Trạng thái thiện pháp">{tabs.map(([key, label]) => <button type="button" key={key} aria-pressed={status === key} onClick={() => navigate(key, q)}>{label} <span>{matching.filter(f => key === "ALL" || f.status === key).length}</span></button>)}</nav>
+      <label className={styles.termFilter}>Thời hạn <select aria-label="Lọc thời hạn thiện pháp" value={term} onChange={event => navigate(status, q, event.target.value)}><option value="all">Tất cả thời hạn</option><option value="short">Ngắn hạn</option><option value="long">Dài hạn</option></select></label>
       {error ? <div className="notice danger" role="alert">{error} <button className="button subtle" onClick={() => { setError(""); setRetry(n => n + 1); }}>Thử lại</button></div> : !funds ? <LoadingIndicator label="Đang tải danh sách thiện pháp…" /> : <>
         <p className={styles.count}>{visible.length} thiện pháp{q && ` khớp “${q}”`}</p>
         {!visible.length && <p>Không có thiện pháp phù hợp.</p>}
         <div className={styles.list}>{visible.map(fund => {
           const path = `/t/${fund.slug}`, recognitionPath = `${path}/phuong-danh`;
           return <article key={fund.slug} className={styles.card}>
-            <div className={styles.heading}><span className="code">{fund.code}</span><Status status={fund.status} /></div>
+            <div className={styles.heading}><span className="code">{fund.code}</span><div className={styles.badges}><Status status={fund.status} /><span className={`${styles.termBadge} ${fund.isLongTerm ? styles.longTerm : ""}`}>{fund.isLongTerm ? "Dài hạn" : "Ngắn hạn"}</span></div></div>
             <h2><a href={path} target="_blank" rel="noopener noreferrer">{fund.name}</a></h2>
             <div className={styles.actions}><div className={styles.group}><a href={path} target="_blank" rel="noopener noreferrer" className={styles.open}>Sao kê <ArrowUpRight size={17} /></a><CopyLink path={path} label={`Sao chép link sao kê ${fund.code}`} /></div>
               {fund.recognitionTitle && <div className={`${styles.group} ${styles.recognition}`}><a href={recognitionPath} target="_blank" rel="noopener noreferrer" className={styles.open} title={`Phương danh ${fund.recognitionTitle}`}><UsersRound size={17} />Phương danh · {fund.recognitionTitle}<ArrowUpRight size={15} /></a><CopyLink path={recognitionPath} label={`Sao chép link phương danh ${fund.code}`} /></div>}

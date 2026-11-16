@@ -8,13 +8,13 @@ import { maskPhones } from "./domain";
 export const publicFundCatalog = unstable_cache(async () => {
   const funds = await db.fund.findMany({
     where: { publicListed: true },
-    select: { code: true, name: true, slug: true, status: true,
+    select: { code: true, name: true, slug: true, status: true, isLongTerm: true,
       recognitionEnabled: true, recognitionTitle: true, recognitionAmount: true },
   });
   return funds.sort((a, b) => a.code.localeCompare(b.code, "vi", { numeric: true }))
-    .map(fund => ({ code: fund.code, name: maskPhones(fund.name), slug: fund.slug, status: fund.status,
+    .map(fund => ({ code: fund.code, name: maskPhones(fund.name), slug: fund.slug, status: fund.status, isLongTerm: fund.isLongTerm,
       recognitionTitle: fund.recognitionEnabled && fund.recognitionAmount !== null && fund.recognitionAmount > 0n
         ? maskPhones(fund.recognitionTitle || "Cổ phần") : null }));
-}, ["public-fund-catalog-v1"], { revalidate: false, tags: [PUBLIC_DIRECTORY_TAG] });
+}, ["public-fund-catalog-v2"], { revalidate: false, tags: [PUBLIC_DIRECTORY_TAG] });
 
 export type PublicFundCatalog = Awaited<ReturnType<typeof publicFundCatalog>>;

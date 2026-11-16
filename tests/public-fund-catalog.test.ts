@@ -7,10 +7,10 @@ import { maskPhones } from "../src/lib/domain";
 
 test("catalog exposes only public metadata, keeps all statuses and gates recognition links", async () => {
   let query: { where: unknown; select: Record<string, boolean> } | undefined;
-  const fund = { code: "TP130", slug: "0572-tp130", name: "Thiện pháp 0912345678", status: "ACTIVE", recognitionEnabled: true, recognitionTitle: "Cổ phần", recognitionAmount: 3000000n };
+  const fund = { code: "TP130", slug: "0572-tp130", name: "Thiện pháp 0912345678", status: "ACTIVE", isLongTerm: false, recognitionEnabled: true, recognitionTitle: "Cổ phần", recognitionAmount: 3000000n };
   const dependencies: Record<string, unknown> = {
     "server-only": {}, "next/cache": { unstable_cache: (fn: unknown) => fn },
-    "./db": { db: { fund: { findMany: async (input: typeof query) => { query = input; return [fund, { ...fund, code: "TP9", status: "COMPLETED", recognitionEnabled: false }, { ...fund, code: "TP63", status: "PAUSED", recognitionAmount: 0n }]; } } } },
+    "./db": { db: { fund: { findMany: async (input: typeof query) => { query = input; return [fund, { ...fund, code: "TP9", status: "COMPLETED", recognitionEnabled: false }, { ...fund, code: "TP63", status: "PAUSED", isLongTerm: true, recognitionAmount: 0n }]; } } } },
     "./domain": { maskPhones }, "./cache-tags": { PUBLIC_DIRECTORY_TAG: "public-directory" },
   };
   const api = {} as typeof import("../src/lib/public-fund-catalog");
@@ -18,6 +18,8 @@ test("catalog exposes only public metadata, keeps all statuses and gates recogni
   const result = await api.publicFundCatalog();
   assert.deepEqual(JSON.parse(JSON.stringify(query?.where)), { publicListed: true });
   assert.equal(query?.select.adminNote, undefined);
+  assert.equal(query?.select.isLongTerm, true);
+  assert.deepEqual(Array.from(result, f => f.isLongTerm), [false, true, false]);
   assert.deepEqual(Array.from(result, f => f.code), ["TP9", "TP63", "TP130"]);
   assert.deepEqual(Array.from(result, f => f.status), ["COMPLETED", "PAUSED", "ACTIVE"]);
   assert.deepEqual(Array.from(result, f => f.recognitionTitle), [null, null, "Cổ phần"]);
