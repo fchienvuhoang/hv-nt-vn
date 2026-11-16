@@ -1,0 +1,26 @@
+.main{max-width:1120px;margin:0 auto;padding:28px 20px 64px}
+.hero{background:linear-gradient(120deg,#254f44,#406a57);color:#fff9ed;border-radius:20px;padding:36px;margin-bottom:24px}
+.hero>span{font-size:12px;letter-spacing:2px;color:#dfc492;font-weight:700}
+.hero h1{font-size:clamp(25px,4vw,38px);line-height:1.25;margin:12px 0}
+.hero p{margin:0;color:#e3e9df;line-height:1.7}
+.search{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e1d8cd;border-radius:12px;padding:8px 12px}
+.search input{flex:1;min-width:0;border:0;background:transparent;padding:10px 0;font:inherit;outline-offset:3px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
+.tabs button{border:1px solid #ddd5c8;border-radius:24px;padding:10px 15px;background:#fffcf7;color:#4d6258;font:inherit;cursor:pointer}
+.tabs button[aria-pressed=true]{background:#2d5546;color:#fff;border-color:#2d5546}
+.tabs span{font-size:12px;opacity:.8;margin-left:5px}
+.count{color:#786b60;font-size:14px}
+.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{background:#fffcf7;border:1px solid #e4dbce;border-radius:16px;padding:22px;min-width:0;display:flex;flex-direction:column}
+.heading{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.card h2{font-size:19px;line-height:1.5;margin:15px 0 22px;overflow-wrap:anywhere}
+.card h2 a{color:#304f43;text-decoration:none}
+.card h2 a:hover{text-decoration:underline}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:auto}
+.group{display:flex;align-items:center;position:relative;border:1px solid #dfd5c6;border-radius:9px;background:#fff}
+.open{display:flex;align-items:center;gap:6px;padding:10px 12px;font-size:13px;font-weight:600;color:#435f50;text-decoration:none}
+.icon{display:flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;background:none;border:0;border-left:1px solid #e5ddcf;cursor:pointer;color:#6d795d}
+.recognition{background:#f0f4e9;border-color:#cbd9c1}
+.feedback{position:absolute;bottom:100%;right:0;font-size:12px;background:#2d5546;color:white;border-radius:5px;white-space:normal;min-width:100px;z-index:1}
+.feedback:not(:empty){padding:5px 8px}
+@media(max-width:640px){.main{padding:18px 12px 40px}.hero{padding:26px 20px;border-radius:14px}.list{grid-template-columns:1fr}.card{padding:18px}.card h2{font-size:17px}.search{gap:7px;padding:6px 9px}.search button{padding:10px;font-size:13px}.tabs{gap:6px}.tabs button{font-size:13px;padding:9px 12px}.open{flex-wrap:wrap}.group{max-width:100%}}
