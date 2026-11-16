@@ -41,9 +41,10 @@ export function PublicFundCatalogView() {
   const terms = normalize(q).split(" ").filter(Boolean);
   const visible = funds?.filter(f => terms.every(term => normalize(`${f.code} ${f.name}`).includes(term))) ?? [];
   const groups = [
-    { key: "long", title: "CÁC THIỆN PHÁP DÀI HẠN", rows: visible.filter(f => f.isLongTerm && f.status !== "COMPLETED") },
-    { key: "short", title: "CÁC THIỆN PHÁP NGẮN HẠN ĐANG LÀM", rows: visible.filter(f => !f.isLongTerm && f.status !== "COMPLETED") },
+    { key: "long", title: "CÁC THIỆN PHÁP DÀI HẠN", rows: visible.filter(f => f.isLongTerm && f.status === "ACTIVE") },
+    { key: "short", title: "CÁC THIỆN PHÁP NGẮN HẠN ĐANG LÀM", rows: visible.filter(f => !f.isLongTerm && f.status === "ACTIVE") },
     { key: "completed", title: "CÁC THIỆN PHÁP ĐÃ THÀNH TỰU", rows: visible.filter(f => f.status === "COMPLETED") },
+    ...(visible.some(f => f.status === "PAUSED") ? [{ key: "paused", title: "CÁC THIỆN PHÁP TẠM DỪNG", rows: visible.filter(f => f.status === "PAUSED") }] : []),
   ];
   return <div className="public-site">
     <header className={`public-header ${styles.header}`}><Brand href="/ds-7c9e2a84b6f1" /></header>

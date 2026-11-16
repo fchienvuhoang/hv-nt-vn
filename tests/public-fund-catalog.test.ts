@@ -5,7 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { maskPhones } from "../src/lib/domain";
 
-test("catalog exposes only public metadata, keeps all statuses and gates recognition links", async () => {
+test("catalog includes all funds like admin, exposes only safe metadata and gates recognition links", async () => {
   let query: { where: unknown; select: Record<string, boolean> } | undefined;
   const fund = { code: "TP130", slug: "0572-tp130", name: "Thiện pháp 0912345678", status: "ACTIVE", isLongTerm: false, recognitionEnabled: true, recognitionTitle: "Cổ phần", recognitionAmount: 3000000n };
   const dependencies: Record<string, unknown> = {
@@ -16,7 +16,7 @@ test("catalog exposes only public metadata, keeps all statuses and gates recogni
   const api = {} as typeof import("../src/lib/public-fund-catalog");
   vm.runInNewContext(ts.transpile(readFileSync("src/lib/public-fund-catalog.ts", "utf8"), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }), { exports: api, require: (name: string) => { if (!(name in dependencies)) throw Error(name); return dependencies[name]; } });
   const result = await api.publicFundCatalog();
-  assert.deepEqual(JSON.parse(JSON.stringify(query?.where)), { publicListed: true });
+  assert.equal(query?.where, undefined, "catalog must not exclude funds based on publicListed unlike the public discovery page");
   assert.equal(query?.select.adminNote, undefined);
   assert.equal(query?.select.isLongTerm, true);
   assert.deepEqual(Array.from(result, f => f.isLongTerm), [false, true, false]);
