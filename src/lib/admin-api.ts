@@ -6,7 +6,12 @@ const entries=new Map<string,{data:unknown;at:number}>(),pending=new Map<string,
 let loginRedirect=false;
 export async function adminRequest<T>(path:string,init:RequestInit={}):Promise<T>{
   const response=await fetch(`/api/admin/${path}`,{...init,credentials:"same-origin",cache:"no-store",headers:{Accept:"application/json",...init.headers}});
-  if(!response.headers.get("content-type")?.includes("application/json"))throw new Error("Máy chủ chưa trả về dữ liệu JSON hợp lệ. Vui lòng thử lại.");
+  if(!response.headers.get("content-type")?.includes("application/json")){
+    const code=response.headers.get("x-vercel-error");
+    const detail=code&&/^[A-Z0-9_]{1,80}$/.test(code)?` · ${code}`:"";
+    if(response.status===504||code==="FUNCTION_INVOCATION_TIMEOUT")throw new Error(`Máy chủ xử lý quá thời gian (HTTP ${response.status}${detail}). ${path==="transfers/preview"?"Chỉ xem trước chưa làm thay đổi dữ liệu. Vui lòng thử lại.":"Vui lòng kiểm tra dữ liệu trước khi thử lại."}`);
+    throw new Error(`Máy chủ trả về phản hồi không hợp lệ (HTTP ${response.status}${detail}). Vui lòng thử lại.`);
+  }
   const data=decodeAdmin<T&{error?:string}>(await response.json());
   if(response.status===401||response.status===403){entries.clear();if(!loginRedirect){loginRedirect=true;
     // Clear authenticated memory and the document when a session expires.

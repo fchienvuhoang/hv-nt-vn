@@ -20,7 +20,7 @@ import { loadAdminBootstrap,loadAdminTransactions,loadAdminTransfers,loadAdminSy
 export const runtime="nodejs";
 export const maxDuration=300;
 const json=(data:unknown,status=200)=>NextResponse.json(encodeAdmin(data),{status,headers:{"Cache-Control":"private, no-store"}});
-async function handle(request:NextRequest,context:{params:Promise<{resource:string[]}>}){const first=(await context.params).resource[0];const flow=["transactions","bootstrap","funds","sync","revision","fund-activity","fund-transactions","transfers"].includes(first)?`admin-${first}`:"admin-other";return measureOperations(flow,()=>handleMeasured(request,context));}
+async function handle(request:NextRequest,context:{params:Promise<{resource:string[]}>}){const first=(await context.params).resource[0];const flow=["transactions","bootstrap","funds","sync","revision","fund-activity","fund-transactions","transfers"].includes(first)?`admin-${first}`:"admin-other";try{return await measureOperations(flow,()=>handleMeasured(request,context),work=>after(work));}catch(error){console.error("Admin REST handler failed",flow,error instanceof Error?error.name:"unknown");return json({error:"Máy chủ chưa xử lý được yêu cầu. Vui lòng thử lại."},500);}}
 async function handleMeasured(request:NextRequest,context:{params:Promise<{resource:string[]}>}){
   const session=await auth();
   if(!session?.user?.email)return json({error:"Phiên đăng nhập đã hết hạn."},401);
@@ -55,7 +55,7 @@ async function handleMeasured(request:NextRequest,context:{params:Promise<{resou
       }
     }
     const scoped=resource==="funds/pin"?[]:!["transfers/preview","funds/pin","imports","public-cache"].includes(resource)?await mutationFundScope(resource,request):undefined;
-    return mutationScope.run(scoped,async()=>{
+    return await mutationScope.run(scoped,async()=>{
     let result:unknown;
     const form=()=>request.formData();
     switch(`${request.method} ${resource}`){

@@ -22,7 +22,7 @@ export type AllocationTransferInput=z.input<typeof planSchema>;
 const hash=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 async function plan(tx:LedgerClient,input:AllocationTransferInput){
  const data=planSchema.parse(input);if(data.fromFundId===data.toFundId)throw new AllocationTransferError("Hai thiện pháp phải khác nhau");
- const totals=await fundTotals(tx),source=totals.find(f=>f.id===data.fromFundId),destination=totals.find(f=>f.id===data.toFundId);
+ const totals=await fundTotals(tx,[data.fromFundId,data.toFundId]),source=totals.find(f=>f.id===data.fromFundId),destination=totals.find(f=>f.id===data.toFundId);
  if(!source||!destination)throw new AllocationTransferError("Không tìm thấy thiện pháp");
  const sourceIncome=source.income+source.transferIn-source.transferOut+source.openingTransferNet,destinationIncome=destination.income+destination.transferIn-destination.transferOut+destination.openingTransferNet;
  const amount=data.mode==="AMOUNT"?data.value:sourceIncome-data.value;
@@ -30,9 +30,11 @@ async function plan(tx:LedgerClient,input:AllocationTransferInput){
  if(balanceError)throw new AllocationTransferError(balanceError);
  if(amount<=0n)throw new AllocationTransferError("Số tiền điều chuyển phải lớn hơn 0; mức thành tựu phải nhỏ hơn tổng hùn phước hiện tại.");
  const budgets=new Map(source.byAccount.filter(a=>!data.accountId||a.accountId===data.accountId).map(a=>[a.accountId,a.balance>0n?a.balance:0n]));
- const rows=await tx.bankTransaction.findMany({omit:{source:true,sourceHash:true},where:{AND:[fundMembership(source.id),{direction:"CREDIT",entryStatus:"POSTED",...(data.accountId?{accountId:data.accountId}:{})}]},include:{allocations:true,account:{select:{number:true}}},orderBy:[{occurredAt:"desc"},{id:"desc"}]});
  let remaining=amount;
  const items:{transactionId:string;updatedAt:string;accountId:string;accountNumber:string;refId:string;narrative:string;displayName:string;at:string;originalAmount:string;sourceBefore:string;sourceAfter:string;destinationBefore:string;destinationAfter:string;amount:string;split:boolean}[]=[];
+ let cursor:string|undefined;
+ while(remaining>0n){
+ const rows=await tx.bankTransaction.findMany({select:{id:true,updatedAt:true,accountId:true,refId:true,narrative:true,displayName:true,occurredAt:true,amount:true,fundId:true,allocations:true,account:{select:{number:true}}},where:{AND:[fundMembership(source.id),{direction:"CREDIT",entryStatus:"POSTED",...(data.accountId?{accountId:data.accountId}:{})}]},orderBy:[{occurredAt:"desc"},{id:"desc"}],take:100,...(cursor?{cursor:{id:cursor},skip:1}:{})});
  for(const row of rows){
   if(!remaining)break;
   const available=fundShare(row,source.id),budget=budgets.get(row.accountId)??0n;
@@ -42,6 +44,9 @@ async function plan(tx:LedgerClient,input:AllocationTransferInput){
   if(take<=0n)continue;
   items.push({transactionId:row.id,updatedAt:row.updatedAt.toISOString(),accountId:row.accountId,accountNumber:row.account.number,refId:row.refId,narrative:row.narrative,displayName:row.displayName,at:row.occurredAt.toISOString(),originalAmount:row.amount.toString(),sourceBefore:available.toString(),sourceAfter:(available-take).toString(),destinationBefore:toBefore.toString(),destinationAfter:(toBefore+take).toString(),amount:take.toString(),split:take<available});
   remaining-=take;budgets.set(row.accountId,budget-take);
+ }
+ if(!remaining||rows.length<100)break;
+ cursor=rows[rows.length-1].id;
  }
  const balanceItems:{accountId:string;accountNumber:string;amount:string;sourceBefore:string;sourceAfter:string;destinationBefore:string;destinationAfter:string}[]=[];
  if(remaining){

@@ -3,32 +3,33 @@ import {splitBalance,summarizeBalances} from "./balance-summary";
 import { db } from "./db";
 import type { Prisma } from "@/generated/prisma/client";
 export type LedgerClient = Prisma.TransactionClient;
-export async function fundTotals(client: LedgerClient = db, fundId?: string, before?:Date) {
+export async function fundTotals(client: LedgerClient = db, fundId?: string | string[], before?:Date) {
+  const selectedFund = Array.isArray(fundId) ? { in: fundId } : fundId;
   const [funds, baseMovements, sent, received, allocations, balanceItems] = await Promise.all([
     client.fund.findMany({
-      where: fundId ? { id: fundId } : undefined,
+      where: fundId ? { id: selectedFund } : undefined,
       include: { account: true },
       orderBy: [{ status: "asc" }, { code: "asc" }],
     }),
     client.bankTransaction.groupBy({
       by: ["fundId", "accountId", "direction", "entryStatus"],
-      where: { fundId: fundId ?? { not: null }, entryStatus: {in:["POSTED","OPENING"]}, allocations:{none:{}}, ...(before?{OR:[{entryStatus:"OPENING"},{occurredAt:{lt:before}}]}:{}) },
+      where: { fundId: selectedFund ?? { not: null }, entryStatus: {in:["POSTED","OPENING"]}, allocations:{none:{}}, ...(before?{OR:[{entryStatus:"OPENING"},{occurredAt:{lt:before}}]}:{}) },
       _sum: { amount: true },
       _min: {occurredAt:true},
       _count: true,
     }),
     client.transfer.groupBy({
       by: ["fromFundId", "accountId"],
-      where:{...(before?{createdAt:{lt:before}}:{}),mode:"BALANCE", ...(fundId ? {fromFundId:fundId} : {})},
+      where:{...(before?{createdAt:{lt:before}}:{}),mode:"BALANCE", ...(fundId ? {fromFundId:selectedFund} : {})},
       _sum: { amount: true },
     }),
     client.transfer.groupBy({
       by: ["toFundId", "accountId"],
-      where:{...(before?{createdAt:{lt:before}}:{}),mode:"BALANCE", ...(fundId ? {toFundId:fundId} : {})},
+      where:{...(before?{createdAt:{lt:before}}:{}),mode:"BALANCE", ...(fundId ? {toFundId:selectedFund} : {})},
       _sum: { amount: true },
     }),
-    Promise.all((["CREDIT","DEBIT"] as const).map(async direction=>(await client.fundAllocation.groupBy({by:["fundId","accountId"],where:{...(fundId?{fundId}:{}),transaction:{entryStatus:"POSTED",direction,...(before?{occurredAt:{lt:before}}:{})}},_sum:{amount:true},_count:true})).map(a=>({...a,direction})))).then(groups=>groups.flat()),
-    client.transferBalanceItem.findMany({where:{transfer:{...(before?{createdAt:{lt:before}}:{}),...(fundId?{OR:[{fromFundId:fundId},{toFundId:fundId}]}:{})}},include:{transfer:{select:{fromFundId:true,toFundId:true}}}}),
+    Promise.all((["CREDIT","DEBIT"] as const).map(async direction=>(await client.fundAllocation.groupBy({by:["fundId","accountId"],where:{...(fundId?{fundId:selectedFund}:{}),transaction:{entryStatus:"POSTED",direction,...(before?{occurredAt:{lt:before}}:{})}},_sum:{amount:true},_count:true})).map(a=>({...a,direction})))).then(groups=>groups.flat()),
+    client.transferBalanceItem.findMany({where:{transfer:{...(before?{createdAt:{lt:before}}:{}),...(fundId?{OR:[{fromFundId:selectedFund},{toFundId:selectedFund}]}:{})}},include:{transfer:{select:{fromFundId:true,toFundId:true}}}}),
   ]);
   for(const item of balanceItems){
     sent.push({fromFundId:item.transfer.fromFundId,accountId:item.accountId,_sum:{amount:item.amount}});
