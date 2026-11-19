@@ -7,7 +7,7 @@ import type { TransactionSummary } from "@/lib/transaction-summary";
 import { vnd } from "@/lib/domain";
 export function TransactionSummaryPanel(){
   const {data,error}=useAdminResource<TransactionSummary>("transaction-summary",20000);
-  const [expanded,setExpanded]=useState(false);
+  const [expanded,setExpanded]=useState(true);
   const chartId=useId();
   const days=[...(data?.days??[]).slice(0,expanded?10:3)].reverse();
   const maximum=days.reduce((max,d)=>[max,d.income,d.expense].reduce((a,b)=>a>b?a:b),0n);
@@ -15,7 +15,7 @@ export function TransactionSummaryPanel(){
   return <section className="transaction-daily-summary" aria-label={`Tiền vào và tiền ra ${expanded?10:3} ngày gần đây`}>
     <div className="daily-summary-heading"><strong>Tiền vào / Tiền ra · {expanded?10:3} ngày gần đây</strong><small>Cả hai tài khoản · Giờ Việt Nam · Độc lập bộ lọc</small></div>
     <div className="daily-column-legend"><span><i className="daily-chart-income"/> Tiền vào</span><span><i className="daily-chart-expense"/> Tiền ra</span></div>
-    <div id={chartId} className="daily-column-scroll" tabIndex={0} role="region" aria-label="Biểu đồ tiền vào và tiền ra theo ngày"><div className="daily-column-chart" style={{gridTemplateColumns:`repeat(${days.length||3},minmax(120px,1fr))`}}>
+    <div id={chartId} className="daily-column-scroll" tabIndex={0} role="region" aria-label="Biểu đồ tiền vào và tiền ra theo ngày"><div className="daily-column-chart" style={{gridTemplateColumns:`repeat(${days.length||10},minmax(120px,1fr))`}}>
       {days.map(d=><article key={d.date} className={`daily-column-day${d.date===data?.days[0].date?" today":""}`}>
         <div className="daily-column-bars">
           <div className="daily-column-slot"><div className="daily-chart-income" style={{height:height(d.income)}} title={`Tiền vào: ${vnd(d.income)} · ${d.incomeCount} khoản`} /></div>

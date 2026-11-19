@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useState,useSyncExternalStore} from "react";
 import {Modal} from "@/components/modal";
-import {Download} from "lucide-react";
+import {BookOpen,Download} from "lucide-react";
 type InstallEvent=Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>};
 const noopSubscribe=()=>()=>{};
 function installedSnapshot(){return window.matchMedia("(display-mode: standalone)").matches||(navigator as Navigator&{standalone?:boolean}).standalone===true;}
@@ -32,6 +32,6 @@ export function PwaInstall(){
     <p className="notice">Bước 2 sẽ hướng dẫn chọn loại thông báo và bật quyền nhận sau khi bạn mở ứng dụng đã cài.</p>
     <div className="push-actions">{prompt&&<button className="button primary" onClick={async()=>{await prompt.prompt();await prompt.userChoice;setPrompt(null);dismiss();}}>Cài ứng dụng</button>}<button className="button subtle" onClick={dismiss}>Để sau</button></div>
   </Modal><aside className="pwa-install">
-    {prompt?<button className="button subtle small" onClick={async()=>{await prompt.prompt();await prompt.userChoice;setPrompt(null);}}><Download size={15}/>Cài ứng dụng hvntvn</button>:<details><summary>Cài ứng dụng lên điện thoại</summary><p>{ios?'Mở bằng Safari → Chia sẻ → Thêm vào Màn hình chính. Sau đó mở ứng dụng từ biểu tượng để bật thông báo quản trị.':'Trong menu trình duyệt, chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”.'}</p></details>}
-  <button className="button subtle small" onClick={()=>setOpen(true)}>Hướng dẫn cài đặt</button></aside></>;
+    {prompt?<button className="button subtle small" onClick={async()=>{await prompt.prompt();await prompt.userChoice;setPrompt(null);}}><Download size={15}/>Cài ứng dụng hvntvn</button>:<details><summary className="button subtle small"><Download size={15}/>Cài ứng dụng lên điện thoại</summary><p>{ios?'Mở bằng Safari → Chia sẻ → Thêm vào Màn hình chính. Sau đó mở ứng dụng từ biểu tượng để bật thông báo quản trị.':'Trong menu trình duyệt, chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”.'}</p></details>}
+  <button className="button subtle small" onClick={()=>setOpen(true)}><BookOpen size={15}/>Hướng dẫn cài đặt</button></aside></>;
 }

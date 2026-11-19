@@ -14,13 +14,17 @@ import { RecordAuthor } from "@/components/admin/record-author";
 import { AdminLink as Link } from "@/components/admin/admin-link";
 import {
   ExternalLink,
+  CirclePlay,
+  CircleCheck,
+  CirclePause,
+  ContactRound,
   Copy,
   Settings2,
   Plus,
   List,
 } from "lucide-react";
 import type { AdminBootstrap } from "@/lib/admin-read-model";
-import { Status, Empty } from "@/components/ui";
+import { Empty } from "@/components/ui";
 import { vnd, fundUsesAccount } from "@/lib/domain";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
 function FundingProgress({ income, goal, goalType, goalConfig }: { income: bigint; goal: bigint | null; goalType?:string; goalConfig?:unknown }) {
@@ -142,15 +146,14 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
               <thead role="rowgroup">
                 <tr>
                   <th>Thiện pháp / từ khóa</th>
-                  <th>Tài khoản</th>
-                  <th>Trạng thái</th>
+                  <th className="fund-status-heading">Trạng thái</th>
                   <th className="align-right">Hùn phước</th>
                   <th className="align-right">Đã chi</th>
                   <th className="align-right">Số dư khả dụng</th>
                   <th className="align-right">Chi vượt quỹ</th>
                   <th className="align-right">Thao tác</th>
-                  <th>Người tạo</th>
-                  <th>Người cập nhật</th>
+                  <th className="fund-author-heading">Người tạo</th>
+                  <th className="fund-author-heading">Người cập nhật</th>
                 </tr>
               </thead>
               <tbody role="rowgroup">
@@ -160,28 +163,33 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       <div className="fund-identity">
                         <FundPinButton fundId={f.id} code={f.code} pinned={!!f.pinnedAt}/>
                         <span className="code">{f.code}</span>
-                        <h3 className="table-fund-name" title={`${f.code} · ${f.name}${f.keywords.length ? ` (Từ khóa: ${f.keywords.join(" · ")})` : ""}`}>{f.name}</h3>
+                        <div className="fund-name-tooltip" tabIndex={0} aria-describedby={`fund-name-${f.id}`}>
+                          <h3 className="table-fund-name">{f.name}</h3>
+                          <span className="fund-name-tooltip-content" role="tooltip" id={`fund-name-${f.id}`}>{f.name}</span>
+                        </div>
                       </div>
-                      {f.keywords.length > 0 && <div className="fund-aliases" aria-label="Mã phụ và từ khóa">{f.keywords.map(keyword=><span key={keyword}>{keyword}</span>)}</div>}
-                    </td>
-                    <td className="nowrap">
-                      <span className="account-number">
-                        {[...new Set([f.accountId, ...f.accountIds])]
+                      <div className="fund-account-meta">TK {[...new Set([f.accountId, ...f.accountIds])]
                           .map(
                             (id) => balances.find((a) => a.id === id)?.number,
                           )
                           .filter((number): number is string => !!number)
                           .map(accountLabel)
-                          .join(" · ")}
-                      </span>
-                      {new Set([f.accountId, ...f.accountIds]).size === 1 && <small className="fund-account-restriction">Chỉ TK {accountLabel(balances.find(a=>a.id===f.accountId)?.number ?? "đã cấu hình")}</small>}
+                          .join(" · ")}</div>
+                      {f.adminNote && <div className="fund-identity-note"><strong>Ghi chú nội bộ:</strong> {f.adminNote}</div>}
+                      {f.keywords.length > 0 && <div className="fund-aliases" aria-label="Mã phụ và từ khóa">{f.keywords.map(keyword=><span key={keyword}>{keyword}</span>)}</div>}
                     </td>
-                    <td>
-                      <Status status={f.status} />
-                      <div className="fund-status-public-link"><Link className="fund-public-link" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" title={`Mở trang công khai ${f.code}`} aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={13} /><span>Trang công khai</span></Link><button type="button" className="fund-copy-link" onClick={()=>void copyPublicLink(f.slug)} title={`Sao chép link công khai ${f.code}`} aria-label={`Sao chép link công khai ${f.code}`}><Copy size={13}/></button>
+                    <td className="fund-status-cell">
+                      <div className="table-actions fund-status-icons">
+                        <span className="fund-action-tooltip" data-tooltip={f.status==="ACTIVE"?"Đang hoạt động":f.status==="COMPLETED"?"Đã thành tựu":"Tạm dừng"}>
+                          <span className={`fund-status-icon fund-status-${f.status.toLowerCase()}`} tabIndex={0} role="img" aria-label={f.status==="ACTIVE"?"Đang hoạt động":f.status==="COMPLETED"?"Đã thành tựu":"Tạm dừng"}>
+                            {f.status==="ACTIVE"?<CirclePlay size={16}/>:f.status==="COMPLETED"?<CircleCheck size={16}/>:<CirclePause size={16}/>}
+                          </span>
+                        </span>
+                        <span className="fund-action-tooltip" data-tooltip="Mở trang công khai"><Link className="button subtle small fund-action-icon" href={`/t/${f.slug}`} target="_blank" rel="noopener noreferrer" aria-label={`Mở trang công khai ${f.code} (tab mới)`}><ExternalLink size={15} aria-hidden="true"/></Link></span>
+                        <span className="fund-action-tooltip" data-tooltip="Sao chép link công khai"><button type="button" className="button subtle small fund-action-icon" onClick={()=>void copyPublicLink(f.slug)} aria-label={`Sao chép link công khai ${f.code}`}><Copy size={15} aria-hidden="true"/></button></span>
                         {f.recognitionEnabled&&f.recognitionAmount!=null&&f.recognitionAmount>0n&&<>
-                          <Link className="fund-public-link" href={`/t/${f.slug}/phuong-danh`} target="_blank" rel="noopener noreferrer" title={`Mở phương danh ${f.code}`} aria-label={`Mở phương danh ${f.code} (tab mới)`}><ExternalLink size={13}/><span>Phương danh</span></Link>
-                          <button type="button" className="fund-copy-link" onClick={()=>void copyPublicLink(f.slug,true)} title={`Sao chép link phương danh ${f.code}`} aria-label={`Sao chép link phương danh ${f.code}`}><Copy size={13}/></button>
+                          <span className="fund-action-tooltip" data-tooltip="Mở phương danh"><Link className="button subtle small fund-action-icon" href={`/t/${f.slug}/phuong-danh`} target="_blank" rel="noopener noreferrer" aria-label={`Mở phương danh ${f.code} (tab mới)`}><ContactRound size={15} aria-hidden="true"/></Link></span>
+                          <span className="fund-action-tooltip" data-tooltip="Sao chép link phương danh"><button type="button" className="button subtle small fund-action-icon" onClick={()=>void copyPublicLink(f.slug,true)} aria-label={`Sao chép link phương danh ${f.code}`}><Copy size={15} aria-hidden="true"/></button></span>
                         </>}
                       </div>
                     </td>
@@ -189,7 +197,6 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       {vnd(f.fundingIncome)}
                       <FundingProgress income={f.fundingIncome} goal={f.goalAmount} goalType={f.goalType} goalConfig={f.goalConfig}/>
                       {(f.transferIn!==0n||f.transferOut!==0n)&&<small>Đã tính điều chuyển ròng</small>}
-                      {f.adminNote && <div className="fund-income-note"><strong>Ghi chú:</strong> {f.adminNote}</div>}
                     </td>
                     <td data-label="Đã chi" className="money align-right nowrap">
                       {vnd(f.expense)}
@@ -198,9 +205,8 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                       {vnd(f.availableBalance)}
                       {f.openingBalance!==0n&&<small className="fund-opening-note">Trong đó Excel: {vnd(f.openingBalance)}</small>}
                     </td>
-                    <td data-label="Chi vượt quỹ" className={`money align-right nowrap${f.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(f.excessExpense)}</td>
-                    <td>
-                      {f.adminNote&&<div className="fund-mobile-note"><strong>Ghi chú:</strong> {f.adminNote}</div>}
+                    <td data-label="Chi vượt quỹ" className={`money align-right nowrap${f.excessExpense>0n?" fund-overdrawn":" fund-no-overdraft"}`}>{vnd(f.excessExpense)}</td>
+                    <td className="fund-actions-cell">
                       <details className="fund-mobile-details">
                         <summary>Thông tin thêm</summary>
                         {f.keywords.length>0&&<div className="fund-aliases">{f.keywords.map(keyword=><span key={keyword}>{keyword}</span>)}</div>}
@@ -210,22 +216,22 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                         <div><small>Cập nhật</small><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt}/></div>
                       </details>
                       <div className="inline-actions table-actions">
-                        <AdminDialogButton kind="fund-transactions" fundId={f.id} className="button subtle small"><List size={15}/>Xem giao dịch</AdminDialogButton>
+                        <span className="fund-action-tooltip" data-tooltip="Xem giao dịch"><AdminDialogButton kind="fund-transactions" fundId={f.id} className="button subtle small fund-action-icon"><List size={16} aria-hidden="true"/><span className="fund-action-label">Xem giao dịch</span></AdminDialogButton></span>
                         {f.recognitionEnabled&&<FundRecognition fundId={f.id} slug={f.slug} title={f.recognitionTitle}/>}
-                        <AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small">
-                          <Settings2 size={14} />Cấu hình
-                        </AdminDialogButton>
+                        <span className="fund-action-tooltip" data-tooltip="Cấu hình"><AdminDialogButton kind="edit-fund" fundId={f.id} className="button subtle small fund-action-icon">
+                          <Settings2 size={16} aria-hidden="true"/><span className="fund-action-label">Cấu hình</span>
+                        </AdminDialogButton></span>
 
                       </div>
                     </td>
-                    <td data-label="Người tạo"><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
-                    <td data-label="Cập nhật"><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
+                    <td className="fund-author-cell" data-label="Người tạo"><RecordAuthor name={f.createdByName} id={f.createdById} at={f.createdAt} /></td>
+                    <td className="fund-author-cell" data-label="Cập nhật"><RecordAuthor name={f.updatedByName} id={f.updatedById} at={f.updatedAt} /></td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={3}>
+                  <td colSpan={2}>
                     <strong>
                       Tổng {funds.length} thiện pháp đang hiển thị
                     </strong>
@@ -239,10 +245,10 @@ export default function Funds({ params = {},bootstrap }: { params?: AdminParams;
                   <td data-label="Số dư khả dụng" className="money align-right nowrap">
                     {vnd(totals.availableBalance)}
                   </td>
-                  <td data-label="Chi vượt quỹ" className={`money align-right nowrap${totals.excessExpense>0n?" fund-overdrawn":""}`}>{vnd(totals.excessExpense)}</td>
+                  <td data-label="Chi vượt quỹ" className={`money align-right nowrap${totals.excessExpense>0n?" fund-overdrawn":" fund-no-overdraft"}`}>{vnd(totals.excessExpense)}</td>
                   <td colSpan={3} />
                 </tr>
-                <tr><td colSpan={10} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
+                <tr><td colSpan={9} className="fund-book-balance">Số dư thực theo sổ: <strong>{totals.balance<0n?`Thiếu ${vnd(-totals.balance)}`:vnd(totals.balance)}</strong><small> = {vnd(totals.availableBalance)} khả dụng − {vnd(totals.excessExpense)} chi vượt quỹ · Theo danh sách đang hiển thị</small></td></tr>
               </tfoot>
             </table>
           </div>
