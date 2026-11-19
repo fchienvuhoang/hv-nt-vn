@@ -1,5 +1,5 @@
 "use client";
-import { FUND_GOAL_TYPES, calculateLengthGoal, readLengthGoal, formatMeasure } from "@/lib/fund-goal";
+import { FUND_GOAL_TYPES, calculateLengthGoal, calculatePartGoal, readLengthGoal, readPartGoal, formatMeasure } from "@/lib/fund-goal";
 import {keywordKey} from "@/lib/fund-keywords";
 import { accountLabel } from "@/lib/account-label";
 import { MoneyInput } from "@/components/money-input";
@@ -31,15 +31,16 @@ export function FundForm({
   const formRef = useRef<HTMLFormElement>(null);
   const prefix = useId();
   const lengthGoal = readLengthGoal(fund?.goalType, fund?.goalConfig);
+  const partGoal = readPartGoal(fund?.goalType, fund?.goalConfig);
   const [values, setValues] = useState({
     code: fund?.code ?? "", name: fund?.name ?? "", status: fund?.status ?? "ACTIVE",
     transferKeyword:fund?.transferKeyword??"",
     keywords: fund?.keywords.join("\n") ?? "", description: fund?.description ?? "",
     goalAmount: fund?.goalAmount?.toString() ?? "",
     goalType: fund?.goalType ?? "MONEY",
-    goalUnitPrice: lengthGoal?.unitPrice ?? "",
+    goalUnitPrice: (lengthGoal ?? partGoal)?.unitPrice ?? "",
     goalWidth: lengthGoal?.width ?? "",
-    goalQuantity: lengthGoal?.quantity ?? "",
+    goalQuantity: (lengthGoal ?? partGoal)?.quantity ?? "",
     adminNote: fund?.adminNote ?? "",
     recognitionEnabled:fund?.recognitionEnabled?"1":"0",
     recognitionTitle:fund?.recognitionTitle??"Cổ phần",
@@ -50,6 +51,10 @@ export function FundForm({
   let lengthPreview: ReturnType<typeof calculateLengthGoal> | null = null;
   if (values.goalType === "LENGTH") {
     try { lengthPreview = calculateLengthGoal(values.goalUnitPrice, values.goalWidth, values.goalQuantity); } catch { /* Preview appears only when all inputs are valid. */ }
+  }
+  let partPreview: ReturnType<typeof calculatePartGoal> | null = null;
+  if (values.goalType === "PARTS") {
+    try { partPreview = calculatePartGoal(values.goalUnitPrice, values.goalQuantity); } catch { /* Wait for valid price and whole-number quantity. */ }
   }
   const [edited, setEdited] = useState<Record<string, boolean>>({});
   function change(field: keyof typeof values, value: string) {
@@ -129,7 +134,14 @@ export function FundForm({
           <MoneyInput name="goalAmount" placeholder="Ví dụ: 100.000.000" value={values.goalAmount} onValueChange={value=>change("goalAmount",value)} {...errorProps("goalAmount")} />
           {errorMessage("goalAmount")}
           <small>{/^\d{1,15}$/.test(values.goalAmount) ? vnd(values.goalAmount) : "Để trống nếu chưa có mục tiêu. Tự phân cách hàng nghìn khi nhập hoặc dán số tiền."}</small>
-        </label> : <>
+        </label> : values.goalType==="PARTS" ? <>
+          <div className="form-row">
+            <label>Giá trị mỗi phần (₫)<MoneyInput name="goalUnitPrice" value={values.goalUnitPrice} onValueChange={value=>change("goalUnitPrice",value)} placeholder="Ví dụ: 180.000" required {...errorProps("goalUnitPrice")}/>{errorMessage("goalUnitPrice")}</label>
+            <label>Tổng số phần mục tiêu<input name="goalQuantity" type="text" inputMode="numeric" pattern="[1-9][0-9]{0,8}" maxLength={9} value={values.goalQuantity} onChange={event=>change("goalQuantity",event.target.value)} placeholder="Ví dụ: 100" required {...errorProps("goalQuantity")}/>{errorMessage("goalQuantity")}</label>
+          </div>
+          <div className="fund-goal-preview" role="status">{partPreview ? <><strong>Tổng mục tiêu: {vnd(partPreview.goalAmount)}</strong><span>{formatMeasure(partPreview.goalConfig.quantity)} phần × {vnd(partPreview.goalConfig.unitPrice)}/phần</span></> : <span>Nhập giá trị mỗi phần và tổng số phần để tính mục tiêu.</span>}</div>
+          <small>Tổng số phần mục tiêu là số nguyên dương. Tiến độ quy đổi từ tổng tiền hùn phước, không làm thay đổi thu, chi và số dư.</small>
+        </> : <>
           <label>Bề rộng mô tả (m)<input name="goalWidth" type="text" inputMode="decimal" maxLength={14} value={values.goalWidth} onChange={event=>change("goalWidth",event.target.value)} placeholder="Ví dụ: 3" required {...errorProps("goalWidth")}/>{errorMessage("goalWidth")}</label>
           <div className="form-row">
             <label>Đơn giá mỗi mét dài (₫)<MoneyInput name="goalUnitPrice" value={values.goalUnitPrice} onValueChange={value=>change("goalUnitPrice",value)} placeholder="Ví dụ: 430.000" required {...errorProps("goalUnitPrice")}/>{errorMessage("goalUnitPrice")}</label>

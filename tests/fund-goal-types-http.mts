@@ -35,6 +35,20 @@ try {
     assert.ok((await save({ ...update, ...invalid })).error);
     assert.equal((await db.fund.findUniqueOrThrow({ where: { id: fund.id } })).goalAmount, 18750000n);
   }
+  const parts = { ...update, goalType: "PARTS", goalUnitPrice: "180000", goalQuantity: "100", goalAmount: "1" };
+  assert.ok((await save(parts)).success);
+  fund = await db.fund.findUniqueOrThrow({ where: { id: fund.id } });
+  assert.equal(fund.goalType, "PARTS"); assert.equal(fund.goalAmount, 18000000n);
+  assert.deepEqual(fund.goalConfig, { version: 1, unit: "part", unitPrice: "180000", quantity: "100" });
+  assert.ok((await save(legacy)).success);
+  assert.equal((await db.fund.findUniqueOrThrow({ where: { id: fund.id } })).goalType, "PARTS");
+  for(const bad of ["0","-1","1.5","1,5"]){
+    assert.ok((await save({...parts,goalQuantity:bad})).error);
+    assert.equal((await db.fund.findUniqueOrThrow({ where: { id: fund.id } })).goalAmount,18000000n);
+  }
+  const partsPublic = await (await fetch(`${origin}/api/public/funds/${fund.slug}`)).json();
+  assert.equal(partsPublic.goalType,"PARTS"); assert.equal(partsPublic.goalAmount,"18000000");
+  assert.deepEqual(partsPublic.goalConfig,fund.goalConfig);
   assert.ok((await save({ ...update, goalType: "MONEY", goalAmount: "150000000" })).success);
   fund = await db.fund.findUniqueOrThrow({ where: { id: fund.id } }); assert.equal(fund.goalType, "MONEY"); assert.equal(fund.goalAmount, 150000000n); assert.equal(fund.goalConfig, null);
   assert.ok((await save({ ...update, goalType: "MONEY", goalAmount: "" })).success);

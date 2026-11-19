@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import {z} from "zod";
+import * as fundGoal from "../src/lib/fund-goal";
 import {FundKeywordError} from "../src/lib/fund-keywords";
 import {actorStamp} from "../src/lib/actor";
 import {originalFundShare} from "../src/lib/transaction-split-input";
@@ -18,6 +19,7 @@ function fixture(){
  };
  const dependencies:Record<string,unknown>={
   "@/lib/fund-keywords":{FundKeywordError},
+  "@/lib/fund-goal":fundGoal,
   "zod":{z},"@/lib/auth":{requireAdminActor:async()=>{if(!authenticated)throw Error("Unauthorized");return {id:"admin",name:"Admin",email:"admin@example.test"}}},
   "@/lib/ledger":{serializable:async(work:(client:typeof tx)=>Promise<unknown>)=>work(tx)},
   "@/lib/actor":{actorStamp},"next/cache":{revalidatePath:()=>{}},"@/lib/admin-mutation-scope":{invalidateMutation:()=>{}},

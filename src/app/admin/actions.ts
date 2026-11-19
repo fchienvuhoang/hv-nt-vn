@@ -1,7 +1,7 @@
 "use server";
 import { splitTransaction } from "@/lib/transaction-split";
 import type { TransactionSplitInput } from "@/lib/transaction-split-input";
-import { resolveFundGoal } from "@/lib/fund-goal";
+import { resolveFundGoal, fundGoalTypeSchema } from "@/lib/fund-goal";
 import { db } from "@/lib/db";
 import { randomUUID } from "node:crypto";
 import { appendTransactionNote, reassignTransactions, fundTransactionList, type BulkReassignment } from "@/lib/transaction-management";
@@ -54,7 +54,7 @@ const fundSchema = z.object({
   name: z.string().trim().min(3).max(200),
   description: z.string().trim().max(3000),
   adminNote: z.string().trim().transform(value=>value.replace(/\r\n?/g,"\n")).pipe(z.string().max(3000,"Ghi chú tối đa 3.000 ký tự")).optional(),
-  goalType: z.enum(["MONEY","LENGTH"]).optional(),
+  goalType: fundGoalTypeSchema.optional(),
   goalUnitPrice: z.string().max(30).optional(),
   goalWidth: z.string().max(30).optional(),
   goalQuantity: z.string().max(30).optional(),

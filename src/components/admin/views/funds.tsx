@@ -1,5 +1,5 @@
 "use client";
-import {readLengthGoal,formatMeasure} from "@/lib/fund-goal";
+import {readLengthGoal,readPartGoal,formatMeasure} from "@/lib/fund-goal";
 import {FundRecognition} from "@/components/admin/fund-recognition";
 import {SITE_ORIGIN} from "@/lib/site-url";
 import { useToast } from "@/components/toasts";
@@ -25,11 +25,12 @@ import { vnd, fundUsesAccount } from "@/lib/domain";
 import { adminUrl, type AdminParams } from "@/lib/admin-navigation";
 function FundingProgress({ income, goal, goalType, goalConfig }: { income: bigint; goal: bigint | null; goalType?:string; goalConfig?:unknown }) {
   if (goal === null || goal <= 0n) return null;
-  const length=readLengthGoal(goalType,goalConfig);
+  const length=readLengthGoal(goalType,goalConfig),parts=readPartGoal(goalType,goalConfig);
+  const unitGoal=length??parts;
   const percentage = Number((income > 0n ? income : 0n) * 1000n / goal) / 10;
   const label = `${percentage.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`;
   return <div className="fund-funding-progress">
-    <div><span>Mục tiêu: <b>{length?`${formatMeasure(length.quantity)} m`:vnd(goal)}</b></span><strong>{label}</strong></div>
+    <div><span>Mục tiêu: <b>{unitGoal?`${formatMeasure(unitGoal.quantity)} ${parts?"phần":"m"}`:vnd(goal)}</b></span><strong>{label}</strong></div>
     <progress max={100} value={Math.min(100, percentage)} aria-label="Tiến độ thành tựu" aria-valuetext={label}/>
   </div>;
 }
