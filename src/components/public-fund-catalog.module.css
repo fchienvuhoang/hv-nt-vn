@@ -7,7 +7,7 @@
 .search input{flex:1;min-width:0;border:0;background:transparent;padding:10px 0;font:inherit;outline-offset:3px}
 .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
 .tabs button{border:1px solid #ddd5c8;border-radius:24px;padding:10px 15px;background:#fffcf7;color:#4d6258;font:inherit;cursor:pointer}
-.tabs button[aria-pressed=true]{background:#2d5546;color:#fff;border-color:#2d5546}
+.tabs button[aria-selected=true]{background:#2d5546;color:#fff;border-color:#2d5546}
 .tabs span{font-size:12px;opacity:.8;margin-left:5px}
 .count{color:#786b60;font-size:14px}
 .list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
@@ -26,11 +26,11 @@
 @media(max-width:640px){.main{padding:18px 12px 40px}.hero{padding:26px 20px;border-radius:14px}.list{grid-template-columns:1fr}.card{padding:18px}.card h2{font-size:17px}.search{gap:7px;padding:6px 9px}.search button{padding:10px;font-size:13px}.tabs{gap:6px}.tabs button{font-size:13px;padding:9px 12px}.open{flex-wrap:wrap}.group{max-width:100%}}
 
 /* Compact catalog: full-width rows and a short header. */
-.header{min-height:0;padding:8px 20px}
+.header{min-height:0;padding:12px 20px}
 .header :global(.academy-logo){width:32px;height:32px}
 .header :global(.brand){font-size:14px;gap:8px}
 .header :global(.brand small){font-size:10px;margin-top:2px}
-.main{max-width:1400px;padding:14px 20px 32px}
+:global(.public-site)>.main{max-width:1200px;padding:18px 20px 32px}
 .hero{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-radius:10px;padding:12px 16px;margin-bottom:12px}
 .hero>span{font-size:10px;letter-spacing:1px}
 .hero h1{font-size:22px;line-height:1.3;margin:0}
@@ -38,8 +38,12 @@
 .search{border-radius:8px;padding:4px 10px}
 .search input{padding:7px 0;font-size:14px}
 .search button{padding:7px 12px;min-height:32px;font-size:13px}
-.tabs{gap:6px;margin:10px 0}
-.tabs button{padding:6px 11px;font-size:13px;min-height:32px}
+.tabs{display:inline-flex;max-width:100%;gap:6px;margin:16px 0 6px;padding:6px;background:#edf1e9;border:1px solid #d4dece;border-radius:12px}
+.tabs button{padding:9px 16px;font-size:13px;font-weight:600;min-height:42px;border-radius:8px;border-color:transparent;background:transparent;color:#435b4e;transition:background .15s,box-shadow .15s}
+.tabs button:hover{background:#e0e8db}
+.tabs button[aria-selected=true]{background:#254f40;color:#fffdf6;border-color:#254f40;box-shadow:0 2px 5px #254f4026,inset 0 -3px #d8b875}
+.tabs span{display:inline-block;min-width:22px;padding:2px 6px;margin-left:6px;border-radius:12px;background:#dce5d6;color:#435b4e;font-size:11px;line-height:1.4;opacity:1}
+.tabs button[aria-selected=true] span{background:#fffdf626;color:#fffdf6}
 .count{font-size:12px;margin:8px 0}
 .list{display:flex;flex-direction:column;gap:0;border:1px solid #e4dbce;border-radius:10px;background:#fffcf7}
 .card{display:grid;grid-template-columns:140px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 14px;border:0;border-bottom:1px solid #e4dbce;border-radius:0;background:transparent}
@@ -67,3 +71,6 @@
 .sectionTitle span{font-size:11px;background:#fff9ee;padding:1px 7px;border-radius:10px;color:#6a6e58}
 .emptyGroup{font-size:12px;color:#847b70;margin:8px 12px}
 @media(max-width:640px){.section{margin-top:14px}.sectionTitle{font-size:12px;padding:7px 9px}}
+
+.tabs button:focus-visible{outline:2px solid #2d5546;outline-offset:3px}
+@media(max-width:640px){.header{padding:10px 12px}:global(.public-site)>.main{padding:16px 10px 24px}.tabs{gap:4px;padding:5px}.tabs button{font-size:12px;padding:8px 10px;min-height:40px}.tabs span{min-width:20px;margin-left:4px;padding:2px 5px}}
