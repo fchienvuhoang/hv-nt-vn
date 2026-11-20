@@ -33,19 +33,22 @@ export function PublicFundCatalogView() {
     }).catch(error => { if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Không tải được danh sách"); });
     return () => controller.abort();
   }, [retry]);
-  function navigate(nextQuery: string) {
+  function navigate(nextQuery: string, nextGroup = params.get("tab") ?? "long") {
     const next = new URLSearchParams();
+    if (nextGroup !== "long") next.set("tab", nextGroup);
     if (nextQuery.trim()) next.set("q", nextQuery.trim());
     publicNavigate(`${window.location.pathname}${next.size ? `?${next}` : ""}`);
   }
   const terms = normalize(q).split(" ").filter(Boolean);
   const visible = funds?.filter(f => terms.every(term => normalize(`${f.code} ${f.name}`).includes(term))) ?? [];
   const groups = [
-    { key: "long", title: "CÁC THIỆN PHÁP DÀI HẠN", rows: visible.filter(f => f.isLongTerm && f.status === "ACTIVE") },
-    { key: "short", title: "CÁC THIỆN PHÁP NGẮN HẠN ĐANG LÀM", rows: visible.filter(f => !f.isLongTerm && f.status === "ACTIVE") },
-    { key: "completed", title: "CÁC THIỆN PHÁP ĐÃ THÀNH TỰU", rows: visible.filter(f => f.status === "COMPLETED") },
-    ...(visible.some(f => f.status === "PAUSED") ? [{ key: "paused", title: "CÁC THIỆN PHÁP TẠM DỪNG", rows: visible.filter(f => f.status === "PAUSED") }] : []),
+    { key: "long", rows: visible.filter(f => f.isLongTerm && f.status === "ACTIVE") },
+    { key: "short", rows: visible.filter(f => !f.isLongTerm && f.status === "ACTIVE") },
+    { key: "completed", rows: visible.filter(f => f.status === "COMPLETED") },
+    ...(funds?.some(f => f.status === "PAUSED") ? [{ key: "paused", rows: visible.filter(f => f.status === "PAUSED") }] : []),
   ];
+  const selected = groups.find(group => group.key === params.get("tab")) ?? groups[0];
+  const labels: Record<string, string> = { long: "Dài hạn", short: "Ngắn hạn đang làm", completed: "Đã thành tựu", paused: "Tạm dừng" };
   return <div className="public-site">
     <header className={`public-header ${styles.header}`}><Brand href="/ds-7c9e2a84b6f1" /></header>
     <main className={styles.main}>
@@ -54,11 +57,24 @@ export function PublicFundCatalogView() {
         <Search size={19} /><input aria-label="Tìm theo mã hoặc tên thiện pháp" name="q" type="search" defaultValue={q} maxLength={100} placeholder="Tìm theo mã hoặc tên thiện pháp…" /><button className="button primary" type="submit">Tìm kiếm</button>
       </form>
       {error ? <div className="notice danger" role="alert">{error} <button className="button subtle" onClick={() => { setError(""); setRetry(n => n + 1); }}>Thử lại</button></div> : !funds ? <LoadingIndicator label="Đang tải danh sách thiện pháp…" /> : <>
-        <p className={styles.count}>{visible.length} thiện pháp{q && ` khớp “${q}”`}</p>
+        <div className={styles.tabs} role="tablist" aria-label="Nhóm thiện pháp">
+          {groups.map((group, index) => <button key={group.key} type="button" role="tab" id={`tab-${group.key}`} aria-selected={selected.key === group.key} aria-controls={`group-${group.key}`} tabIndex={selected.key === group.key ? 0 : -1}
+            onClick={() => navigate(q, group.key)} onKeyDown={event => {
+              let next = index;
+              if (event.key === "ArrowRight") next = (index + 1) % groups.length;
+              else if (event.key === "ArrowLeft") next = (index + groups.length - 1) % groups.length;
+              else if (event.key === "Home") next = 0;
+              else if (event.key === "End") next = groups.length - 1;
+              else return;
+              event.preventDefault();
+              navigate(q, groups[next].key);
+              document.getElementById(`tab-${groups[next].key}`)?.focus();
+            }}>{labels[group.key]} <span>{group.rows.length}</span></button>)}
+        </div>
+        <p className={styles.count}>{visible.length} thiện pháp{q && ` khớp “${q}”`} · Mới tạo trước</p>
         {!visible.length && <p>Không có thiện pháp phù hợp.</p>}
-        {groups.map(group => <section className={styles.section} key={group.key} aria-labelledby={`group-${group.key}`}>
-          <h2 id={`group-${group.key}`} className={styles.sectionTitle}>{group.title}<span>{group.rows.length}</span></h2>
-          {!group.rows.length ? <p className={styles.emptyGroup}>Chưa có thiện pháp{q ? " phù hợp" : ""}.</p> : <div className={styles.list}>{group.rows.map(fund => {
+        <section className={styles.section} key={selected.key} id={`group-${selected.key}`} role="tabpanel" aria-labelledby={`tab-${selected.key}`} tabIndex={0}>
+          {!selected.rows.length ? <p className={styles.emptyGroup}>Chưa có thiện pháp{q ? " phù hợp" : ""}.</p> : <div className={styles.list}>{selected.rows.map(fund => {
           const path = `/t/${fund.slug}`, recognitionPath = `${path}/phuong-danh`;
           return <article key={fund.slug} className={styles.card}>
             <div className={styles.heading}><span className="code">{fund.code}</span><div className={styles.badges}><Status status={fund.status} /><span className={`${styles.termBadge} ${fund.isLongTerm ? styles.longTerm : ""}`}>{fund.isLongTerm ? "Dài hạn" : "Ngắn hạn"}</span></div></div>
@@ -68,7 +84,7 @@ export function PublicFundCatalogView() {
             </div>
           </article>;
         })}</div>}
-        </section>)}
+        </section>
       </>}
     </main>
   </div>;

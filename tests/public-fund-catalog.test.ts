@@ -6,7 +6,7 @@ import ts from "typescript";
 import { maskPhones } from "../src/lib/domain";
 
 test("catalog includes all funds like admin, exposes only safe metadata and gates recognition links", async () => {
-  let query: { where: unknown; select: Record<string, boolean> } | undefined;
+  let query: { where: unknown; select: Record<string, boolean>; orderBy: unknown } | undefined;
   const fund = { code: "TP130", slug: "0572-tp130", name: "Thiện pháp 0912345678", status: "ACTIVE", isLongTerm: false, recognitionEnabled: true, recognitionTitle: "Cổ phần", recognitionAmount: 3000000n };
   const dependencies: Record<string, unknown> = {
     "server-only": {}, "next/cache": { unstable_cache: (fn: unknown) => fn },
@@ -19,10 +19,11 @@ test("catalog includes all funds like admin, exposes only safe metadata and gate
   assert.equal(query?.where, undefined, "catalog must not exclude funds based on publicListed unlike the public discovery page");
   assert.equal(query?.select.adminNote, undefined);
   assert.equal(query?.select.isLongTerm, true);
-  assert.deepEqual(Array.from(result, f => f.isLongTerm), [false, true, false]);
-  assert.deepEqual(Array.from(result, f => f.code), ["TP9", "TP63", "TP130"]);
-  assert.deepEqual(Array.from(result, f => f.status), ["COMPLETED", "PAUSED", "ACTIVE"]);
-  assert.deepEqual(Array.from(result, f => f.recognitionTitle), [null, null, "Cổ phần"]);
+  assert.equal(JSON.stringify(query?.orderBy), JSON.stringify([{createdAt:"desc"},{id:"desc"}]), "new funds precede older funds regardless of code; ties are stable");
+  assert.deepEqual(Array.from(result, f => f.isLongTerm), [false, false, true]);
+  assert.deepEqual(Array.from(result, f => f.code), ["TP130", "TP9", "TP63"]);
+  assert.deepEqual(Array.from(result, f => f.status), ["ACTIVE", "COMPLETED", "PAUSED"]);
+  assert.deepEqual(Array.from(result, f => f.recognitionTitle), ["Cổ phần", null, null]);
   assert.ok(!JSON.stringify(result).includes("0912345678"));
   assert.ok(!JSON.stringify(result).includes("recognitionAmount"));
 });
