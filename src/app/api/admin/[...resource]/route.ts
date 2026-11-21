@@ -1,3 +1,4 @@
+import {runtimeErrorDetails} from "@/lib/runtime-error";
 import {loadRecognition} from "@/lib/fund-recognition";
 import {measureOperations} from "@/lib/operation-metrics";
 import {mutationScope,mutationFundScope} from "@/lib/admin-mutation-scope";
@@ -36,6 +37,10 @@ async function handleMeasured(request:NextRequest,context:{params:Promise<{resou
           return data?json(data):json({error:"Thiện pháp chưa bật cấu hình cổ phần."},404);
         }
         case "session":return json({isAdmin:true});
+        case "runtime-health":{
+          const {runtimeHealth}=await import("@/lib/runtime-health");
+          return json(await runtimeHealth());
+        }
         case "fund-history":return json(await loadFundHistory(z.string().min(1).max(100).parse(query.fundId),z.coerce.number().int().min(1).max(100000).default(1).parse(query.page)));
         case "revision":return json(await loadAdminRevision());
         case "bootstrap":case "funds":return json(await loadAdminBootstrap());
@@ -92,7 +97,7 @@ async function handleMeasured(request:NextRequest,context:{params:Promise<{resou
   }catch(error){
     if(isAllocationTransferError(error))return json({error:error.message},400);
     if(error instanceof z.ZodError)return json({error:error.issues.map(i=>i.message).join("; ")},400);
-    console.error("Admin REST request failed",resource,error instanceof Error?error.name:"unknown");
+    console.error("Admin REST request failed",resource,JSON.stringify(runtimeErrorDetails(error)));
     return json({error:"Không thể xử lý dữ liệu. Vui lòng thử lại."},500);
   }
 }

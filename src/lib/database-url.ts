@@ -11,3 +11,12 @@ export function databaseConnectionString(value: string | undefined) {
   } catch { /* Let the database driver report invalid connection strings. */ }
   return value;
 }
+
+export class DatabaseConfigurationError extends Error {
+ readonly code='DATABASE_NOT_CONFIGURED';
+ constructor(){super('DATABASE_URL is missing from Worker runtime secrets');this.name='DatabaseConfigurationError';}
+}
+export function requiredDatabaseUrl(value:string|undefined){
+ if(!value?.trim())throw new DatabaseConfigurationError();
+ return databaseConnectionString(value.trim());
+}

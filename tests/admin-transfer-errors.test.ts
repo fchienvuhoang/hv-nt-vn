@@ -4,9 +4,11 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 import {z} from 'zod';
+import {runtimeErrorDetails} from '../src/lib/runtime-error';
 
 function route(error:Error,authorized=true){
  const dependencies:Record<string,unknown>={
+  '@/lib/runtime-error':{runtimeErrorDetails},
   'next/server':{NextResponse:{json:(data:unknown,init:ResponseInit)=>Response.json(data,init)},after:()=>{}},
   zod:{z},'@/auth':{auth:async()=>authorized?{user:{email:'admin@example.com'}}:null,allowedAdmin:()=>true},
   '@/lib/admin-codec':{encodeAdmin:(value:unknown)=>value},

@@ -2,6 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hv-nt-vn",
   "main": "cloudflare/worker.ts",
+  "placement": {"mode": "smart"},
   "compatibility_date": "2026-11-21",
   "compatibility_flags": [
     "nodejs_compat",

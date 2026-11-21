@@ -53,6 +53,8 @@ Không đưa secrets vào `wrangler.jsonc`, Git hay các biến `NEXT_PUBLIC_*`.
 - Cache ứng dụng hết hạn được dọn bằng alarm của Durable Object. Nếu đã chạy bản cũ lưu `app-cache/` trên R2, có thể đặt lifecycle rule xóa prefix đó sau 8 ngày; bản mới không đọc prefix này. Không áp rule này cho toàn bộ bucket/incremental cache.
 - Cấu hình này không tự tạo lịch đồng bộ. Tiếp tục hệ thống gọi HTTP hiện có: `/api/sync/transactions` và `/api/internal/public-cache`, dùng `Authorization: Bearer <SYNC_SECRET>` như trước. Nếu đổi origin, cập nhật địa chỉ ở nơi gọi lịch.
 - Workers chỉ giữ `waitUntil` tối đa khoảng 30 giây sau khi response kết thúc. Các đợt cache/email dài có hàng đợi và cần được gọi tiếp bởi lịch HTTP; không dựa vào một request đơn lẻ để hoàn tất toàn bộ backlog.
+- PostgreSQL dùng pool riêng cho từng request (tối đa 3 kết nối), tái sử dụng kết nối giữa các truy vấn của request đó. Worker đợi stream trả về và công việc `waitUntil`/Next `after()` hoàn tất rồi đóng pool; không chia sẻ socket giữa các request. Context không đi qua entry point này giữ chế độ đóng sau mỗi truy vấn để tránh dùng socket sai request.
+- `placement.mode = "smart"` để Cloudflare tự đo và chọn nơi chạy phù hợp với database/các dịch vụ phía sau. Hiệu quả phải đo sau deploy với traffic thực; không bảo đảm nhanh hơn Vercel. Asset tĩnh vẫn được phục vụ gần người dùng.
 - Không tự động chạy migration database trong build/deploy. Repo không thay đổi cấu trúc hay số tiền khi chuyển nền tảng.
 
 ## 6. Kiểm tra sau lần deploy đầu
@@ -111,3 +113,9 @@ API công khai trả `X-Public-Cache` và `Server-Timing: snapshot;dur=...` đ�
 `keep_vars: true` được bật để Production deploy giữ các biến đã đặt trên Dashboard nhưng không có trong `vars` của repo. Nếu thiếu tùy chọn này, Wrangler mặc định đồng bộ lại biến Text theo file cấu hình và có thể loại bỏ biến chỉ tồn tại ở Dashboard.
 
 Secrets mã hóa được Cloudflare giữ riêng; vẫn đặt `ADMIN_EMAILS`, `AUTH_SECRET`, `AUTH_GOOGLE_SECRET`, `DATABASE_URL`, `SYNC_SECRET` dưới loại **Secret**. Nếu một bản deploy trước đã xóa các biến Text, cần khôi phục một lần; `keep_vars` không lấy lại giá trị đã mất. Không lưu giá trị bí mật vào Git để xử lý lỗi này.
+
+## Đăng nhập được nhưng API báo lỗi database
+
+Đăng nhập Google không kiểm tra PostgreSQL. Runtime Production vẫn cần `DATABASE_URL` riêng dưới loại Secret. Nếu biến này bị bỏ khỏi Dashboard, pg có thể thử cấu hình kết nối mặc định và mọi API dữ liệu sẽ lỗi. Repo hiện chặn sớm trường hợp thiếu biến, trả mã `DATABASE_NOT_CONFIGURED` thay vì thử kết nối mặc định.
+
+Sau khi đăng nhập quản trị, mở `/api/admin/runtime-health` để xem các biến có tồn tại hay không, các binding có sẵn và kết quả truy vấn chỉ đọc `SELECT 1`. Endpoint yêu cầu quyền quản trị và không trả giá trị biến, mật khẩu, SQL nghiệp vụ hay dữ liệu thí chủ. Log lỗi database chỉ ghi tên/mã lỗi cùng loại lỗi kết nối.
