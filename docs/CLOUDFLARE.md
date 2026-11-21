@@ -55,6 +55,8 @@ Không đưa secrets vào `wrangler.jsonc`, Git hay các biến `NEXT_PUBLIC_*`.
 - Workers chỉ giữ `waitUntil` tối đa khoảng 30 giây sau khi response kết thúc. Các đợt cache/email dài có hàng đợi và cần được gọi tiếp bởi lịch HTTP; không dựa vào một request đơn lẻ để hoàn tất toàn bộ backlog.
 - PostgreSQL dùng pool riêng cho từng request (tối đa 3 kết nối), tái sử dụng kết nối giữa các truy vấn của request đó. Worker đợi stream trả về và công việc `waitUntil`/Next `after()` hoàn tất rồi đóng pool; không chia sẻ socket giữa các request. Context không đi qua entry point này giữ chế độ đóng sau mỗi truy vấn để tránh dùng socket sai request.
 - `placement.mode = "smart"` để Cloudflare tự đo và chọn nơi chạy phù hợp với database/các dịch vụ phía sau. Hiệu quả phải đo sau deploy với traffic thực; không bảo đảm nhanh hơn Vercel. Asset tĩnh vẫn được phục vụ gần người dùng.
+- Cache Next.js bọc R2 bằng regional cache `short-lived`; vẫn kiểm tra tag chung (`bypassTagCacheOnCacheHit: false`) để thay đổi dữ liệu có thể vô hiệu hóa bản cũ. Cache snapshot công khai qua `APP_RUNTIME_CACHE` giữ nguyên kiểm tra revision.
+- Header `Server-Timing` có `worker` (từ entry point đến khi có response), `route` (xử lý API, gồm xác thực với quản trị), và `snapshot` (lấy snapshot công khai). Các giá trị lồng nhau, không cộng lại. `worker − route` giúp phát hiện thời gian bên ngoài handler; không đo được khởi tạo isolate trước entry point. So sánh thêm DNS/TLS và TTFB của client trước khi kết luận cold start. Header không chứa SQL, dữ liệu tài chính hay thông tin đăng nhập.
 - Không tự động chạy migration database trong build/deploy. Repo không thay đổi cấu trúc hay số tiền khi chuyển nền tảng.
 
 ## 6. Kiểm tra sau lần deploy đầu

@@ -1,4 +1,5 @@
 import {runtimeErrorDetails} from "@/lib/runtime-error";
+import {withResponseTiming} from "@/lib/response-timing";
 import {measureOperations} from "@/lib/operation-metrics";
 import {after} from "next/server";
 import { NextRequest,NextResponse } from "next/server";
@@ -6,7 +7,7 @@ import { snapshotResponse,warmPublicSnapshot } from "@/lib/public-snapshot";
 import { publicQuery } from "@/lib/public-query";
 export const maxDuration=300;
 export async function GET(request:NextRequest,{params}:{params:Promise<{slug:string}>}){
-  return measureOperations("public-read",async()=>{
+  return withResponseTiming('route',()=>measureOperations("public-read",async()=>{
   const {slug}=await params;
   if(!/^[a-z0-9-]{1,100}$/.test(slug))return NextResponse.json({error:"Không tìm thấy thiện pháp."},{status:404});
   try{
@@ -20,5 +21,5 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{slug:str
   }catch(error){console.error("Public ledger read failed",JSON.stringify(runtimeErrorDetails(error)));
     const missing=(error as {code?:string}|null)?.code==='DATABASE_NOT_CONFIGURED';
     return NextResponse.json({error:missing?"Chưa cấu hình DATABASE_URL trong runtime của Worker.":"Chưa tải được sao kê công khai. Vui lòng thử lại.",code:missing?'DATABASE_NOT_CONFIGURED':'PUBLIC_LEDGER_UNAVAILABLE'},{status:missing?503:500})}
-  },after);
+  },after));
 }

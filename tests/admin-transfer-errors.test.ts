@@ -8,6 +8,7 @@ import {runtimeErrorDetails} from '../src/lib/runtime-error';
 
 function route(error:Error,authorized=true){
  const dependencies:Record<string,unknown>={
+  '@/lib/response-timing':{withResponseTiming:async(_name:string,work:()=>Promise<Response>)=>work()},
   '@/lib/runtime-error':{runtimeErrorDetails},
   'next/server':{NextResponse:{json:(data:unknown,init:ResponseInit)=>Response.json(data,init)},after:()=>{}},
   zod:{z},'@/auth':{auth:async()=>authorized?{user:{email:'admin@example.com'}}:null,allowedAdmin:()=>true},
