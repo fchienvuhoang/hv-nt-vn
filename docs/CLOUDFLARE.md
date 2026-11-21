@@ -89,3 +89,11 @@ Repo có `previews` block riêng:
 - `npm run upload:cloudflare` tạo Version URL dùng tài nguyên production, khác với Worker Preview cô lập.
 
 Nếu chỉ cần một bản Cloudflare song song với Vercel, chọn Production branch của Worker = `cf`. Khi đó không cần bật builds cho nhánh khác hoặc cấu hình Preview secrets; Vercel vẫn tiếp tục dùng `main`.
+
+## Đồng bộ Variables từ Dashboard
+
+Repo lưu các biến không phải khóa bí mật: `AUTH_GOOGLE_ID`, `AUTH_TRUST_HOST` và `AUTH_URL` production trong `wrangler.jsonc`. Với Preview, Google Client ID được khai báo lại; đặt `AUTH_URL` theo domain Preview thực tế, không dùng URL production nếu đang thử domain khác.
+
+Các biến sau phải tạo ở Dashboard dưới loại **Secret**, không phải Text: `ADMIN_EMAILS`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`, `DATABASE_URL`, `SYNC_SECRET`. Không copy chúng từ đoạn gợi ý `vars` của Dashboard vào file Git. Nếu đã tạo dạng Text, chuyển sang Secret trước khi deploy để tránh được đưa vào đoạn cấu hình gợi ý công khai. Production và Previews Base có secrets riêng.
+
+`AUTH_URL` của Worker đang là `https://hv-nt-vn.fchienvuhoang-f11.workers.dev`. Vercel giữ `https://hvntvn.danasangha.org` trong cấu hình riêng. `AUTH_URL` chỉ nhận một URL, không phải danh sách phân tách bằng dấu phẩy. Google OAuth cần thêm callback `https://hv-nt-vn.fchienvuhoang-f11.workers.dev/api/auth/callback/google`.
