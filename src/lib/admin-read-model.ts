@@ -22,19 +22,34 @@ async function bootstrap(){
 export type AdminBootstrap=Awaited<ReturnType<typeof bootstrap>>;
 const cachedBootstrap=unstable_cache(async()=>encodeAdmin(await bootstrap()),["admin-bootstrap-rest-v9"],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG]});
 export async function loadAdminBootstrap(){return decodeAdmin<AdminBootstrap>(await cachedBootstrap())}
-export async function loadAdminTransactions(params:AdminParams){
+async function readAdminTransactions(params:AdminParams){
   const range=transactionDates(params.from,params.to),page=Math.min(100000,Math.max(1,Math.floor(Number(params.page)||1))),pageSize=100;
   const filter={from:range.from,to:range.to,account:params.account??"",q:(params.q??"").slice(0,100),type:params.type??"",review:params.review??"",assignment:params.assignment??"",posted:params.posted??""};
   const scope=transactionWhere(filter),where={AND:[scope,...(params.pending==="1"?[fundMembership(null)]:params.fund?[fundMembership(params.fund)]:[])]};
-  const [rawRows,navigation]=await Promise.all([db.bankTransaction.findMany({where,omit:{source:true,sourceHash:true},include:{_count:{select:{allocationTransfers:true}},allocations:{include:{fund:true}},fund:true,account:true,notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*pageSize,take:pageSize}),transactionNavigationData()]);
+  const filtered=!range.allTime||!!filter.account||!!filter.q||!!filter.type||!!filter.review||!!filter.assignment||filter.posted==="1";
+  const countQuery=filtered?unstable_cache(async()=>db.bankTransaction.count({where}),["transaction-filtered-count-v1",JSON.stringify(where)],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]})():Promise.resolve(null);
+  const [rawRows,navigation,filteredCount]=await Promise.all([db.bankTransaction.findMany({where,omit:{source:true,sourceHash:true},include:{_count:{select:{allocationTransfers:true}},allocations:{include:{fund:true}},fund:true,account:true,notes:{orderBy:[{createdAt:"asc"},{id:"asc"}]}},orderBy:[{occurredAt:"desc"},{id:"desc"}],skip:(page-1)*pageSize,take:pageSize}),transactionNavigationData(),countQuery]);
   const rows=rawRows.map(row=>({...row,originalAmount:row.amount,dateUnknown:row.notes.some(n=>n.kind==="SOURCE_DATE_MISSING"),amount:params.fund?fundShare(row,params.fund):row.amount,fund:params.fund&&row.allocations.length?row.allocations.find(a=>a.fundId===params.fund)?.fund??null:row.fund}));
   const total=navigation.total,pending=navigation.groups.find(g=>g.fundId===null)?._count??0;
   const selectedTotal=params.pending==="1"?pending:params.fund?navigation.groups.find(g=>g.fundId===params.fund)?._count??0:total;
-  const filtered=!range.allTime||!!filter.account||!!filter.q||!!filter.type||!!filter.review||!!filter.assignment||filter.posted==="1";
-  const count=filtered?await unstable_cache(async()=>db.bankTransaction.count({where}),["transaction-filtered-count-v1",JSON.stringify(where)],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]})():selectedTotal;
+  const count=filteredCount??selectedTotal;
   return {rows,...navigation,page,pageSize,count,total,pending,selectedTotal,range:{from:range.from,to:range.to,error:range.error,allTime:range.allTime},filter};
 }
-export type AdminTransactions=Awaited<ReturnType<typeof loadAdminTransactions>>;
+export type AdminTransactions=Awaited<ReturnType<typeof readAdminTransactions>>;
+const cachedTransactions=unstable_cache(async(params:AdminParams,day:string)=>{
+  void day; // Date-sensitive fallback ranges must not cross a Vietnam day boundary.
+  return encodeAdmin(await readAdminTransactions(params));
+},["admin-transactions-rest-v1"],{revalidate:15,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]});
+export async function loadAdminTransactions(params:AdminParams){
+  // Keep keys independent of query ordering, unknown parameters and equivalent pages.
+  const normalized:AdminParams={};
+  for(const key of ["from","to","account","q","type","review","assignment","posted","pending","fund"]){
+    if(params[key])normalized[key]=key==="q"?params[key]!.slice(0,100):params[key];
+  }
+  const page=Number(params.page);
+  normalized.page=String(Number.isFinite(page)?Math.min(100000,Math.max(1,Math.floor(page)||1)):1);
+  return decodeAdmin<AdminTransactions>(await cachedTransactions(normalized,localDate()));
+}
 export async function loadAdminTransfers(){return db.transfer.findMany({include:{fromFund:{include:{account:true}},account:true,toFund:true,reversal:true,_count:{select:{items:true,balanceItems:true}}},orderBy:{createdAt:"desc"},take:100})}
 export type AdminTransfers=Awaited<ReturnType<typeof loadAdminTransfers>>;
 async function scheduleStats(){
