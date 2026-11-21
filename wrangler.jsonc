@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hvntvn",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-21",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {"directory": ".open-next/assets", "binding": "ASSETS"},
+  "services": [{"binding": "WORKER_SELF_REFERENCE", "service": "hvntvn"}],
+  "r2_buckets": [{"binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "hvntvn-cache"}],
+  "durable_objects": {
+    "bindings": [
+      {"name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler"},
+      {"name": "NEXT_TAG_CACHE_DO_SHARDED", "class_name": "DOShardedTagCache"}
+    ]
+  },
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["DOQueueHandler", "DOShardedTagCache"]}],
+  "observability": {"enabled": true},
+  "limits": {"cpu_ms": 300000}
+}

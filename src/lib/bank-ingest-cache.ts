@@ -1,6 +1,6 @@
 import "server-only";
 import {createHash} from "node:crypto";
-import {getCache} from "@vercel/functions";
+import {getCache} from "./runtime-cache";
 import type {SourceItem} from "./source";
 import {localDate,parseSourceTime} from "./domain";
 import {allowedBankSyncTime} from "./sync-boundary";

@@ -18,7 +18,7 @@ function fixture() {
     "./versioned-json-cache":{VersionedJsonCache},
     "./domain":{localDate,vietnamMonth},
     "./operation-metrics":{measureOperations:(_flow:string,work:()=>unknown)=>work()},
-    "@vercel/functions":{getCache:()=>({get:async(key:string)=>store.get(key)??null,set:async(key:string,value:unknown)=>{store.set(key,value)}})},
+    "./runtime-cache":{getCache:()=>({get:async(key:string)=>store.get(key)??null,set:async(key:string,value:unknown)=>{store.set(key,value)}})},
     "node:crypto":{randomUUID:()=>"version"},
     "next/cache":{revalidateTag:()=>{}},
     "./db":{db:{fund:{findUnique:async()=>({id:"fund"})},publicCacheRefresh:{findUnique:async()=>({requestedVersion:revision})}}},

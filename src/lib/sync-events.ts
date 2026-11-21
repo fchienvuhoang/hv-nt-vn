@@ -1,5 +1,5 @@
 import 'server-only';
-import {getCache} from '@vercel/functions';
+import {getCache} from './runtime-cache';
 import {encodeAdmin,decodeAdmin} from './admin-codec';
 import type {SyncInvocation} from '@/generated/prisma/client';
 const store=()=>getCache({namespace:'hvntvn-sync-events-v1'});

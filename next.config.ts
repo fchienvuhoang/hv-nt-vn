@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // Data Cache is used explicitly; keep route-segment auth/runtime controls available.
   cacheComponents: false,
   poweredByHeader: false,
+  env: { NEXT_PUBLIC_VERCEL_ANALYTICS_ENABLED: process.env.CLOUDFLARE_BUILD === "1" ? "0" : "1" },
   outputFileTracingIncludes: {
     "/api/admin/*": ["./public/branding/hoc-vien-nguyen-thuy-viet-nam.png"],
     "/api/sync/transactions": ["./public/branding/hoc-vien-nguyen-thuy-viet-nam.png"],

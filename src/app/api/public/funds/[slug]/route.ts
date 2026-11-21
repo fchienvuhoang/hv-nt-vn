@@ -15,6 +15,6 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{slug:str
       try{await warmPublicSnapshot(slug);}catch{console.error("Public snapshot warmup failed");}
     });
     return NextResponse.json(fund.data,{headers:{"Cache-Control":"public, max-age=0, must-revalidate","X-Public-Cache":fund.hit?"HIT":"MISS"}});
-  }catch{return NextResponse.json({error:"Chưa tải được sao kê công khai. Vui lòng thử lại."},{status:500})}
+  }catch(error){console.error("Public ledger read failed",error);return NextResponse.json({error:"Chưa tải được sao kê công khai. Vui lòng thử lại."},{status:500})}
   },after);
 }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 const url=new URL(process.env.DATABASE_URL??'https://invalid');if(url.hostname!=='localhost'||!url.pathname.startsWith('/hvntvn_test'))throw Error('QA DB only');
 const {db}=await import('../src/lib/db');
-const {getCache}=await import('@vercel/functions');
+const {getCache}=await import('../src/lib/runtime-cache');
 const {readPublicSnapshot,vietnamMonth}=await import('../src/lib/public-snapshot');
 const {mutationFundScope}=await import('../src/lib/admin-mutation-scope');
 const {saveSyncEvent,recentSyncEvents}=await import('../src/lib/sync-events');

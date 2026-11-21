@@ -1,6 +1,6 @@
 import 'server-only';
 import {AsyncLocalStorage} from 'node:async_hooks';
-import {getCache} from '@vercel/functions';
+import {getCache} from './runtime-cache';
 type Metric={flow:string;at:number;queries:number;durationMs:number};
 const context=new AsyncLocalStorage<Metric>();
 export function countDatabaseQuery(){const value=context.getStore();if(value)value.queries++;}

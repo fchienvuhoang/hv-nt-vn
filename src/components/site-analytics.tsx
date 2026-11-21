@@ -9,5 +9,6 @@ function pageOnly(event: BeforeSendEvent) {
 }
 
 export function SiteAnalytics() {
+  if(process.env.NEXT_PUBLIC_VERCEL_ANALYTICS_ENABLED === "0")return null;
   return <Analytics beforeSend={pageOnly} />;
 }

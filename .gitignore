@@ -45,3 +45,10 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /.next-qa/
+
+# Cloudflare Workers
+/.open-next/
+/.wrangler/
+/.dev.vars*
+
+/prisma/schema.cloudflare.prisma

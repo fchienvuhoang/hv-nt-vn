@@ -3,7 +3,7 @@ import {localDate,vietnamMonth} from "./domain";
 export {vietnamMonth} from "./domain";
 import {measureOperations} from "./operation-metrics";
 import "server-only";
-import {getCache} from "@vercel/functions";
+import {getCache} from "./runtime-cache";
 import {randomUUID} from "node:crypto";
 import {revalidateTag} from "next/cache";
 import {db} from "./db";
