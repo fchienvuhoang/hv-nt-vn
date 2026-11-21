@@ -28,7 +28,8 @@
     "build:cloudflare": "CLOUDFLARE_BUILD=1 opennextjs-cloudflare build",
     "preview:cloudflare": "opennextjs-cloudflare preview",
     "deploy:cloudflare": "opennextjs-cloudflare deploy",
-    "upload:cloudflare": "opennextjs-cloudflare upload"
+    "upload:cloudflare": "opennextjs-cloudflare upload",
+    "deploy:preview:cloudflare": "wrangler preview"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.20.18",
@@ -49,6 +50,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@opennextjs/aws": "4.2.0",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",

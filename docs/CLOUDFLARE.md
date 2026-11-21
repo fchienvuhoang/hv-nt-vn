@@ -5,7 +5,7 @@ Repo dùng Next.js + OpenNext, giữ nguyên REST API và PostgreSQL hiện có.
 ## 1. Tạo tài nguyên trong Dashboard
 
 - Tạo một R2 bucket riêng tên `hvntvn-cache` (không bật public access). Dữ liệu cache có cả thông tin quản trị, không dùng chung bucket công khai.
-- Tạo Worker kết nối Git repository, tên `hvntvn`. Nếu đặt tên khác, đổi cả `name` và `services[0].service` trong `wrangler.jsonc` cho trùng.
+- Tạo Worker kết nối Git repository, tên `hv-nt-vn`. Nếu đặt tên khác, đổi cả `name` và `services[0].service` trong `wrangler.jsonc` cho trùng.
 - Dùng Workers Paid: ứng dụng có Next.js, Excel, Prisma và công việc đồng bộ dài; cấu hình CPU tối đa 300 giây trong repo dành cho gói Paid.
 - R2 binding, service tự tham chiếu và Durable Objects được khai báo trong `wrangler.jsonc`. Hai lớp Durable Objects chỉ quản lý cache/revalidation; dữ liệu thiện pháp vẫn ở PostgreSQL.
 
@@ -68,7 +68,7 @@ Không đưa secrets vào `wrangler.jsonc`, Git hay các biến `NEXT_PUBLIC_*`.
 
 ## Chạy song song với Vercel để theo dõi
 
-- Giữ domain chính trên Vercel, gắn một domain thử riêng cho Worker (hoặc dùng `hvntvn.<account>.workers.dev`). Chưa cần chuyển DNS của domain chính.
+- Giữ domain chính trên Vercel, gắn một domain thử riêng cho Worker (hoặc dùng `hv-nt-vn.<account>.workers.dev`). Chưa cần chuyển DNS của domain chính.
 - Cả hai dùng cùng Git branch; mỗi nền tảng chạy đúng build command của mình. Không đổi Build command trên Vercel thành `build:cloudflare`.
 - Nếu dùng chung PostgreSQL, mọi thao tác ghi/điều chuyển ở cả hai bản đều tác động vào dữ liệu thật. Giai đoạn theo dõi chỉ đọc ở Cloudflare; thao tác quản trị có ghi vẫn thực hiện ở Vercel. Đây là quy trình vận hành, chưa phải một chế độ read-only bị chặn bằng kỹ thuật.
 - Chỉ duy trì một nơi gọi lịch đồng bộ/gửi thông báo. Không nhân đôi lịch sang Cloudflare. Các khóa/idempotency trong database có hỗ trợ chống trùng, nhưng không nên dùng chúng để thay thế việc phân công một lịch chính.
@@ -77,10 +77,15 @@ Không đưa secrets vào `wrangler.jsonc`, Git hay các biến `NEXT_PUBLIC_*`.
 
 Bộ kiểm tra Workers tại `tests/cloudflare-smoke.mts` chỉ cho phép URL localhost và database `hvntvn_test_worker_*`; kiểm tra login, bảo vệ API, asset logo, nhiều request PostgreSQL nối tiếp, tìm kiếm công khai và làm mới cache. Nó tạo rồi dọn dữ liệu QA, không dùng database production.
 
-## Lỗi “configuration needs a previews block”
+## Worker Previews cho nhánh/PR
 
-Lỗi này thuộc lệnh deploy **Worker Preview**, không phải lỗi build Next.js. Khi chỉ chạy một Worker Cloudflare song song với Vercel, chọn **Settings → Builds → Branch control → Production branch = `cf`**, Production deploy command = `npm run deploy:cloudflare`. Tắt automatic non-production branch builds nếu chưa cần thử pull request. Sau đó chạy build mới của nhánh `cf`; retry một build Preview cũ có thể vẫn giữ loại build cũ.
+Repo có `previews` block riêng:
 
-“Production branch” ở đây chỉ là nhánh chính của Worker Cloudflare, không thay đổi deployment Vercel và không tự chuyển domain chính khỏi Vercel.
+- Tạo thêm R2 bucket **`hvntvn-cache-preview`** trong Dashboard. Cache Preview tách khỏi bucket chính `hvntvn-cache`. Nếu thử nhiều nhánh Preview đồng thời, cấu hình bucket riêng cho từng nhánh để tránh dùng chung cache giữa các nhánh.
+- Giữ lớp/migration Durable Objects ở top level; các binding được khai báo lại trong `previews.durable_objects`. Cloudflare tự tạo namespace riêng cho từng Preview.
+- Không khai báo service tự tham chiếu trong Preview vì service binding của Preview gọi bản production. Với `HVNTVN_PREVIEW=1`, OpenNext làm mới cache ngay trong Preview qua internal fetch; bản chính vẫn dùng Durable Object queue như trước.
+- Đặt variables/secrets ở **Settings → Previews Base**, đặc biệt `DATABASE_URL`, khóa đăng nhập và allowlist. Preview không tự lấy đầy đủ secrets production. Chọn database thử nghiệm nếu muốn thao tác không tác động dữ liệu thật.
+- Non-production deploy command: **`npm run deploy:preview:cloudflare`**. Production deploy command vẫn **`npm run deploy:cloudflare`**.
+- `npm run upload:cloudflare` tạo Version URL dùng tài nguyên production, khác với Worker Preview cô lập.
 
-`npm run upload:cloudflare` dùng Version URLs (cùng tài nguyên production), không tạo Worker Previews cô lập. Nếu sau này cần Worker Previews cho nhiều nhánh/PR, cần cấu hình `previews` riêng cho R2, Durable Object bindings, secrets và cơ chế self-reference OpenNext. Không thêm mỗi `previews: {}` rồi dùng lại tài nguyên production: cache và self-reference có thể trỏ sai môi trường.
+Nếu chỉ cần một bản Cloudflare song song với Vercel, chọn Production branch của Worker = `cf`. Khi đó không cần bật builds cho nhánh khác hoặc cấu hình Preview secrets; Vercel vẫn tiếp tục dùng `main`.
