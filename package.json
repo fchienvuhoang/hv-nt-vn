@@ -63,5 +63,6 @@
   },
   "engines": {
     "node": ">=22.18.0 <23"
-  }
+  },
+  "packageManager": "npm@10.9.3"
 }

@@ -19,7 +19,7 @@ Repo dùng Next.js + OpenNext, giữ nguyên REST API và PostgreSQL hiện có.
 | Non-production deploy command, nếu bật preview | `npm run upload:cloudflare` |
 | Node.js build version | `22.19.0` hoặc một bản Node 22 từ 22.18 trở lên |
 
-Cloudflare chạy các lệnh deploy này tự động trong hệ thống build sau khi bạn nối Git; không cần đăng nhập Wrangler trên máy cá nhân. `build:cloudflare` đã chạy `prisma generate` và `next build`, không chạy thêm `npm run build` trước đó. Chỉ dùng một package manager trong build: npm với `package-lock.json`.
+Cloudflare chạy các lệnh deploy này tự động trong hệ thống build sau khi bạn nối Git; không cần đăng nhập Wrangler trên máy cá nhân. `build:cloudflare` đã chạy `prisma generate` và `next build`, không chạy thêm `npm run build` trước đó. Chỉ dùng một package manager trong build: npm với `package-lock.json`. Repo đã bỏ `yarn.lock`, ghim `packageManager: npm@10.9.3` và `.node-version: 22.19.0` để Cloudflare không tự chọn Yarn 4/Node 24. Nếu Dashboard có Build variable `NODE_VERSION`, đặt `22.19.0` hoặc bỏ biến ghi đè đó.
 
 ## 3. Biến môi trường và secrets
 
