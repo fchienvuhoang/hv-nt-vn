@@ -1,6 +1,8 @@
-import { signIn } from "@/auth";
+import { auth, allowedAdmin, signIn } from "@/auth";
+import {redirect} from "next/navigation";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { Brand } from "@/components/ui";
+export const dynamic = "force-dynamic";
 export default async function Login({
   searchParams,
 }: {
@@ -13,6 +15,10 @@ export default async function Login({
     !!process.env.AUTH_GOOGLE_SECRET &&
     !!process.env.AUTH_SECRET &&
     !!process.env.ADMIN_EMAILS;
+  if(configured){
+    const session=await auth();
+    if(session?.user?.email&&allowedAdmin(session.user.email))redirect("/admin");
+  }
   return (
     <main className="login-page">
       <Brand featured />
