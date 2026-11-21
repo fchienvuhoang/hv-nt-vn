@@ -3,6 +3,7 @@
   "name": "hv-nt-vn",
   "main": "cloudflare/worker.ts",
   "placement": {"mode": "smart"},
+  "cache": {"enabled": true},
   "compatibility_date": "2026-11-21",
   "compatibility_flags": [
     "nodejs_compat",

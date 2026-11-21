@@ -8,7 +8,8 @@ import { db } from "./db";
 import { fundTotals } from "./ledger";
 import { maskPhones,normalize,vietnamMonth } from "./domain";
 import { matchesPublicTransaction } from "./public-search";
-export const PUBLIC_PAGE_SIZE = 100;
+import {PUBLIC_PAGE_SIZE} from "./public-fund-dto";
+export {PUBLIC_PAGE_SIZE} from "./public-fund-dto";
 export const PUBLIC_TAG = "public-ledger";
 // Keep public ledger data until a committed mutation invalidates its tag.
 const options = { revalidate: false as const, tags: [PUBLIC_TAG] };
@@ -152,9 +153,7 @@ export async function publicFundTitle(slug:string){
   if(!fund)return null;
   return fund.name.trim()||fund.code;
 }
-export function publicFundDTO(fund:NonNullable<Awaited<ReturnType<typeof publicFund>>>):PublicFundDTO {
-  const {id,cutover,...result}=fund;void id;void cutover;return result;
-}
+export {publicFundDTO} from "./public-fund-dto";
 
 const DIRECTORY_PAGE_SIZE=12;
 const directoryFunds=unstable_cache(async()=>{

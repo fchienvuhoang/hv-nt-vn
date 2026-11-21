@@ -1,3 +1,4 @@
+import {objectRuntimeCache} from '../src/lib/object-runtime-cache';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -17,6 +18,7 @@ test('Workers cache preserves values across store instances, expiry, namespaces 
  }};
  const exports={} as typeof import('../src/lib/runtime-cache');
  vm.runInNewContext(ts.transpile(readFileSync('src/lib/runtime-cache.ts','utf8'),{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}),{exports,Date:{now:()=>now},encodeURIComponent,require:(id:string)=>{
+  if(id==='./object-runtime-cache')return {objectRuntimeCache};
   if(id==='server-only')return {};
   if(id==='./cloudflare-context')return {cloudflareContext:()=>({env:{APP_RUNTIME_CACHE:namespace}})};
   if(id==='@vercel/functions')return {getCache:()=>{throw Error('Workers must not fall back to process-local Vercel cache')}};

@@ -1,3 +1,4 @@
+import {createPublicSnapshotReader,snapshotPage} from "../src/lib/public-snapshot-reader";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
@@ -16,6 +17,7 @@ function fixture(onGet?:(key:string)=>Promise<void>) {
   const dependencies:Record<string,unknown>={
     "server-only":{},
     "./versioned-json-cache":{VersionedJsonCache},
+    "./public-snapshot-reader":{createPublicSnapshotReader,snapshotPage},
     "./domain":{localDate,vietnamMonth},
     "./operation-metrics":{measureOperations:(_flow:string,work:()=>unknown)=>work()},
     "./runtime-cache":{getCache:()=>({get:async(key:string)=>{await onGet?.(key);return store.get(key)??null},set:async(key:string,value:unknown)=>{store.set(key,value)}})},
