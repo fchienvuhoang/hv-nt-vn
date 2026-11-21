@@ -2,7 +2,7 @@ import {queuePublicRefresh,refreshPublicSafely} from "@/lib/public-snapshot";
 import {after} from "next/server";
 import {dispatchAdminNotificationsSafely} from "@/lib/fund-goal-notifications";
 import {BANK_SYNC_MIN_DATE,BANK_SYNC_MIN_ISO} from "@/lib/sync-boundary";
-import {ADMIN_LEDGER_TAG,PUBLIC_DIRECTORY_TAG,publicFundTag} from "@/lib/cache-tags";
+import {ADMIN_SYNC_TAG,ADMIN_LEDGER_TAG,PUBLIC_DIRECTORY_TAG,publicFundTag} from "@/lib/cache-tags";
 import { TRANSACTION_SUMMARY_TAG } from "@/lib/transaction-summary";
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -35,9 +35,13 @@ export async function POST(request: Request) {
     revalidateTag(TRANSACTION_SUMMARY_TAG, { expire: 0 });
     // Only committed affected funds need rebuilding after a partial failure.
     const ids=(error as {affectedFundIds?:string[]})?.affectedFundIds??changedFundIds;
-    ledgerChanged=ids.length>0;
-    if(ids.length){revalidateTag(ADMIN_LEDGER_TAG,{expire:0});for(const id of ids)revalidateTag(publicFundTag(id),{expire:0});await queuePublicRefresh(ids);}
+    const partial=error as {inserted?:number;updated?:number};
+    ledgerChanged=ids.length>0||!!(partial?.inserted||partial?.updated);
+    if(ledgerChanged)revalidateTag(ADMIN_LEDGER_TAG,{expire:0});
+    if(ids.length){for(const id of ids)revalidateTag(publicFundTag(id),{expire:0});await queuePublicRefresh(ids);}
     console.error("Bank sync failed", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "Đồng bộ thất bại. Xem nhật ký quản trị." }, { status: 500 });
+  } finally {
+    revalidateTag(ADMIN_SYNC_TAG,{expire:0});
   }
 }

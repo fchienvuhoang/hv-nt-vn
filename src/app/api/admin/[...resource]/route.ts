@@ -26,10 +26,10 @@ const json=(data:unknown,status=200)=>NextResponse.json(encodeAdmin(data),{statu
 async function handle(request:NextRequest,context:{params:Promise<{resource:string[]}>}){const first=(await context.params).resource[0];const flow=["transactions","bootstrap","funds","sync","revision","fund-activity","fund-transactions","transfers"].includes(first)?`admin-${first}`:"admin-other";try{return await withResponseTiming("route",()=>measureOperations(flow,()=>handleMeasured(request,context),work=>after(work)));}catch(error){console.error("Admin REST handler failed",flow,error instanceof Error?error.name:"unknown");return json({error:"Máy chủ chưa xử lý được yêu cầu. Vui lòng thử lại."},500);}}
 async function handleMeasured(request:NextRequest,context:{params:Promise<{resource:string[]}>}){
   const session=await auth();
-  if(!session?.user?.email)return json({error:"Phiên đăng nhập đã hết hạn."},401);
-  if(!allowedAdmin(session.user.email))return json({error:"Email không có quyền quản trị."},403);
+  if(!session?.user?.email)return json({error:"Phiên đăng nhập đã hết hạn.",code:"AUTH_REQUIRED"},401);
+  if(!allowedAdmin(session.user.email))return json({error:"Email không có quyền quản trị.",code:"ADMIN_FORBIDDEN"},403);
   const resource=(await context.params).resource.join("/"),query=Object.fromEntries(request.nextUrl.searchParams);
-  if(request.method!=="GET"&&request.headers.get("origin")!==request.nextUrl.origin)return json({error:"Nguồn yêu cầu không hợp lệ."},403);
+  if(request.method!=="GET"&&request.headers.get("origin")!==request.nextUrl.origin)return json({error:"Nguồn yêu cầu không hợp lệ.",code:"INVALID_ORIGIN"},403);
   try{
     if(request.method==="GET"){
       switch(resource){

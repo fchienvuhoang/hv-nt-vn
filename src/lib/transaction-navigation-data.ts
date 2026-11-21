@@ -4,7 +4,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { transactionDates } from "./transaction-scope";
-import { syncAccountStatus } from "./sync-status";
+import {cachedSyncAccountStatus} from './sync-metadata-cache';
 import { PUBLIC_TAG } from "./public-data";
 import type { Prisma } from "@/generated/prisma/client";
 export type TransactionFilter = {from:string;to:string;account:string;q:string;type:string;review:string;assignment?:string;posted?:string};
@@ -18,18 +18,21 @@ export function transactionWhere(filter:TransactionFilter):Prisma.BankTransactio
 }
 const cachedNavigation=unstable_cache(async()=>{
   const scope:Prisma.BankTransactionWhereInput={entryStatus:{not:"MERGED"}};
-  const [baseGroups,allocated,total,accounts,funds]=await Promise.all([
+  const [baseGroups,allocated,total,funds]=await Promise.all([
     db.bankTransaction.groupBy({by:["fundId"],where:{AND:[scope,{allocations:{none:{}}}]},_count:true,_min:{occurredAt:true},_max:{occurredAt:true}}),
     db.fundAllocation.findMany({where:{transaction:scope},select:{fundId:true,transaction:{select:{occurredAt:true}}}}),
-    db.bankTransaction.count({where:scope}),syncAccountStatus(),
+    db.bankTransaction.count({where:scope}),
     db.fund.findMany({select:{id:true,code:true,name:true,status:true,accountId:true,accountIds:true},orderBy:{code:"asc"}}),
   ]);
   const counts=new Map(baseGroups.map(g=>[g.fundId,g._count]));
   for(const a of allocated)counts.set(a.fundId,(counts.get(a.fundId)??0)+1);
   const history=new Map(baseGroups.filter(h=>h.fundId!==null).map(h=>[h.fundId!,{fundId:h.fundId,count:h._count,from:h._min.occurredAt?.toISOString()??null,to:h._max.occurredAt?.toISOString()??null}]));
   for(const a of allocated){const at=a.transaction.occurredAt.toISOString(),old=history.get(a.fundId);history.set(a.fundId,{fundId:a.fundId,count:(old?.count??0)+1,from:old?.from&&old.from<at?old.from:at,to:old?.to&&old.to>at?old.to:at})}
-  return {groups:[...counts].map(([fundId,_count])=>({fundId,_count})),accounts,funds,total,history:[...history.values()]};
-},["transaction-navigation-global-v5"],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]});
-// Share navigation metadata within a request and across REST reads for 20 seconds.
-export const transactionNavigationData=cache(cachedNavigation);
+  return {groups:[...counts].map(([fundId,_count])=>({fundId,_count})),funds,total,history:[...history.values()]};
+},["transaction-navigation-global-v6"],{revalidate:false,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG]});
+// Sync-only updates do not rebuild transaction groups and history.
+export const transactionNavigationData=cache(async()=>{
+ const [data,accounts]=await Promise.all([cachedNavigation(),cachedSyncAccountStatus()]);
+ return {...data,accounts};
+});
 

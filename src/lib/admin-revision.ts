@@ -2,7 +2,7 @@ import "server-only";
 import {unstable_cache} from "next/cache";
 import {db} from "./db";
 import {PUBLIC_TAG} from "./public-data";
-import {ADMIN_LEDGER_TAG} from "./cache-tags";
+import {ADMIN_LEDGER_TAG,ADMIN_SYNC_TAG} from "./cache-tags";
 import {TRANSACTION_SUMMARY_TAG} from "./transaction-summary";
 import {localDate} from "./domain";
 // One cached version check replaces repeated reloads of all admin read models.
@@ -17,5 +17,5 @@ const revision=unstable_cache(async()=>{
  md5(concat_ws('|',(SELECT max("sourceAttemptAt")::text FROM "BankAccount"))) AS source,
  md5(concat_ws('|',(SELECT max("lastCalledAt")::text FROM "SyncJob"),(SELECT max("lastSuccessAt")::text FROM "SyncState"))) AS sync`;
  return row;
-},["admin-revision-v1"],{revalidate:30,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG]});
+},["admin-revision-v2"],{revalidate:false,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG,ADMIN_SYNC_TAG]});
 export async function loadAdminRevision(){return {...await revision(),day:localDate()}}

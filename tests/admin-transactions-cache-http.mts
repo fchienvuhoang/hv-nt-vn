@@ -24,8 +24,15 @@ try{
  // An out-of-band QA-only write demonstrates an actual cached result.
  await db.bankTransaction.update({where:{id},data:{amount:200000n}});
  assert.equal((await read()).rows[0].amount,100000n,'repeat API request must use the cached rows');
+ await new Promise(resolve=>setTimeout(resolve,18000));
+ assert.equal((await read()).rows[0].amount,100000n,'ledger cache must survive the former 15-second TTL');
+ await new Promise(resolve=>setTimeout(resolve,500));
+ assert.equal((await read()).rows[0].amount,100000n,'elapsed time must not trigger background revalidation');
  assert.equal((await fetch(origin+path)).status,401,'cached private data still requires authentication');
  const form=new FormData();form.set('requestId',randomUUID());form.set('transactionId',id);form.set('text','QA cache invalidation note');
+ const denied=await fetch(origin+'/api/admin/transaction-notes',{method:'POST',headers:{cookie,origin:'https://untrusted.example.test'},body:form});
+ assert.equal(denied.status,403);assert.equal((await denied.json()).code,'INVALID_ORIGIN');
+ assert.equal((await read()).rows[0].amount,100000n,'rejected writes preserve both session and cache');
  const write=await fetch(origin+'/api/admin/transaction-notes',{method:'POST',headers:{cookie,origin},body:form});
  assert.equal(write.status,200);const result=await write.json();assert.ok(result.success,JSON.stringify(result));
  const changed=await read();assert.equal(changed.rows[0].amount,200000n);

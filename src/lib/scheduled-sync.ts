@@ -178,7 +178,7 @@ async function runScheduledSync(now:Date) {
         SELECT 1 FROM "SyncLease" WHERE id='bank-sync' AND token=${token} AND "expiresAt">${new Date()}
       )`;
     await enqueueSyncFailure();
-    throw Object.assign(error instanceof Error?error:new Error(message),{affectedFundIds:[...affectedFundIds]});
+    throw Object.assign(error instanceof Error?error:new Error(message),{affectedFundIds:[...affectedFundIds],inserted,updated});
   } finally {
     try {if (acquired) await db.syncLease.deleteMany({ where: { id: "bank-sync", token } });}
     finally {await saveSyncEvent({...invocation,quickPages,fullPages,inserted,updated,finishedAt:new Date()});}

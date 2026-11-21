@@ -17,5 +17,5 @@ export async function transactionSummary(now=new Date()){
   return {generatedAt:now,days:dates.map(date=>{const credit=groups.find(g=>g.day===date&&g.direction==="CREDIT"),debit=groups.find(g=>g.day===date&&g.direction==="DEBIT");return {date,incomeCount:Number(credit?.count??0n),income:credit?.amount??0n,expenseCount:Number(debit?.count??0n),expense:debit?.amount??0n}}),accounts:balances,totalBalance:balances.length>0&&balances.every(a=>a.balance!==null)?balances.reduce((sum,a)=>sum+a.balance!,0n):null};
 }
 export type TransactionSummary=Awaited<ReturnType<typeof transactionSummary>>;
-const cached=unstable_cache(async(day:string)=>{void day;return encodeAdmin(await transactionSummary())},["transaction-summary-10-days-v3"],{revalidate:20,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG]});
+const cached=unstable_cache(async(day:string)=>{void day;return encodeAdmin(await transactionSummary())},["transaction-summary-10-days-v4"],{revalidate:false,tags:[PUBLIC_TAG,ADMIN_LEDGER_TAG,TRANSACTION_SUMMARY_TAG]});
 export async function loadTransactionSummary(){return decodeAdmin<TransactionSummary>(await cached(localDate()))}

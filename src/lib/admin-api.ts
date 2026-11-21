@@ -12,8 +12,8 @@ export async function adminRequest<T>(path:string,init:RequestInit={}):Promise<T
     if(response.status===504||code==="FUNCTION_INVOCATION_TIMEOUT")throw new Error(`Máy chủ xử lý quá thời gian (HTTP ${response.status}${detail}). ${path==="transfers/preview"?"Chỉ xem trước chưa làm thay đổi dữ liệu. Vui lòng thử lại.":"Vui lòng kiểm tra dữ liệu trước khi thử lại."}`);
     throw new Error(`Máy chủ trả về phản hồi không hợp lệ (HTTP ${response.status}${detail}). Vui lòng thử lại.`);
   }
-  const data=decodeAdmin<T&{error?:string}>(await response.json());
-  if(response.status===401||response.status===403){entries.clear();if(!loginRedirect){loginRedirect=true;
+  const data=decodeAdmin<T&{error?:string;code?:string}>(await response.json());
+  if(response.status===401||(response.status===403&&data.code==="ADMIN_FORBIDDEN")){entries.clear();if(!loginRedirect){loginRedirect=true;
     // Clear authenticated memory and the document when a session expires.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/login");
@@ -31,7 +31,8 @@ function read<T>(path:string,ttl:number,force=false):Promise<T>{
 type Revision={ledger:string;source:string;sync:string;day:string};
 function resourceRevision(path:string,version:Revision){
  if(path.startsWith("sync?"))return version.sync+version.ledger;
- if(path==="bootstrap"||path==="transaction-summary")return version.ledger+version.source+version.day;
+ if(path==="bootstrap")return version.ledger+version.source+version.sync+version.day;
+ if(path==="transaction-summary")return version.ledger+version.source+version.day;
  return version.ledger+version.day;
 }
 export function useAdminResource<T>(path:string,ttl=15000,enabled=true,keepPreviousData=false){
