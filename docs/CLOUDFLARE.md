@@ -13,10 +13,11 @@ Repo dùng Next.js + OpenNext, giữ nguyên REST API và PostgreSQL hiện có.
 
 | Mục | Giá trị |
 | --- | --- |
+| Production branch trên Cloudflare | `cf` (Vercel tiếp tục dùng `main`) |
 | Root directory | `/` (gốc repository) |
 | Build command | `npm run build:cloudflare` |
 | Deploy command | `npm run deploy:cloudflare` |
-| Non-production deploy command, nếu bật preview | `npm run upload:cloudflare` |
+| Non-production branches | Tắt automatic builds khi chỉ theo dõi nhánh `cf` |
 | Node.js build version | `22.19.0` hoặc một bản Node 22 từ 22.18 trở lên |
 
 Cloudflare chạy các lệnh deploy này tự động trong hệ thống build sau khi bạn nối Git; không cần đăng nhập Wrangler trên máy cá nhân. `build:cloudflare` đã chạy `prisma generate` và `next build`, không chạy thêm `npm run build` trước đó. Chỉ dùng một package manager trong build: npm với `package-lock.json`. Repo đã bỏ `yarn.lock`, ghim `packageManager: npm@10.9.3` và `.node-version: 22.19.0` để Cloudflare không tự chọn Yarn 4/Node 24. Nếu Dashboard có Build variable `NODE_VERSION`, đặt `22.19.0` hoặc bỏ biến ghi đè đó.
@@ -75,3 +76,11 @@ Không đưa secrets vào `wrangler.jsonc`, Git hay các biến `NEXT_PUBLIC_*`.
 - Với Google OAuth, thêm callback cho domain thử và đặt `AUTH_URL` riêng theo từng nền tảng. Muốn không chạm dữ liệu thật khi thử thao tác, dùng bản sao database riêng cho Cloudflare.
 
 Bộ kiểm tra Workers tại `tests/cloudflare-smoke.mts` chỉ cho phép URL localhost và database `hvntvn_test_worker_*`; kiểm tra login, bảo vệ API, asset logo, nhiều request PostgreSQL nối tiếp, tìm kiếm công khai và làm mới cache. Nó tạo rồi dọn dữ liệu QA, không dùng database production.
+
+## Lỗi “configuration needs a previews block”
+
+Lỗi này thuộc lệnh deploy **Worker Preview**, không phải lỗi build Next.js. Khi chỉ chạy một Worker Cloudflare song song với Vercel, chọn **Settings → Builds → Branch control → Production branch = `cf`**, Production deploy command = `npm run deploy:cloudflare`. Tắt automatic non-production branch builds nếu chưa cần thử pull request. Sau đó chạy build mới của nhánh `cf`; retry một build Preview cũ có thể vẫn giữ loại build cũ.
+
+“Production branch” ở đây chỉ là nhánh chính của Worker Cloudflare, không thay đổi deployment Vercel và không tự chuyển domain chính khỏi Vercel.
+
+`npm run upload:cloudflare` dùng Version URLs (cùng tài nguyên production), không tạo Worker Previews cô lập. Nếu sau này cần Worker Previews cho nhiều nhánh/PR, cần cấu hình `previews` riêng cho R2, Durable Object bindings, secrets và cơ chế self-reference OpenNext. Không thêm mỗi `previews: {}` rồi dùng lại tài nguyên production: cache và self-reference có thể trỏ sai môi trường.
