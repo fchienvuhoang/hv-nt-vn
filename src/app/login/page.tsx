@@ -1,5 +1,7 @@
 import { signIn } from "@/auth";
 import { authErrorMessage } from "@/lib/auth-errors";
+import {missingAuthVariables} from "@/lib/auth-configuration";
+import {cloudflareContext} from "@/lib/cloudflare-context";
 import { Brand } from "@/components/ui";
 export default async function Login({
   searchParams,
@@ -8,11 +10,10 @@ export default async function Login({
 }) {
   const { error } = await searchParams;
   const errorMessage = authErrorMessage(error);
-  const configured =
-    !!process.env.AUTH_GOOGLE_ID &&
-    !!process.env.AUTH_GOOGLE_SECRET &&
-    !!process.env.AUTH_SECRET &&
-    !!process.env.ADMIN_EMAILS;
+  const missing=missingAuthVariables(process.env);
+  const context=cloudflareContext();
+  const preview=(context?.env as {HVNTVN_PREVIEW?:string}|undefined)?.HVNTVN_PREVIEW==='1';
+  const configured=missing.length===0;
   return (
     <main className="login-page">
       <Brand featured />
@@ -38,8 +39,12 @@ export default async function Login({
           </form>
         ) : (
           <div className="notice">
-            SSO chưa được cấu hình. Điền AUTH_SECRET, AUTH_GOOGLE_ID,
-            AUTH_GOOGLE_SECRET và ADMIN_EMAILS theo README để mở trang quản trị.
+            <strong>Đăng nhập quản trị chưa được cấu hình đầy đủ.</strong>
+            <p>Còn thiếu: {missing.join(", ")}.</p>
+            <p>{context?preview
+              ? "Đây là bản Preview. Thêm các biến còn thiếu trong Settings → Variables and Secrets của Preview này. Previews Base chỉ cung cấp mặc định cho Preview mới."
+              : "Thêm các biến còn thiếu trong Worker Settings → Variables and Secrets → Production, rồi deploy lại."
+              : "Thêm các biến còn thiếu trong biến môi trường của ứng dụng, rồi deploy lại."}</p>
           </div>
         )}
         <small>Chỉ tài khoản được cấp quyền mới có thể truy cập.</small>
