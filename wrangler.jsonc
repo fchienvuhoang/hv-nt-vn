@@ -93,5 +93,6 @@
     "AUTH_GOOGLE_ID": "768661984912-f89qnb1t70i72knd896moikcpesd0ft4.apps.googleusercontent.com",
     "AUTH_TRUST_HOST": "true",
     "AUTH_URL": "https://hv-nt-vn.fchienvuhoang-f11.workers.dev"
-  }
+  },
+  "keep_vars": true
 }

@@ -105,3 +105,9 @@ Cache ứng dụng chuyển từ các lần đọc R2 tuần tự sang SQLite Du
 Migration `v2-runtime-cache` tạo namespace tự động khi deploy. Không cần tạo bucket/secret mới. Sau lần deploy đầu của phiên bản này, cache ứng dụng mới sẽ còn trống; lượt mở đầu dựng lại snapshot, các lượt sau dùng cache mới. Các bản cache R2 cũ không được đọc lại để tránh phục hồi nhầm dữ liệu đã vô hiệu hóa. Hai chế độ Production và Preview đều có binding cache riêng qua namespace tự động của Cloudflare.
 
 API công khai trả `X-Public-Cache` và `Server-Timing: snapshot;dur=...` để đo riêng thời gian dữ liệu. Chỉ so tốc độ sau khi cache đã được dựng và cùng vị trí mạng; không suy ra hiệu năng production từ phép đo local.
+
+## Giữ biến runtime qua mỗi lần deploy
+
+`keep_vars: true` được bật để Production deploy giữ các biến đã đặt trên Dashboard nhưng không có trong `vars` của repo. Nếu thiếu tùy chọn này, Wrangler mặc định đồng bộ lại biến Text theo file cấu hình và có thể loại bỏ biến chỉ tồn tại ở Dashboard.
+
+Secrets mã hóa được Cloudflare giữ riêng; vẫn đặt `ADMIN_EMAILS`, `AUTH_SECRET`, `AUTH_GOOGLE_SECRET`, `DATABASE_URL`, `SYNC_SECRET` dưới loại **Secret**. Nếu một bản deploy trước đã xóa các biến Text, cần khôi phục một lần; `keep_vars` không lấy lại giá trị đã mất. Không lưu giá trị bí mật vào Git để xử lý lỗi này.
