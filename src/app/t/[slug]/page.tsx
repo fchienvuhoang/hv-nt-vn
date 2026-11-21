@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import {readPublicSnapshot} from "@/lib/public-snapshot";
 import {publicFundTitle} from "@/lib/public-data";
 import { PublicFundLedger } from "@/components/public-fund-ledger";
 
 export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{
   const {slug}=await params;
   let title="Thiện pháp";
-  if(/^[a-z0-9-]{1,100}$/.test(slug))try{title=await publicFundTitle(slug)??title}catch{/* The REST view can still display its loading/error state. */}
+  if(/^[a-z0-9-]{1,100}$/.test(slug))try{title=(await readPublicSnapshot(slug))?.credit.name??await publicFundTitle(slug)??title}catch{/* The REST view can still display its loading/error state. */}
   return {title:{absolute:title},openGraph:{title}};
 }
 export async function generateStaticParams(){return [];}

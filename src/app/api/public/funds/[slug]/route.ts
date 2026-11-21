@@ -9,12 +9,13 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{slug:str
   const {slug}=await params;
   if(!/^[a-z0-9-]{1,100}$/.test(slug))return NextResponse.json({error:"Không tìm thấy thiện pháp."},{status:404});
   try{
+    const started=performance.now();
     const query=publicQuery(Object.fromEntries(request.nextUrl.searchParams)),fund=await snapshotResponse(slug,query.page,query.direction,query.search);
     if(!fund)return NextResponse.json({error:"Không tìm thấy thiện pháp."},{status:404});
     if(!fund.hit)after(async()=>{
       try{await warmPublicSnapshot(slug);}catch{console.error("Public snapshot warmup failed");}
     });
-    return NextResponse.json(fund.data,{headers:{"Cache-Control":"public, max-age=0, must-revalidate","X-Public-Cache":fund.hit?"HIT":"MISS"}});
+    return NextResponse.json(fund.data,{headers:{"Cache-Control":"public, max-age=0, must-revalidate","X-Public-Cache":fund.hit?"HIT":"MISS","Server-Timing":`snapshot;dur=${(performance.now()-started).toFixed(1)}`}});
   }catch(error){console.error("Public ledger read failed",error);return NextResponse.json({error:"Chưa tải được sao kê công khai. Vui lòng thử lại."},{status:500})}
   },after);
 }

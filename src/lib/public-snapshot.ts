@@ -14,6 +14,7 @@ export type PublicSnapshot={revision?:number;searchIndex?:{credit:string[];debit
 const cache=()=>getCache({namespace:"hvntvn-public-snapshot-v1"});
 const key=(slug:string)=>`fund:${slug}`;
 const decodedSnapshots=new VersionedJsonCache<PublicSnapshot>(8*1024*1024,16);
+const snapshotIdentities=new Map<string,string>();
 class SnapshotChangedError extends Error {}
 async function buildSnapshotOnce(slug:string):Promise<PublicSnapshot|null>{
  const identity=await db.fund.findUnique({where:{slug},select:{id:true}});if(!identity)return null;
@@ -48,19 +49,32 @@ async function publish(slug:string,snapshot:PublicSnapshot){
  for(let offset=0;offset<json.length;offset+=180000)chunks.push(json.slice(offset,offset+180000));
  const names=chunks.map((_,index)=>`${key(slug)}:${version}:${index}`);
  for(let i=0;i<chunks.length;i++)await store.set(names[i],chunks[i],{ttl:7*86400});
- await store.set(key(slug),{chunks:names},{ttl:6*86400});
+ await store.set(key(slug),{fundId:snapshot.credit.id,chunks:names},{ttl:6*86400});
 }
 export async function readPublicSnapshot(slug:string){
- const store=cache(),manifest=await store.get(key(slug)) as {chunks:string[]}|null;if(!manifest)return null;
- // The shared manifest and revision remain authoritative on every request.
+ const store=cache(),knownId=snapshotIdentities.get(slug);
+ // Fetch the authoritative manifest and revision together on a warm read.
+ const [manifest,knownRevision]=await Promise.all([
+  store.get(key(slug)) as Promise<{fundId?:string;chunks:string[]}|null>,
+  knownId?store.get(`revision:${knownId}`) as Promise<number|null>:Promise.resolve(null),
+ ]);
+ if(!manifest)return null;
  const version=JSON.stringify(manifest.chunks);
+ const revisionPromise=manifest.fundId&&manifest.fundId!==knownId?store.get(`revision:${manifest.fundId}`) as Promise<number|null>:Promise.resolve(knownRevision);
  let snapshot=decodedSnapshots.get(slug,version);
- if(!snapshot){
-   const parts=await Promise.all(manifest.chunks.map(name=>store.get(name) as Promise<string|null>));if(parts.some(p=>p===null))return null;
-   const json=parts.join("");snapshot=JSON.parse(json) as PublicSnapshot;
-   decodedSnapshots.set(slug,version,snapshot,Buffer.byteLength(json,"utf8"));
- }
- const revision=await store.get(`revision:${snapshot.credit.id}`) as number|null;
+ // Observe rejection immediately even while immutable chunks are loading.
+ const [loaded,earlyRevision]=await Promise.all([
+  snapshot?Promise.resolve(snapshot):Promise.all(manifest.chunks.map(name=>store.get(name) as Promise<string|null>)).then(parts=>{
+   if(parts.some(p=>p===null))return null;
+   const json=parts.join("");const value=JSON.parse(json) as PublicSnapshot;
+   decodedSnapshots.set(slug,version,value,Buffer.byteLength(json,"utf8"));return value;
+  }),
+  revisionPromise,
+ ]);
+ if(!loaded)return null;snapshot=loaded;
+ const revision=(manifest.fundId??knownId)===snapshot.credit.id?earlyRevision:await store.get(`revision:${snapshot.credit.id}`) as number|null;
+ snapshotIdentities.delete(slug);snapshotIdentities.set(slug,snapshot.credit.id);
+ if(snapshotIdentities.size>16)snapshotIdentities.delete(snapshotIdentities.keys().next().value!);
  if(revision!==null&&(snapshot.revision??0)<revision)return null;
  if (snapshot.credit.fundingVersion!==3 || snapshot.debit.fundingVersion!==3) return null;
  if (!("goalAmount" in snapshot.credit) || !("goalAmount" in snapshot.debit)) return null;

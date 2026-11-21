@@ -50,6 +50,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "5.20261121.1",
     "@opennextjs/aws": "4.2.0",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",

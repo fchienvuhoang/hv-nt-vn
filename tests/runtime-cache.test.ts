@@ -7,11 +7,18 @@ import ts from 'typescript';
 test('Workers cache preserves values across store instances, expiry, namespaces and deletion',async()=>{
  let now=1000;
  const objects=new Map<string,string>();
- const bucket={get:async(key:string)=>objects.has(key)?{json:async()=>JSON.parse(objects.get(key)!)}:null,put:async(key:string,body:string)=>{objects.set(key,body)},delete:async(key:string)=>{objects.delete(key)}};
+ const namespace={idFromName:(name:string)=>name,get:(id:string,opts:{locationHint:string})=>{
+  assert.equal(opts.locationHint,'apac-se');
+  return {
+   getValue:async(key:string)=>{const e=objects.get(id+key);if(!e)return null;const entry=JSON.parse(e);return entry.expiresAt!==null&&entry.expiresAt<=now?null:entry.value},
+   setValue:async(key:string,value:unknown,ttl?:number)=>{objects.set(id+key,JSON.stringify({value,expiresAt:ttl===undefined?null:now+ttl*1000}))},
+   deleteValue:async(key:string)=>{objects.delete(id+key)},
+  };
+ }};
  const exports={} as typeof import('../src/lib/runtime-cache');
  vm.runInNewContext(ts.transpile(readFileSync('src/lib/runtime-cache.ts','utf8'),{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}),{exports,Date:{now:()=>now},encodeURIComponent,require:(id:string)=>{
   if(id==='server-only')return {};
-  if(id==='./cloudflare-context')return {cloudflareContext:()=>({env:{NEXT_INC_CACHE_R2_BUCKET:bucket}})};
+  if(id==='./cloudflare-context')return {cloudflareContext:()=>({env:{APP_RUNTIME_CACHE:namespace}})};
   if(id==='@vercel/functions')return {getCache:()=>{throw Error('Workers must not fall back to process-local Vercel cache')}};
   throw Error(id);
  }});

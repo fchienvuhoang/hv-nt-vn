@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hv-nt-vn",
-  "main": ".open-next/worker.js",
+  "main": "cloudflare/worker.ts",
   "compatibility_date": "2026-11-21",
   "compatibility_flags": [
     "nodejs_compat",
@@ -32,6 +32,10 @@
       {
         "name": "NEXT_TAG_CACHE_DO_SHARDED",
         "class_name": "DOShardedTagCache"
+      },
+      {
+        "name": "APP_RUNTIME_CACHE",
+        "class_name": "RuntimeCacheObject"
       }
     ]
   },
@@ -41,6 +45,12 @@
       "new_sqlite_classes": [
         "DOQueueHandler",
         "DOShardedTagCache"
+      ]
+    },
+    {
+      "tag": "v2-runtime-cache",
+      "new_sqlite_classes": [
+        "RuntimeCacheObject"
       ]
     }
   ],
@@ -71,6 +81,10 @@
         {
           "name": "NEXT_TAG_CACHE_DO_SHARDED",
           "class_name": "DOShardedTagCache"
+        },
+        {
+          "name": "APP_RUNTIME_CACHE",
+          "class_name": "RuntimeCacheObject"
         }
       ]
     }

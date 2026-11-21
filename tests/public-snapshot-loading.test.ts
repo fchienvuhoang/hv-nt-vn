@@ -8,7 +8,7 @@ import {localDate,vietnamMonth} from "../src/lib/domain";
 import {publicSearchText,publicSearchTerms,matchesPublicSearchText} from "../src/lib/public-search";
 
 // Exercise the real server module against isolated stores, never a financial DB.
-function fixture() {
+function fixture(onGet?:(key:string)=>Promise<void>) {
   const store=new Map<string,unknown>();
   const calls:{direction:string;page:number;kind:string}[]=[];
   let revision=1;
@@ -18,7 +18,7 @@ function fixture() {
     "./versioned-json-cache":{VersionedJsonCache},
     "./domain":{localDate,vietnamMonth},
     "./operation-metrics":{measureOperations:(_flow:string,work:()=>unknown)=>work()},
-    "./runtime-cache":{getCache:()=>({get:async(key:string)=>store.get(key)??null,set:async(key:string,value:unknown)=>{store.set(key,value)}})},
+    "./runtime-cache":{getCache:()=>({get:async(key:string)=>{await onGet?.(key);return store.get(key)??null},set:async(key:string,value:unknown)=>{store.set(key,value)}})},
     "node:crypto":{randomUUID:()=>"version"},
     "next/cache":{revalidateTag:()=>{}},
     "./db":{db:{fund:{findUnique:async()=>({id:"fund"})},publicCacheRefresh:{findUnique:async()=>({requestedVersion:revision})}}},
@@ -70,4 +70,19 @@ test("search still reads the entire snapshot and missing manifests cannot hit lo
   assert.ok(searched);assert.equal(searched.data.count,205);
   store.delete("fund:slug");
   assert.equal(await api.readPublicSnapshot("slug"),null);
+});
+
+
+test("warm financial reads start manifest and revision together without trusting local memory",async()=>{
+ let blocked=false,release:()=>void=()=>{};
+ const gate=new Promise<void>(resolve=>{release=resolve});
+ const reads:string[]=[];
+ const {api,store}=fixture(async key=>{reads.push(key);if(blocked&&key==='fund:slug')await gate;});
+ await api.warmPublicSnapshot('slug');await api.readPublicSnapshot('slug');
+ reads.length=0;blocked=true;
+ const pending=api.readPublicSnapshot('slug');
+ assert.ok(reads.includes('fund:slug'));
+ assert.ok(reads.includes('revision:fund'),'revision must start before manifest completes');
+ store.set('revision:fund',99);release();
+ assert.equal(await pending,null,'a newer shared revision still rejects the decoded snapshot');
 });

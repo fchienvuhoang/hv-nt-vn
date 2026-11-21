@@ -7,7 +7,7 @@ Repo dùng Next.js + OpenNext, giữ nguyên REST API và PostgreSQL hiện có.
 - Tạo một R2 bucket riêng tên `hvntvn-cache` (không bật public access). Dữ liệu cache có cả thông tin quản trị, không dùng chung bucket công khai.
 - Tạo Worker kết nối Git repository, tên `hv-nt-vn`. Nếu đặt tên khác, đổi cả `name` và `services[0].service` trong `wrangler.jsonc` cho trùng.
 - Dùng Workers Paid: ứng dụng có Next.js, Excel, Prisma và công việc đồng bộ dài; cấu hình CPU tối đa 300 giây trong repo dành cho gói Paid.
-- R2 binding, service tự tham chiếu và Durable Objects được khai báo trong `wrangler.jsonc`. Hai lớp Durable Objects chỉ quản lý cache/revalidation; dữ liệu thiện pháp vẫn ở PostgreSQL.
+- R2 binding, service tự tham chiếu và Durable Objects được khai báo trong `wrangler.jsonc`. Các lớp Durable Objects chỉ quản lý cache/revalidation; dữ liệu thiện pháp vẫn ở PostgreSQL.
 
 ## 2. Cấu hình Workers Builds
 
@@ -49,8 +49,8 @@ Không đưa secrets vào `wrangler.jsonc`, Git hay các biến `NEXT_PUBLIC_*`.
 ## 5. Cache và công việc nền
 
 - Cache Next.js dùng R2 + Durable Objects để hỗ trợ `unstable_cache` và vô hiệu hóa theo tag.
-- Cache snapshot công khai, revision, dấu vân tay đồng bộ và nhật ký vận hành chuyển từ Vercel Runtime Cache sang R2 trong Workers. R2 đọc/ghi nhất quán; không dùng KV eventual consistency cho revision tiền.
-- Có thể đặt lifecycle rule xóa object trong prefix `app-cache/` sau 8 ngày để dọn các phiên bản snapshot hết hạn. Không áp rule này cho toàn bộ bucket/incremental cache.
+- Cache snapshot công khai, revision, dấu vân tay đồng bộ và nhật ký vận hành dùng `APP_RUNTIME_CACHE` (SQLite Durable Objects) trong Workers. Các khóa được chia thành 16 shard cho mỗi namespace, với location hint `apac-se`. Gợi ý vị trí không phải bảo đảm placement. Mỗi lần đọc vẫn kiểm tra manifest/revision từ kho dùng chung, không cache mù số dư trong isolate. Không dùng KV eventual consistency cho revision tiền.
+- Cache ứng dụng hết hạn được dọn bằng alarm của Durable Object. Nếu đã chạy bản cũ lưu `app-cache/` trên R2, có thể đặt lifecycle rule xóa prefix đó sau 8 ngày; bản mới không đọc prefix này. Không áp rule này cho toàn bộ bucket/incremental cache.
 - Cấu hình này không tự tạo lịch đồng bộ. Tiếp tục hệ thống gọi HTTP hiện có: `/api/sync/transactions` và `/api/internal/public-cache`, dùng `Authorization: Bearer <SYNC_SECRET>` như trước. Nếu đổi origin, cập nhật địa chỉ ở nơi gọi lịch.
 - Workers chỉ giữ `waitUntil` tối đa khoảng 30 giây sau khi response kết thúc. Các đợt cache/email dài có hàng đợi và cần được gọi tiếp bởi lịch HTTP; không dựa vào một request đơn lẻ để hoàn tất toàn bộ backlog.
 - Không tự động chạy migration database trong build/deploy. Repo không thay đổi cấu trúc hay số tiền khi chuyển nền tảng.
@@ -97,3 +97,11 @@ Repo lưu các biến không phải khóa bí mật: `AUTH_GOOGLE_ID`, `AUTH_TRU
 Các biến sau phải tạo ở Dashboard dưới loại **Secret**, không phải Text: `ADMIN_EMAILS`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`, `DATABASE_URL`, `SYNC_SECRET`. Không copy chúng từ đoạn gợi ý `vars` của Dashboard vào file Git. Nếu đã tạo dạng Text, chuyển sang Secret trước khi deploy để tránh được đưa vào đoạn cấu hình gợi ý công khai. Production và Previews Base có secrets riêng.
 
 `AUTH_URL` của Worker đang là `https://hv-nt-vn.fchienvuhoang-f11.workers.dev`. Vercel giữ `https://hvntvn.danasangha.org` trong cấu hình riêng. `AUTH_URL` chỉ nhận một URL, không phải danh sách phân tách bằng dấu phẩy. Google OAuth cần thêm callback `https://hv-nt-vn.fchienvuhoang-f11.workers.dev/api/auth/callback/google`.
+
+## Tối ưu thời gian trang công khai
+
+Cache ứng dụng chuyển từ các lần đọc R2 tuần tự sang SQLite Durable Objects để giảm độ trễ. R2 tiếp tục phục vụ cache Next.js của OpenNext. `cloudflare/worker.ts` bọc handler OpenNext và xuất thêm lớp cache; không đổi luồng REST hay số liệu PostgreSQL.
+
+Migration `v2-runtime-cache` tạo namespace tự động khi deploy. Không cần tạo bucket/secret mới. Sau lần deploy đầu của phiên bản này, cache ứng dụng mới sẽ còn trống; lượt mở đầu dựng lại snapshot, các lượt sau dùng cache mới. Các bản cache R2 cũ không được đọc lại để tránh phục hồi nhầm dữ liệu đã vô hiệu hóa. Hai chế độ Production và Preview đều có binding cache riêng qua namespace tự động của Cloudflare.
+
+API công khai trả `X-Public-Cache` và `Server-Timing: snapshot;dur=...` để đo riêng thời gian dữ liệu. Chỉ so tốc độ sau khi cache đã được dựng và cùng vị trí mạng; không suy ra hiệu năng production từ phép đo local.
