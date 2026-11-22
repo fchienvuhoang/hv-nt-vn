@@ -1,6 +1,11 @@
-// The whole fund and the selected bank accounts must both cover a transfer.
-// A positive account cannot be used to spend the deficit of another account.
-export function transferBalanceError(balances: {accountId:string;balance:string|bigint}[], amount:bigint|null, accountId?:string):string|null {
+// Receipt allocations require coverage; balance-only transfers may overdraw.
+export function transferBalanceError(balances: {accountId:string;balance:string|bigint}[], amount:bigint|null, accountId?:string,allowOverdraft=false):string|null {
+  if(allowOverdraft){
+    if(accountId&&!balances.some(a=>a.accountId===accountId))return "Không tìm thấy tài khoản nguồn trong phạm vi đã chọn.";
+    if(!balances.length)return "Không tìm thấy tài khoản nguồn để ghi nhận điều chuyển.";
+    if(amount!==null&&amount<=0n)return "Số tiền điều chuyển phải lớn hơn 0; mức thành tựu phải nhỏ hơn tổng hùn phước hiện tại.";
+    return null;
+  }
   const total=balances.reduce((sum,a)=>sum+BigInt(a.balance),0n);
   if(total<=0n)return "Thiện pháp nguồn phải có số dư dương mới được điều chuyển.";
   const available=balances.filter(a=>!accountId||a.accountId===accountId).reduce((sum,a)=>sum+(BigInt(a.balance)>0n?BigInt(a.balance):0n),0n);

@@ -91,11 +91,12 @@ export async function reverseAllocationTransfer(tx:LedgerClient,original:{id:str
  const totals=await fundTotals(tx),source=totals.find(f=>f.id===original.toFundId)!,destination=totals.find(f=>f.id===original.fromFundId)!;
  const required=new Map<string,bigint>();for(const item of items)required.set(item.transaction.accountId,(required.get(item.transaction.accountId)??0n)+item.amount);
  for(const item of balanceItems)required.set(item.accountId,(required.get(item.accountId)??0n)+item.amount);
- const balanceError=transferBalanceError(source.byAccount,original.amount);
+ const balanceOnly=items.length===0;
+ const balanceError=transferBalanceError(source.byAccount,original.amount,undefined,balanceOnly);
  if(balanceError)throw new AllocationTransferError("Thiện pháp nhận không còn đủ số dư khả dụng để đảo; không thể làm âm thiện pháp nguồn.");
- for(const [accountId,amount]of required)if((source.byAccount.find(a=>a.accountId===accountId)?.balance??0n)<amount)throw new AllocationTransferError("Thiện pháp nhận không còn đủ số dư trong tài khoản gốc để đảo");
+ for(const [accountId,amount]of required)if(!balanceOnly&&((source.byAccount.find(a=>a.accountId===accountId)?.balance??0n)<amount))throw new AllocationTransferError("Thiện pháp nhận không còn đủ số dư trong tài khoản gốc để đảo");
  for(const item of items)if(item.transaction.entryStatus!=="POSTED"||item.transaction.direction!=="CREDIT"||fundShare(item.transaction,source.id)<item.amount)throw new AllocationTransferError("Phần tiền đã được chuyển tiếp hoặc thay đổi; không thể đảo lượt này. Hãy đảo các lượt sau trước.");
- const reversal=await tx.transfer.create({data:{requestId:randomUUID(),accountId:original.accountId,fromFundId:source.id,toFundId:destination.id,amount:original.amount,reason,mode:"ALLOCATION",reversalOf:original.id,...actorStamp(actor)}});
+ const reversal=await tx.transfer.create({data:{requestId:randomUUID(),accountId:original.accountId,fromFundId:source.id,toFundId:destination.id,amount:original.amount,reason,mode:balanceOnly?"BALANCE_ONLY":"ALLOCATION",reversalOf:original.id,...actorStamp(actor)}});
  if(balanceItems.length)await tx.transferBalanceItem.createMany({data:balanceItems.map(item=>{const detailed=items.filter(i=>i.transaction.accountId===item.accountId).reduce((n,i)=>n+i.amount,0n),from=source.byAccount.find(a=>a.accountId===item.accountId)!.balance-detailed,to=(destination.byAccount.find(a=>a.accountId===item.accountId)?.balance??0n)+detailed;return {transferId:reversal.id,accountId:item.accountId,accountNumber:item.accountNumber,amount:item.amount,sourceBefore:from,sourceAfter:from-item.amount,destinationBefore:to,destinationAfter:to+item.amount}})});
  const changes=await moveShares(tx,items.map(item=>({row:item.transaction,from:source.id,to:destination.id,amount:item.amount})),actor);
  await tx.transferItem.createMany({data:items.map((item,index)=>({transferId:reversal.id,transactionId:item.transactionId,amount:item.amount,originalAmount:item.transaction.amount,...changes[index],snapshot:item.snapshot as Prisma.InputJsonValue}))});

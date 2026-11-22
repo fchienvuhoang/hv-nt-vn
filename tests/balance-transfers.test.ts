@@ -39,14 +39,19 @@ test('changed balances invalidate confirmation before any writes',async()=>{
  await assert.rejects(api.commitBalanceTransfer({...input,value:'100',requestId:crypto.randomUUID(),fingerprint:plan.fingerprint},'admin'),/Số dư đã thay đổi/);
  assert.equal(transfers.length,0);
 });
-test('balance transfer enforces selected account, net balance and target income',async()=>{
+test('balance transfers allow a negative remainder and a negative source on a selected account',async()=>{
  const {api,input,funds}=fixture();
- await assert.rejects(api.previewBalanceTransfer({...input,accountId:'b'}),/Không đủ/);
- await assert.rejects(api.previewBalanceTransfer({...input,value:'6055313'}),/Không đủ/);
+ const selected=await api.previewBalanceTransfer({...input,accountId:'b'});
+ assert.equal(selected.balanceItems.length,1);assert.equal(selected.balanceItems[0].sourceAfter,'-4000000');
+ const excess=await api.previewBalanceTransfer({...input,value:'6055313'});
+ assert.equal(excess.sourceBalanceAfter,'-1');assert.equal(new Set(excess.balanceItems.map(i=>i.accountId)).size,excess.balanceItems.length);
  const target=await api.previewBalanceTransfer({...input,mode:'TARGET_INCOME',value:'258862000'});
  assert.equal(target.amount,'6055312');assert.equal(target.incomeAfter,'258862000');
- funds[0].byAccount[1].balance=-3999999n;funds[0].balance=1n;
- await assert.rejects(api.previewBalanceTransfer({...input,value:'2'}),/Không đủ/);
+ funds[0].byAccount=[{accountId:'a',balance:-100n},{accountId:'b',balance:0n}];funds[0].balance=-100n;
+ const negative=await api.previewBalanceTransfer({...input,value:'50',accountId:'a'});
+ assert.equal(negative.sourceBalanceAfter,'-150');assert.equal(negative.balanceItems[0].sourceAfter,'-150');
+ await assert.rejects(api.previewBalanceTransfer({...input,accountId:'missing'}),/tài khoản nguồn/);
+ await assert.rejects(api.previewBalanceTransfer({...input,value:'0'}),/lớn hơn 0/);
 });
 
 test('balance-only records can be reversed on original accounts without moving donor shares',async()=>{

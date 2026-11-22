@@ -15,23 +15,32 @@ async function plan(tx:LedgerClient,input:AllocationTransferInput):Promise<Alloc
  if(!source||!destination)throw new AllocationTransferError('Không tìm thấy thiện pháp');
  const incomeBefore=source.fundingIncome,destinationIncome=destination.fundingIncome;
  const amount=data.mode==='AMOUNT'?data.value:incomeBefore-data.value;
- const error=transferBalanceError(source.byAccount,amount,data.accountId);
+ const error=transferBalanceError(source.byAccount,amount,data.accountId,true);
  if(error)throw new AllocationTransferError(error);
  const accounts=await tx.bankAccount.findMany({select:{id:true,number:true}});
  let remaining=amount;
  const balanceItems:AllocationTransferPreview['balanceItems']=[];
- // Stable account order makes preview and confirmation agree without reading receipts.
- for(const account of [...source.byAccount].sort((a,b)=>a.accountId.localeCompare(b.accountId))){
+ const scoped=[...source.byAccount].filter(a=>!data.accountId||a.accountId===data.accountId).sort((a,b)=>a.accountId.localeCompare(b.accountId));
+ const planned=new Map<string,bigint>();
+ // Use positive balances first; any shortfall belongs to the selected/primary account.
+ for(const account of scoped){
   if(remaining===0n)break;
-  if((data.accountId&&account.accountId!==data.accountId)||account.balance<=0n)continue;
+  if(account.balance<=0n)continue;
   const take=account.balance<remaining?account.balance:remaining;
+  planned.set(account.accountId,take);remaining-=take;
+ }
+ if(remaining>0n){
+  const overdraft=scoped.find(a=>a.accountId===source.accountId)??scoped[0];
+  if(!overdraft)throw new AllocationTransferError('Không tìm thấy tài khoản nguồn để ghi nhận điều chuyển');
+  planned.set(overdraft.accountId,(planned.get(overdraft.accountId)??0n)+remaining);
+ }
+ for(const account of scoped){
+  const take=planned.get(account.accountId);if(!take)continue;
   const destinationBefore=destination.byAccount.find(a=>a.accountId===account.accountId)?.balance??0n;
   const bank=accounts.find(a=>a.id===account.accountId);
   if(!bank)throw new AllocationTransferError('Không tìm thấy tài khoản ngân hàng');
   balanceItems.push({accountId:account.accountId,accountNumber:bank.number,amount:take.toString(),sourceBefore:account.balance.toString(),sourceAfter:(account.balance-take).toString(),destinationBefore:destinationBefore.toString(),destinationAfter:(destinationBefore+take).toString()});
-  remaining-=take;
  }
- if(remaining!==0n)throw new AllocationTransferError('Không đủ số dư khả dụng trong phạm vi tài khoản đã chọn');
  const result={fromFundId:source.id,toFundId:destination.id,fromCode:source.code,toCode:destination.code,fromName:source.name,toName:destination.name,amount:amount.toString(),incomeBefore:incomeBefore.toString(),incomeAfter:(incomeBefore-amount).toString(),destinationIncomeAfter:(destinationIncome+amount).toString(),sourceBalanceBefore:source.balance.toString(),sourceBalanceAfter:(source.balance-amount).toString(),destinationBalanceBefore:destination.balance.toString(),destinationBalanceAfter:(destination.balance+amount).toString(),items:[],balanceItems};
  return {...result,fingerprint:hash({kind:'BALANCE_ONLY',input:{...data,value:data.value.toString()},plan:result})};
 }
