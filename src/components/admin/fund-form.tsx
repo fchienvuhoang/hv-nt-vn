@@ -1,4 +1,5 @@
 "use client";
+import {hasSpacedFundNameHyphens,FUND_NAME_SPACING_ERROR} from "@/lib/fund-name";
 import { FUND_GOAL_TYPES, calculateLengthGoal, calculatePartGoal, readLengthGoal, readPartGoal, formatMeasure } from "@/lib/fund-goal";
 import {keywordKey} from "@/lib/fund-keywords";
 import { accountLabel } from "@/lib/account-label";
@@ -114,13 +115,18 @@ export function FundForm({
           name="name"
           placeholder="Tên đầy đủ của thiện pháp"
           value={values.name}
-          onChange={event => change("name", event.target.value)}
+          ref={input=>{if(input)input.setCustomValidity(hasSpacedFundNameHyphens(input.value)?"":FUND_NAME_SPACING_ERROR);}}
+          onChange={event => {
+            event.target.setCustomValidity(hasSpacedFundNameHyphens(event.target.value)?"":FUND_NAME_SPACING_ERROR);
+            change("name", event.target.value);
+          }}
           {...errorProps("name")}
           minLength={3}
           maxLength={200}
           required
         />
         {errorMessage("name")}
+        <small className="muted">Viết dấu gạch ngang có khoảng trắng hai bên, ví dụ: TP133 - HỘ TRÌ TÔN TƯỢNG.</small>
       </label>
       <div className="fund-goal-editor">
         <label>Loại mục tiêu thành tựu

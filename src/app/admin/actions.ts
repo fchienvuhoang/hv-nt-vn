@@ -1,4 +1,5 @@
 "use server";
+import {hasSpacedFundNameHyphens,FUND_NAME_SPACING_ERROR} from "@/lib/fund-name";
 import { splitTransaction } from "@/lib/transaction-split";
 import type { TransactionSplitInput } from "@/lib/transaction-split-input";
 import { resolveFundGoal, fundGoalTypeSchema } from "@/lib/fund-goal";
@@ -51,7 +52,7 @@ const fundSchema = z.object({
   recognitionAmount: z.union([z.literal("").transform(()=>null),money.refine(value=>value>0n,"Mức cổ phần phải lớn hơn 0")]).optional(),
   publicListed: z.enum(["1","0"]).optional().transform(v=>v===undefined?undefined:v==="1"),
   code,
-  name: z.string().trim().min(3).max(200),
+  name: z.string().trim().min(3).max(200).refine(hasSpacedFundNameHyphens,FUND_NAME_SPACING_ERROR),
   description: z.string().trim().max(3000),
   adminNote: z.string().trim().transform(value=>value.replace(/\r\n?/g,"\n")).pipe(z.string().max(3000,"Ghi chú tối đa 3.000 ký tự")).optional(),
   goalType: fundGoalTypeSchema.optional(),
