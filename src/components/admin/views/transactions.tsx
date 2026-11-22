@@ -2,7 +2,8 @@
 import { TransactionSplit } from "@/components/admin/transaction-split";
 import { FundAssignmentSelect } from "@/components/admin/fund-assignment-select";
 import { fundAssignmentWarning } from "@/lib/fund-assignment-warning";
-import { accountLabel, fundOptionLabel } from "@/lib/account-label";
+import {FundPicker} from "../fund-picker";
+import { accountLabel } from "@/lib/account-label";
 import { useRef, useState } from "react";
 import { useToast } from "@/components/toasts";
 import { bulkAssignTransactions } from "@/lib/admin-api";
@@ -145,7 +146,7 @@ export default function Transactions({params,bootstrap}:{params:TransactionParam
         <fieldset className="sheet-bulk-actions" disabled={busy}>
           <div className="sheet-bulk-totals" aria-live="polite"><strong>Đã chọn {selected.size} giao dịch</strong><span>Thu: <b>{vnd([...selected.values()].filter(r=>r.direction==="CREDIT").reduce((sum,r)=>sum+r.amount,0n))}</b> · Chi: <b>{vnd([...selected.values()].filter(r=>r.direction==="DEBIT").reduce((sum,r)=>sum+r.amount,0n))}</b></span></div>
           {hasWrongAccount&&<div className="notice wrong-account-bulk-notice" role="status"><strong>{wrongAccountRows.length} giao dịch</strong> đã chọn bị đánh dấu <strong>Sai tài khoản nhận</strong> — có thể gán vào thiện pháp nhận nhiều tài khoản hoặc thiện pháp nhận một tài khoản trùng với tài khoản giao dịch. Danh sách bên dưới chỉ hiện thiện pháp hỗ trợ tất cả tài khoản đã chọn.</div>}
-          <label>Gán thủ công vào thiện pháp<select value={effectiveTarget} onChange={e=>setTarget(e.target.value)}><option value="">Chọn thiện pháp nhận…</option>{eligibleFunds.map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select></label>
+          <label>Gán thủ công vào thiện pháp<FundPicker label="Gán thủ công vào thiện pháp" funds={eligibleFunds} accounts={accounts} value={effectiveTarget} onChange={setTarget} placeholder="Chọn thiện pháp nhận…"/></label>
           {fundAssignmentWarning(funds.find(f=>f.id===effectiveTarget))&&<div className="notice" role="status">{fundAssignmentWarning(funds.find(f=>f.id===effectiveTarget))}</div>}
           <label>Lý do chung / ghi chú công khai<input value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000} placeholder="Ví dụ: nội dung thiếu mã thiện pháp"/></label>
           <button type="button" className="button primary small" disabled={!selected.size||!effectiveTarget||reason.trim().length<5||loading} onClick={assignSelected}>{busy?<><LoadingSpinner size={16}/>Đang gán…</>:`Gán ${selected.size} giao dịch`}</button>

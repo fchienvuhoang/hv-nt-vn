@@ -1,7 +1,8 @@
 "use client";
 import { MoneyInput } from "@/components/money-input";
 import {transferBalanceError} from "@/lib/transfer-balance";
-import { accountLabel, fundOptionLabel } from "@/lib/account-label";
+import {FundPicker} from "./fund-picker";
+import { accountLabel } from "@/lib/account-label";
 import {useState} from "react";
 import {previewTransfer,createAllocationTransfer} from "@/lib/admin-api";
 import type {AllocationTransferPreview,AllocationTransferInput} from "@/lib/allocation-transfers";
@@ -21,7 +22,7 @@ export function TransferFormFields({requestId,accounts,funds}:{requestId:string;
  async function check(event:React.FormEvent){event.preventDefault();if(balanceError){setPreview(null);setError(balanceError);return}setBusy(true);setError("");try{setPreview(await previewTransfer(input()))}catch(error){const message=error instanceof Error?error.message:"Không kiểm tra được điều chuyển";setError(message);toast(message,"error")}finally{setBusy(false)}}
  async function apply(){if(!preview)return;setBusy(true);setError("");try{const result=await createAllocationTransfer({...input(),requestId,fingerprint:preview.fingerprint});if(result.error){setError(result.error);toast(result.error,"error")}else if(result.success){toast(result.success,"success");close?.()}}finally{setBusy(false)}}
  return <div className="allocation-transfer-workspace"><form onSubmit={check} className="action-form"><fieldset disabled={busy} className="action-fields">
-  <div className="form-row"><label>Thiện pháp nguồn<select required value={values.fromFundId} onChange={e=>change("fromFundId",e.target.value)}><option value="">Chọn thiện pháp</option>{funds.map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select>{fundMoney(source)}</label><label>Thiện pháp nhận<select required value={values.toFundId} onChange={e=>change("toFundId",e.target.value)}><option value="">Chọn thiện pháp</option>{funds.filter(f=>f.id!==values.fromFundId).map(f=><option key={f.id} value={f.id}>{fundOptionLabel(f,accounts)}</option>)}</select>{fundMoney(destination)}</label></div>
+  <div className="form-row"><label>Thiện pháp nguồn<FundPicker label="Thiện pháp nguồn" required funds={funds} accounts={accounts} value={values.fromFundId} onChange={id=>change("fromFundId",id)}/>{fundMoney(source)}</label><label>Thiện pháp nhận<FundPicker label="Thiện pháp nhận" required funds={funds.filter(f=>f.id!==values.fromFundId)} accounts={accounts} value={values.toFundId} onChange={id=>change("toFundId",id)}/>{fundMoney(destination)}</label></div>
   {(source||destination)&&<small className="transfer-fund-verification">Số tiền được xác minh lại khi xem trước và xác nhận.</small>}
   <div className="form-row"><label>Cách tính<select value={values.mode} onChange={e=>change("mode",e.target.value)}><option value="AMOUNT">Nhập số tiền cần cắt</option><option value="TARGET_INCOME">Đưa tổng hùn phước về mức thành tựu</option></select></label><label>{values.mode==="AMOUNT"?"Số tiền cần chuyển (VND)":"Tổng hùn phước cần giữ lại (VND)"}<MoneyInput required value={values.value} onValueChange={value=>change("value",value)} placeholder={values.mode==="AMOUNT"?"2.000.000":"90.000.000"}/></label></div>
   <label>Phạm vi tài khoản<select value={values.accountId} onChange={e=>change("accountId",e.target.value)}><option value="">Cả hai tài khoản</option>{accounts.map(a=><option key={a.id} value={a.id}>{accountLabel(a.number)} · {a.label}</option>)}</select></label>

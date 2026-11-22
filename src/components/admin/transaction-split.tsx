@@ -5,7 +5,7 @@ import { LoadingSpinner } from "@/components/loading-indicator";
 import { MoneyInput } from "@/components/money-input";
 import { splitBankTransaction } from "@/lib/admin-api";
 import { fundUsesAccount, vnd } from "@/lib/domain";
-import { fundOptionLabel } from "@/lib/account-label";
+import {FundPicker} from "./fund-picker";
 import { fundAssignmentWarning } from "@/lib/fund-assignment-warning";
 import { useToast } from "@/components/toasts";
 import type { AdminTransactions } from "@/lib/admin-read-model";
@@ -40,9 +40,7 @@ function SplitForm({ row, funds, accounts }: Props) {
     <div className="modal-context"><strong>{row.direction === "CREDIT" ? "Khoản thu" : "Khoản chi"} gốc: {vnd(row.originalAmount)}</strong><p>{row.narrative || "Không có nội dung"}</p></div>
     <fieldset disabled={busy} className={styles.fields}><legend>Phân bổ cho từng thiện pháp</legend>
       {shares.map((share, index) => <div key={index} className={styles.share}>
-        <label>Thiện pháp {index + 1}<select aria-label={`Thiện pháp ${index + 1}`} value={share.fundId} onChange={e => change(index, { fundId: e.target.value })} required>
-          <option value="">Chọn thiện pháp</option>{eligible.map(f => <option key={f.id} value={f.id} disabled={shares.some((s, i) => i !== index && s.fundId === f.id)}>{fundOptionLabel(f, accounts)}</option>)}
-        </select></label>
+        <label>Thiện pháp {index + 1}<FundPicker label={`Thiện pháp ${index + 1}`} funds={eligible} accounts={accounts} value={share.fundId} onChange={id=>change(index,{fundId:id})} required disabledIds={shares.filter((_,i)=>i!==index).map(item=>item.fundId)}/></label>
         <label>Số tiền (VND)<MoneyInput value={share.amount} onValueChange={amount => change(index, { amount })} required /></label>
         <button type="button" className="button subtle small" aria-label={`Bỏ phần ${index + 1}`} disabled={shares.length <= 2} onClick={() => setShares(items => items.filter((_, i) => i !== index))}>Bỏ</button>
         {fundAssignmentWarning(eligible.find(f => f.id === share.fundId)) && <small className={styles.warning}>{fundAssignmentWarning(eligible.find(f => f.id === share.fundId))}</small>}

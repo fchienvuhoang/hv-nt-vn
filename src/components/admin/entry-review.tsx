@@ -1,5 +1,5 @@
 "use client";
-import { fundOptionLabel } from "@/lib/account-label";
+import {FundPicker} from "./fund-picker";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
 import { useState } from "react";
@@ -81,16 +81,7 @@ export function EntryReview({
         </label>
         <label>
           Thiện pháp ghi nhận
-          <select name="fundId" defaultValue={entry.fundId ?? ""}>
-            <option value="">Giữ thiện pháp hiện có / chưa phân loại</option>
-            {funds
-              .filter((f) => fundUsesAccount(f, entry.accountId))
-              .map((f) => (
-                <option key={f.id} value={f.id}>
-                  {fundOptionLabel(f,accounts)}
-                </option>
-              ))}
-          </select>
+          <FundPicker label="Thiện pháp ghi nhận" name="fundId" defaultValue={entry.fundId??""} funds={funds.filter(f=>fundUsesAccount(f,entry.accountId))} accounts={accounts} placeholder="Giữ thiện pháp hiện có / chưa phân loại"/>
         </label>
         <label>
           Lý do kiểm tra
