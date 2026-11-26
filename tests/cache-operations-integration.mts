@@ -7,7 +7,7 @@ const {mutationFundScope}=await import('../src/lib/admin-mutation-scope');
 const {saveSyncEvent,recentSyncEvents}=await import('../src/lib/sync-events');
 const {measureOperations}=await import('../src/lib/operation-metrics');
 const store=getCache({namespace:'hvntvn-public-snapshot-v1'}),slug='qa-cache-ops',fundId='qa-cache-ops';
-const payload={id:fundId,fundingVersion:3,goalAmount:null,isLongTerm:true,month:vietnamMonth()};
+const payload={id:fundId,fundingVersion:3,goalAmount:null,publicQrAccount:null,isLongTerm:true,month:vietnamMonth()};
 const snapshot={revision:2,credit:payload,debit:payload};
 await store.set(`fund:${slug}:chunk`,JSON.stringify(snapshot),{ttl:60});await store.set(`fund:${slug}`,{chunks:[`fund:${slug}:chunk`]},{ttl:60});await store.set(`revision:${fundId}`,2,{ttl:60});
 const lookup=db.publicCacheRefresh.findUnique;

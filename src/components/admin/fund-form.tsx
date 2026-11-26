@@ -1,4 +1,6 @@
 "use client";
+import Image from "next/image";
+import {PUBLIC_QR_CODES,publicQr} from "@/lib/public-qr";
 import {hasSpacedFundNameHyphens,FUND_NAME_SPACING_ERROR} from "@/lib/fund-name";
 import { FUND_GOAL_TYPES, calculateLengthGoal, calculatePartGoal, readLengthGoal, readPartGoal, formatMeasure } from "@/lib/fund-goal";
 import {keywordKey} from "@/lib/fund-keywords";
@@ -36,6 +38,7 @@ export function FundForm({
   const [values, setValues] = useState({
     code: fund?.code ?? "", name: fund?.name ?? "", status: fund?.status ?? "ACTIVE",
     transferKeyword:fund?.transferKeyword??"",
+    publicQrAccount:fund?.publicQrAccount??"",
     keywords: fund?.keywords.join("\n") ?? "", description: fund?.description ?? "",
     goalAmount: fund?.goalAmount?.toString() ?? "",
     goalType: fund?.goalType ?? "MONEY",
@@ -48,6 +51,7 @@ export function FundForm({
     recognitionAmount:fund?.recognitionAmount?.toString()??"",
   });
   const transferChoices=[...new Map(values.keywords.split(/[\r\n;,]/).map(normalize).filter(value=>value&&keywordKey(value)!==keywordKey(values.code)).map(value=>[keywordKey(value),value])).values()];
+  const selectedQr=publicQr(values.publicQrAccount);
   const selectedTransferKeyword=transferChoices.find(value=>keywordKey(value)===keywordKey(values.transferKeyword))??"";
   let lengthPreview: ReturnType<typeof calculateLengthGoal> | null = null;
   if (values.goalType === "LENGTH") {
@@ -197,6 +201,19 @@ export function FundForm({
         {errorMessage("transferKeyword")}
         <small>Mẫu công khai: {selectedTransferKeyword||values.code||"MÃ"} TÊN SĐT. Chỉ đổi nội dung hướng dẫn, mã và link thiện pháp giữ nguyên. Nếu xóa từ khóa đã chọn, mẫu trở về mã chính.</small>
       </label>
+      <label>
+        Mã QR hiển thị trên trang công khai
+        <select name="publicQrAccount" value={values.publicQrAccount} onChange={event=>change("publicQrAccount",event.target.value)} {...errorProps("publicQrAccount")}>
+          <option value="">Không hiển thị mã QR</option>
+          {Object.values(PUBLIC_QR_CODES).map(qr=><option key={qr.account} value={qr.account}>{qr.label} · {qr.owner}</option>)}
+        </select>
+        {errorMessage("publicQrAccount")}
+        <small>Chọn mã QR nhận hùn phước cho thiện pháp này. Không thay đổi tài khoản ghi nhận giao dịch hay các khoản đã có.</small>
+      </label>
+      {selectedQr&&<div className="fund-qr-preview">
+        <Image src={selectedQr.src} alt={`Xem trước mã QR ${selectedQr.label}`} width={selectedQr.width} height={selectedQr.height} unoptimized/>
+        <span>Ảnh QR sẽ hiển thị trên trang công khai · {selectedQr.owner}</span>
+      </div>}
       <input type="hidden" name="description" value={values.description} />
       <div className="notice">
         Chỉ thiện pháp đang hoạt động nhận phân loại tự động. Thay đổi cấu hình

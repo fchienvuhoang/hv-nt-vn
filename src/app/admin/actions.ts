@@ -46,6 +46,7 @@ const code = z
       ),
   );
 const fundSchema = z.object({
+  publicQrAccount:z.enum(["","0572","0856"]).optional().transform(value=>value===""?null:value),
   transferKeyword:z.string().trim().max(3000).optional(),
   recognitionEnabled: z.enum(["1","0"]).optional().transform(v=>v===undefined?undefined:v==="1"),
   recognitionTitle: z.string().trim().max(100).optional(),
@@ -159,7 +160,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
       const keywords=validateFundKeywords(data.code, data.keywords, rules, fundId);
       const transferKeyword=resolveTransferKeyword(data.code,keywords,data.transferKeyword,existing?.transferKeyword);
       const fields = {
-        ...fundData, recognitionEnabled,recognitionTitle,recognitionAmount, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
+        ...fundData, publicQrAccount:data.publicQrAccount===undefined?existing?.publicQrAccount??null:data.publicQrAccount, recognitionEnabled,recognitionTitle,recognitionAmount, publicListed: data.publicListed ?? existing?.publicListed ?? false, accountId,
         sourceUrl: data.sourceUrl ?? existing?.sourceUrl ?? "",
         adminNote: data.adminNote ?? existing?.adminNote ?? "",
         goalType: goal.goalType, goalAmount: goal.goalAmount, goalConfig: goal.goalConfig as Prisma.InputJsonValue | null,
@@ -177,6 +178,7 @@ export async function saveFund(_state: ActionState, form: FormData) {
             name: before.name,
             keywords: before.keywords,
             transferKeyword:before.transferKeyword,
+            publicQrAccount:before.publicQrAccount,
             status: before.status,
             description: before.description,
             sourceUrl: before.sourceUrl,

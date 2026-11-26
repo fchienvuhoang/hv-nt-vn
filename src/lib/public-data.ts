@@ -55,6 +55,7 @@ async function publicFundSummary(slug:string,month:string){
       recognitionEnabled:fund.recognitionEnabled,recognitionTitle:fund.recognitionTitle,
       code: fund.code,
       transferKeyword:resolveTransferKeyword(fund.code,fund.keywords,undefined,fund.transferKeyword)??fund.code,
+      publicQrAccount:fund.publicQrAccount,
       goalAmount: fund.goalAmount?.toString() ?? null,
       goalType: fund.goalType, goalConfig: fund.goalConfig,
       fundingVersion: 3,

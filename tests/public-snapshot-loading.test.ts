@@ -12,7 +12,7 @@ function fixture() {
   const store=new Map<string,unknown>();
   const calls:{direction:string;page:number;kind:string}[]=[];
   let revision=1;
-  const fund=(page:number,direction:string)=>({id:"fund",fundingVersion:3,goalAmount:null,month:"",isLongTerm:false,count:205,counts:{CREDIT:205,DEBIT:205},page,rows:Array.from({length:page<3?100:5},(_,i)=>({id:`${direction}-${page}-${i}`,at:"2026-11-09T00:00:00Z",narrative:"public",name:"donor",amount:"2",originalAmount:"9",account:"123",notes:[]}))});
+  const fund=(page:number,direction:string)=>({id:"fund",fundingVersion:3,goalAmount:null,publicQrAccount:null,month:"",isLongTerm:false,count:205,counts:{CREDIT:205,DEBIT:205},page,rows:Array.from({length:page<3?100:5},(_,i)=>({id:`${direction}-${page}-${i}`,at:"2026-11-09T00:00:00Z",narrative:"public",name:"donor",amount:"2",originalAmount:"9",account:"123",notes:[]}))});
   const dependencies:Record<string,unknown>={
     "server-only":{},
     "./versioned-json-cache":{VersionedJsonCache},
@@ -70,4 +70,13 @@ test("search still reads the entire snapshot and missing manifests cannot hit lo
   assert.ok(searched);assert.equal(searched.data.count,205);
   store.delete("fund:slug");
   assert.equal(await api.readPublicSnapshot("slug"),null);
+});
+
+test('legacy snapshots without a QR setting cannot hide a newly configured QR',async()=>{
+ const {api,store}=fixture();await api.warmPublicSnapshot('slug');
+ const manifest=store.get('fund:slug') as {chunks:string[]};
+ const legacy=JSON.parse(manifest.chunks.map(key=>store.get(key)).join(''));
+ delete legacy.credit.publicQrAccount;delete legacy.debit.publicQrAccount;
+ store.set('legacy-qr',JSON.stringify(legacy));store.set('fund:slug',{fundId:'fund',chunks:['legacy-qr']});
+ assert.equal(await api.readPublicSnapshot('slug'),null);
 });
