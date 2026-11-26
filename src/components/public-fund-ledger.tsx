@@ -6,6 +6,7 @@ import {PwaAdminReturn} from "@/components/pwa-admin-return";
 import { PublicFundGoal } from "@/components/public-fund-goal";
 import { PublicTransferContent } from "@/components/public-transfer-content";
 import {PublicFundQr} from '@/components/public-fund-qr';
+import {publicQr} from '@/lib/public-qr';
 import { LoadingIndicator, LoadingSpinner } from "@/components/loading-indicator";
 
 import { useEffect,useRef,useState } from "react";
@@ -76,8 +77,9 @@ export function PublicFundLedger({slug}:{slug:string}) {
 
         </div>
         </PublicDevotionalBanner>
-        {fund.status === "ACTIVE" && <PublicTransferContent code={fund.transferKeyword||fund.code}/>}
-        <PublicFundQr account={fund.publicQrAccount} code={fund.transferKeyword||fund.code}/>
+        {publicQr(fund.publicQrAccount)
+          ? <PublicFundQr account={fund.publicQrAccount} code={fund.transferKeyword||fund.code}/>
+          : fund.status === "ACTIVE" && <PublicTransferContent code={fund.transferKeyword||fund.code}/>}
         {fund.pendingImports > 0 && (
           <div className="notice">
             <LoadingSpinner size={20}/> Đang nhập lịch sử Excel; số liệu có thể chưa đầy đủ cho tới khi nhập

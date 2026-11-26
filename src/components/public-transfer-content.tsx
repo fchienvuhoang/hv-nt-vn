@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Copy } from "lucide-react";
 
-export function PublicTransferContent({ code }: { code: string }) {
+export function PublicTransferContent({ code, compact=false }: { code: string; compact?:boolean }) {
   const content = `${code} TÊN SĐT`;
   const [result, setResult] = useState<{ code: string; message: string } | null>(null);
 
@@ -22,7 +22,7 @@ export function PublicTransferContent({ code }: { code: string }) {
       <code>{content}</code>
       <button type="button" className="button subtle small" onClick={copy} title="Sao chép nội dung chuyển khoản" aria-label={`Sao chép nội dung chuyển khoản ${content}`}><Copy size={14}/><span>Sao chép</span></button>
     </div>
-    <small>Thay TÊN và SĐT bằng tên và số điện thoại của thí chủ. Dùng dấu cách để ngăn cách mã thiện pháp, tên và số điện thoại. Ví dụ: <b>{code} NGUYEN VAN A 0912345678</b>.</small>
+    <small>{compact?<>Thay TÊN và SĐT bằng thông tin thí chủ, ngăn cách các phần bằng dấu cách.</>:<>Thay TÊN và SĐT bằng tên và số điện thoại của thí chủ. Dùng dấu cách để ngăn cách mã thiện pháp, tên và số điện thoại. Ví dụ: <b>{code} NGUYEN VAN A 0912345678</b>.</>}</small>
     <span role="status">{result?.code === code ? result.message : ""}</span>
   </div>;
 }

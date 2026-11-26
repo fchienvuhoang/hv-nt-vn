@@ -1,21 +1,18 @@
 .card { display: grid; grid-template-columns: minmax(0, 1fr) 150px; align-items: center; gap: 14px; margin: 0 0 10px; padding: 12px; border: 1px solid #ddcbb7; border-radius: 12px; background: #fffdf8; }
 .details { min-width: 0; }
-.eyebrow { font-size: 10px; letter-spacing: .09em; color: #a48049; font-weight: 700; }
-.details h2 { margin: 4px 0 8px; color: #254b3b; font-size: 16px; line-height: 1.35; }
-.details p { margin: 5px 0; font-size: 13px; color: #756053; }
-.details .owner { font-weight: 700; color: #4c4239; }
-.details .note { margin-top: 12px; }
-.note code { display: inline-block; padding: 5px 8px; margin-top: 5px; border-radius: 5px; background: #f5eee2; color: #763846; font-weight: 700; overflow-wrap: anywhere; }
-.details small { display: block; max-width: 440px; margin: 8px 0 12px; font-size: 11px; line-height: 1.6; color: #8a7664; }
+.owner { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: #4c4239; overflow-wrap: anywhere; }
+.details :global(.public-transfer-content) { margin: 0 0 8px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.details :global(.public-transfer-copy) { margin-bottom: 6px; }
+.details small { display: block; font-size: 11px; line-height: 1.5; color: #8a7664; }
 .imageLink { display: block; width: 100%; justify-self: center; border-radius: 6px; }
 .imageLink:focus-visible { outline: 2px solid #803345; outline-offset: 3px; }
 .image { display: block; width: 100%; height: auto; border-radius: 6px; background: white; }
 @media (max-width: 540px) {
  .card { grid-template-columns: minmax(0, 1fr) 104px; gap: 10px; padding: 10px; }
- .eyebrow, .details small { display: none; }
- .details h2 { margin: 0 0 6px; font-size: 14px; }
- .details p { margin: 3px 0; font-size: 11px; }
- .details .note { margin-top: 7px; }
- .note code { margin: 3px 0 6px; padding: 3px 5px; font-size: 11px; }
- .details a { min-height: 28px; padding: 4px 7px; font-size: 11px; }
+ .owner { margin-bottom: 6px; font-size: 11px; }
+ .details :global(.public-transfer-copy) { gap: 4px; }
+ .details :global(.public-transfer-copy) > span { flex-basis: 100%; font-size: 10px; }
+ .details :global(.public-transfer-copy) code { font-size: 12px; }
+ .details :global(.button) { min-height: 28px; padding: 4px 7px; font-size: 11px; }
+ .details small { font-size: 10px; }
 }
