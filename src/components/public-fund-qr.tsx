@@ -9,12 +9,12 @@ export function PublicFundQr({account,code}:{account?:string|null;code:string}){
  if(!qr)return null;
  return <section className={styles.card} aria-label="Mã QR hùn phước">
   <div className={styles.details}>
-   <p className={styles.owner}>{qr.owner} · TK {qr.account}</p>
+   <p className={styles.owner}>{qr.owner} · Ngân hàng TMCP Quân đội (MB) · TK {qr.account}</p>
    <PublicTransferContent code={code} compact/>
    <a className="button subtle small" href={qr.src} download={`QR-${qr.account}.png`}><Download size={15} aria-hidden="true"/> Tải mã QR</a>
   </div>
   <a className={styles.imageLink} href={qr.src} target="_blank" rel="noopener noreferrer" aria-label={`Mở mã QR ${qr.account} kích thước gốc`}>
-   <Image className={styles.image} src={qr.src} width={qr.width} height={qr.height} alt={`Mã QR chuyển khoản ${qr.owner}, tài khoản ${qr.account}`} loading="eager" unoptimized/>
+   <Image className={styles.image} src={qr.src} width={qr.width} height={qr.height} alt={`Mã QR chuyển khoản Ngân hàng TMCP Quân đội (MB), ${qr.owner}, tài khoản ${qr.account}`} loading="eager" unoptimized/>
   </a>
  </section>;
 }
